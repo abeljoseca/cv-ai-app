@@ -32,14 +32,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
 
-    // Cargar perfil profesional
     const { data: profileData } = await supabase
       .from('professional_profiles')
       .select('data')
       .eq('id', user.id)
       .single()
 
-    // Cargar datos básicos
     const { data: basicProfile } = await supabase
       .from('profiles')
       .select('first_name, last_name, phone, location, linkedin_url')
@@ -48,7 +46,6 @@ export async function POST(request: NextRequest) {
 
     const professionalData = profileData?.data ?? {}
 
-    // Verificar que hay suficiente información
     const hasExperience = professionalData.experiencia && professionalData.experiencia.length > 0
     const hasName = basicProfile?.first_name
 
@@ -84,6 +81,7 @@ INSTRUCCIONES:
 5. Incluye métricas y resultados cuando el usuario los haya mencionado
 6. Si un campo no tiene datos, ponlo como null — NUNCA inventes contenido
 7. El resumen profesional debe estar optimizado para esta vacante específica
+8. Extrae el nombre del puesto y empresa de la oferta laboral
 
 Devuelve ÚNICAMENTE el siguiente JSON sin ningún texto adicional, sin markdown, sin explicaciones:
 
@@ -94,6 +92,8 @@ Devuelve ÚNICAMENTE el siguiente JSON sin ningún texto adicional, sin markdown
   "ubicacion": "",
   "linkedin": "",
   "resumen_profesional": "",
+  "job_title_applied": "",
+  "company_name": "",
   "experiencia": [
     {
       "empresa": "",
@@ -122,12 +122,28 @@ Devuelve ÚNICAMENTE el siguiente JSON sin ningún texto adicional, sin markdown
     })
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
-
-    // Limpiar respuesta y parsear JSON
     const cleanText = rawText.replace(/```json|```/g, '').trim()
     const cvData = JSON.parse(cleanText)
 
-    return NextResponse.json({ cvData, template: template ?? 'harvard' })
+    // Guardar registro en tabla cvs
+    const { data: cvRecord } = await supabase
+      .from('cvs')
+      .insert({
+        user_id: user.id,
+        title: `${cvData.job_title_applied || 'CV'} — ${cvData.company_name || 'Sin empresa'}`,
+        job_title_applied: cvData.job_title_applied,
+        company_name: cvData.company_name,
+        job_description_raw: jobDescription,
+        template_used: template ?? 'harvard',
+      })
+      .select()
+      .single()
+
+    return NextResponse.json({
+      cvData,
+      cvId: cvRecord?.id,
+      template: template ?? 'harvard'
+    })
 
   } catch (error) {
     console.error('Error en /api/generate-cv:', error)

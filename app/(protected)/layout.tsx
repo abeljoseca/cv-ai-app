@@ -13,6 +13,7 @@ export default function ProtectedLayout({
   const links = [
     { href: '/app/chat', label: 'Sobre mí' },
     { href: '/app/apply', label: 'Aplicar' },
+    { href: '/app/cvs', label: 'Mis CVs' },
     { href: '/app/profile', label: 'Mi Perfil' },
   ]
 
