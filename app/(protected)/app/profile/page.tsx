@@ -12,7 +12,9 @@ export default function ProfilePage() {
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [message, setMessage] = useState('')
+  const [importMessage, setImportMessage] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -27,13 +29,11 @@ export default function ProfilePage() {
       return
     }
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('first_name, last_name, phone, location, linkedin_url')
       .eq('id', user.id)
       .single()
-
-    console.log('Perfil cargado:', data, 'Error:', error)
 
     if (data) {
       setFirstName(data.first_name || '')
@@ -50,8 +50,6 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    console.log('Guardando:', { firstName, lastName, phone, location, linkedinUrl })
-
     setSaving(true)
     setMessage('')
 
@@ -67,8 +65,6 @@ export default function ProfilePage() {
       })
       .eq('id', user.id)
 
-    console.log('Error al guardar:', error)
-
     if (error) {
       setMessage('Error al guardar. Intenta de nuevo.')
     } else {
@@ -76,6 +72,40 @@ export default function ProfilePage() {
     }
 
     setSaving(false)
+  }
+
+  async function handlePDFImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImporting(true)
+    setImportMessage('')
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch('/api/import-pdf', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await res.json()
+
+      if (!res.ok) {
+        setImportMessage(`Error: ${result.error}`)
+        return
+      }
+
+      const campos = result.campos_encontrados?.join(', ') ?? ''
+      setImportMessage(`Listo. Se importó: ${campos}.`)
+
+    } catch {
+      setImportMessage('Error procesando el archivo. Intenta de nuevo.')
+    } finally {
+      setImporting(false)
+      e.target.value = ''
+    }
   }
 
   async function handleSignOut() {
@@ -95,6 +125,37 @@ export default function ProfilePage() {
     <div className="max-w-lg mx-auto py-8 px-4">
       <h1 className="text-2xl font-semibold text-gray-900 mb-2">Mi Perfil</h1>
       <p className="text-gray-500 text-sm mb-8">Estos datos aparecerán en tus CVs generados.</p>
+
+      {/* Importar PDF */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+        <p className="text-sm font-medium text-blue-900 mb-1">Importar desde PDF</p>
+        <p className="text-xs text-blue-700 mb-3">
+          Sube tu perfil de LinkedIn en PDF o un CV anterior para importar tu experiencia automáticamente.
+        </p>
+        <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
+          importing
+            ? 'bg-blue-200 text-blue-500 cursor-not-allowed'
+            : 'bg-blue-600 text-white hover:bg-blue-700'
+        }`}>
+          {importing ? 'Procesando...' : '⬆ Subir PDF'}
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={handlePDFImport}
+            disabled={importing}
+            className="hidden"
+          />
+        </label>
+        {importMessage && (
+          <p className={`text-xs mt-2 ${
+            importMessage.startsWith('Error')
+              ? 'text-red-600'
+              : 'text-green-700'
+          }`}>
+            {importMessage}
+          </p>
+        )}
+      </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
