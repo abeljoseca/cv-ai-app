@@ -12,6 +12,8 @@ export default function ApplyPage() {
   const [step, setStep] = useState<Step>('form')
   const [loadingMessage, setLoadingMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [fileName, setFileName] = useState('')
   const router = useRouter()
 
   async function handleGenerate() {
@@ -52,19 +54,15 @@ export default function ApplyPage() {
         throw new Error('Error generando el documento')
       }
 
-      setLoadingMessage('Preparando descarga...')
+      setLoadingMessage('Preparando tu CV...')
 
-      // Paso 3: Descargar el archivo
+      // Paso 3: Crear URL de descarga sin descargar automáticamente
       const blob = await docxResponse.blob()
       const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `CV_${cvResult.cvData.nombre_completo?.replace(/\s+/g, '_') ?? 'CV'}.docx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const name = `CV_${cvResult.cvData.nombre_completo?.replace(/\s+/g, '_') ?? 'CV'}.docx`
 
+      setDownloadUrl(url)
+      setFileName(name)
       setStep('done')
 
     } catch (error) {
@@ -72,6 +70,16 @@ export default function ApplyPage() {
       setErrorMessage('Hubo un problema generando tu CV. Intenta de nuevo.')
       setStep('error')
     }
+  }
+
+  function handleDownload() {
+    if (!downloadUrl) return
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   if (step === 'loading') {
@@ -91,20 +99,28 @@ export default function ApplyPage() {
         </div>
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">¡Tu CV está listo!</h2>
-          <p className="text-gray-500 text-sm">El archivo se descargó automáticamente. Revísalo en tu carpeta de descargas.</p>
+          <p className="text-gray-500 text-sm">Revísalo antes de enviarlo a la empresa.</p>
         </div>
-        <div className="flex gap-3">
+
+        <button
+          onClick={handleDownload}
+          className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+        >
+          ⬇ Descargar CV
+        </button>
+
+        <div className="flex gap-3 w-full">
           <button
-            onClick={() => { setStep('form'); setJobDescription('') }}
-            className="px-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={() => { setStep('form'); setJobDescription(''); setDownloadUrl(null) }}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Generar otro CV
           </button>
           <button
-            onClick={() => router.push('/app/chat')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+            onClick={() => router.push('/app/cvs')}
+            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
           >
-            Volver al chat
+            Ver Mis CVs
           </button>
         </div>
       </div>
@@ -144,7 +160,6 @@ export default function ApplyPage() {
       <h1 className="text-2xl font-semibold text-gray-900 mb-2">Aplicar a un trabajo</h1>
       <p className="text-gray-500 text-sm mb-8">Pega la oferta laboral y te generamos un CV optimizado para esa vacante.</p>
 
-      {/* Selector de template */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-3">Formato del CV</label>
         <div className="grid grid-cols-1 gap-3">
@@ -173,11 +188,8 @@ export default function ApplyPage() {
         </div>
       </div>
 
-      {/* Textarea para la oferta */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Oferta laboral
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Oferta laboral</label>
         <textarea
           value={jobDescription}
           onChange={e => setJobDescription(e.target.value)}
