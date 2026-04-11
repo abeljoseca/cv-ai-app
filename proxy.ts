@@ -29,10 +29,15 @@ export default async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user && request.nextUrl.pathname.startsWith('/app')) {
+  // Sin sesión intentando entrar a rutas protegidas
+  if (!user && (
+    request.nextUrl.pathname.startsWith('/app') ||
+    request.nextUrl.pathname.startsWith('/admin')
+  )) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Con sesión en login o register
   if (user && (
     request.nextUrl.pathname === '/login' ||
     request.nextUrl.pathname === '/register'
@@ -40,9 +45,22 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/app/chat', request.url))
   }
 
+  // Rutas admin — verificar rol
+  if (user && request.nextUrl.pathname.startsWith('/admin')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') {
+      return NextResponse.redirect(new URL('/app/chat', request.url))
+    }
+  }
+
   return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/login', '/register'],
+  matcher: ['/app/:path*', '/admin/:path*', '/login', '/register'],
 }
