@@ -14,6 +14,7 @@ export default function ProtectedLayout({
     { href: '/app/chat', label: 'Sobre mí' },
     { href: '/app/apply', label: 'Aplicar' },
     { href: '/app/cvs', label: 'Mis CVs' },
+    { href: '/app/applications', label: 'Aplicaciones' },
     { href: '/app/profile', label: 'Mi Perfil' },
   ]
 
