@@ -121,18 +121,20 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
 
               {/* Plan badge */}
-              <div style={{
-                background: '#4B6BFB',
-                color: '#fff',
-                borderRadius: '50px',
-                padding: '6px 16px',
-                fontSize: '11px',
-                fontWeight: 600,
-                marginBottom: '16px',
-                textAlign: 'center',
-              }}>
-                Tipo de cuenta
-              </div>
+<div style={{
+  background: '#4B6BFB',
+  color: '#fff',
+  borderRadius: '50px',
+  padding: '10px 16px',
+  fontSize: '12px',
+  fontWeight: 700,
+  marginBottom: '16px',
+  textAlign: 'center',
+  width: '100%',
+  cursor: 'pointer',
+}}>
+  Tipo de cuenta
+</div>
 
               {/* Nav links */}
               {links.map(link => {
