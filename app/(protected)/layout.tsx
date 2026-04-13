@@ -75,7 +75,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           background: '#FFFFFF',
         }}>
           <span style={{ fontSize: '15px', fontWeight: 700, color: '#1A1A1A', letterSpacing: '-0.4px' }}>
-            CV<span style={{ color: '#4B6BFB' }}>.</span>AI
+            <span style={{ color: '#1A2B4C' }}>Resum</span><span style={{ color: '#4B6BFB' }}>int</span>
           </span>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button

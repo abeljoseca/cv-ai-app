@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CV Builder — Crea tu CV con IA",
+  title: "Resumint — Crea tu CV con IA",
   description: "Construye tu perfil profesional y genera CVs optimizados con inteligencia artificial.",
 };
 

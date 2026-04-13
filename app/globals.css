@@ -1,35 +1,32 @@
 @import "tailwindcss";
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   --bg-base: #F7F8FA;
   --bg-surface: #FFFFFF;
   --bg-elevated: #F0F1F5;
-  --border: #E8EAED;
-  --border-strong: #D1D5DB;
-  --text-primary: #111318;
-  --text-secondary: #4A4F5E;
-  --text-muted: #8A8F9E;
-  --text-faint: #B0B5C3;
-  --accent: #4F6EF7;
-  --accent-light: #EEF1FE;
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --text-primary: #1A2B4C;
+  --text-secondary: #0F172A;
+  --text-muted: #64748B;
+  --text-faint: #94A3B8;
+  --accent: #4B6BFB;
+  --accent-light: #EEF2FF;
   --accent-hover: #3D5CE6;
-  --success: #10B981;
-  --success-light: #ECFDF5;
-  --warning: #D97706;
-  --warning-light: #FEF6E7;
+  --success: #22C55E;
+  --success-light: #F0FDF4;
+  --warning: #F59E0B;
+  --warning-light: #FFFBEB;
   --danger: #EF4444;
   --danger-light: #FEF2F2;
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   background: var(--bg-base);
@@ -38,27 +35,13 @@ body {
   font-size: 14px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-::selection {
-  background: var(--accent-light);
-  color: var(--accent);
-}
+::selection { background: var(--accent-light); color: var(--accent); }
 
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 2px;
-}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
 
 input, textarea, select, button {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
