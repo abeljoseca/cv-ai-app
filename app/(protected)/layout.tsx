@@ -18,16 +18,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const supabase = createClient()
   const [userName, setUserName] = useState('')
   const [userInitial, setUserInitial] = useState('?')
+  const [userPhoto, setUserPhoto] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', user.id)
-        .single()
+      const { data } = await supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single()
       if (data?.first_name) {
         const name = `${data.first_name} ${data.last_name ?? ''}`.trim()
         setUserName(name)
@@ -39,6 +36,19 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       }
     }
     loadUser()
+
+    function handleProfileUpdate(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail.firstName) {
+        const name = `${detail.firstName} ${detail.lastName ?? ''}`.trim()
+        setUserName(name)
+        setUserInitial(name.charAt(0).toUpperCase())
+      }
+      if (detail.photoUrl !== undefined) setUserPhoto(detail.photoUrl)
+    }
+
+    window.addEventListener('profile-updated', handleProfileUpdate)
+    return () => window.removeEventListener('profile-updated', handleProfileUpdate)
   }, [])
 
   return (
@@ -191,28 +201,21 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 transition: 'background 0.15s',
               }}
             >
-              <div style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '50%',
-                background: '#EEF1FE',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
-                fontWeight: 700,
-                color: '#4B6BFB',
-              }}>
-                {userInitial}
-              </div>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: '#4B6BFB', overflow: 'hidden', flexShrink: 0 }}>
+  {userPhoto
+    ? <img src={userPhoto} alt="Foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    : userInitial
+  }
+</div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#1A1A1A', lineHeight: 1.3 }}>
-                  {userName || 'Usuario'}
-                </div>
-                <div style={{ fontSize: '10px', color: '#BBBBBB', marginTop: '2px' }}>
-                  Configurar Perfil
-                </div>
-              </div>
+  <div style={{ fontSize: '12px', fontWeight: 600, color: '#1A2B4C', lineHeight: 1.4, wordBreak: 'break-word' }}>
+    {userName.includes(' ')
+      ? <>{userName.split(' ')[0]}<br />{userName.split(' ').slice(1).join(' ')}</>
+      : userName || 'Usuario'
+    }
+  </div>
+  <div style={{ fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>Configurar perfil</div>
+</div>
             </Link>
 
           </aside>
