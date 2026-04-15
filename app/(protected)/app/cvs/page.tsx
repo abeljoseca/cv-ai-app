@@ -78,7 +78,7 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
       notes: formData.notes,
     }).select().single()
     if (!error && data) {
-      setApplications(prev => [...prev, { id: data.id, cv_id: cv.id }])
+      setApplications(prev => [...prev, { id: data.id, cv_id: cv.id, status: formData.status }])
       setOpenFormCvId(null)
     }
     setSaving(false)
