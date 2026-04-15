@@ -11,6 +11,7 @@ interface CV {
   company_name: string
   template_used: string
   created_at: string
+  job_description_raw: string
 }
 
 interface Application {
@@ -31,6 +32,7 @@ export default function CVsPage() {
   const [openFormCvId, setOpenFormCvId] = useState<string | null>(null)
   const [formData, setFormData] = useState({ job_title: '', company_name: '', application_date: new Date().toISOString().split('T')[0], status: 'waiting', notes: '' })
   const [saving, setSaving] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const supabase = createClient()
   const router = useRouter()
 
@@ -43,7 +45,7 @@ export default function CVsPage() {
     if (prof?.first_name) setFirstName(prof.first_name)
     const { data: cvsData } = await supabase.from('cvs').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
     if (cvsData) setCvs(cvsData)
-const { data: appsData } = await supabase.from('job_applications').select('id, cv_id, status').eq('user_id', user.id)
+    const { data: appsData } = await supabase.from('job_applications').select('id, cv_id, status').eq('user_id', user.id)
     if (appsData) setApplications(appsData)
     setLoading(false)
   }
@@ -84,6 +86,38 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
     setSaving(false)
   }
 
+  async function handleDownload(cv: CV) {
+    setDownloadingId(cv.id)
+    try {
+      const cvResponse = await fetch('/api/generate-cv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobDescription: cv.job_description_raw || '', template: cv.template_used || 'harvard' }),
+      })
+      const cvResult = await cvResponse.json()
+      if (!cvResponse.ok) return
+      const docxResponse = await fetch('/api/generate-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cvData: cvResult.cvData, template: cv.template_used }),
+      })
+      if (!docxResponse.ok) return
+      const blob = await docxResponse.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `CV_${cv.job_title_applied?.replace(/\s+/g, '_') ?? 'CV'}.docx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch {
+      console.error('Error descargando CV')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
   }
@@ -95,8 +129,6 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }}>
-
-      {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#EEF2FF', color: '#4B6BFB', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: '20px', marginBottom: '8px' }}>
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4B6BFB' }} />
@@ -108,7 +140,6 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
         <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>Lo que has logrado con nosotros.</p>
       </div>
 
-      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
         {[
           { value: cvs.length, label: 'CVs Generados' },
@@ -122,7 +153,6 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
         ))}
       </div>
 
-      {/* CVs */}
       <div style={{ marginBottom: '12px' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#EEF2FF', color: '#4B6BFB', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: '20px', marginBottom: '12px' }}>
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4B6BFB' }} />
@@ -134,7 +164,9 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
       {cvs.length === 0 ? (
         <div style={{ background: '#F8FAFC', border: '1px dashed #E2E8F0', borderRadius: '14px', padding: '40px', textAlign: 'center' }}>
           <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 16px' }}>Todavía no has generado ningún CV.</p>
-          <button onClick={() => router.push('/app/apply')} style={{ background: '#4B6BFB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Generar mi primer CV</button>
+          <button onClick={() => router.push('/app/apply')} style={{ background: '#4B6BFB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            Generar mi primer CV
+          </button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -142,15 +174,17 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
             const cvApps = getApplicationsForCv(cv.id)
             const hasApplied = cvApps.length > 0
             const isFormOpen = openFormCvId === cv.id
+            const isDownloading = downloadingId === cv.id
 
             return (
               <div key={cv.id} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'center' }}>
                   <div>
-<div style={{ fontSize: '16px', fontWeight: 600, color: '#1A2B4C', marginBottom: '4px' }}>{cv.job_title_applied || 'Sin título'}</div>                    <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '12px', lineHeight: 1.7 }}>
-  <div>Fecha: {formatDate(cv.created_at)}</div>
-  <div>Estilo de CV: {cv.template_used ? cv.template_used.charAt(0).toUpperCase() + cv.template_used.slice(1) : '—'}</div>
-</div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#1A2B4C', marginBottom: '4px' }}>{cv.job_title_applied || 'Sin título'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '12px', lineHeight: 1.7 }}>
+                      <div>Fecha: {formatDate(cv.created_at)}</div>
+                      <div>Estilo de CV: {cv.template_used ? cv.template_used.charAt(0).toUpperCase() + cv.template_used.slice(1) : '—'}</div>
+                    </div>
 
                     {!hasApplied && !isFormOpen && (
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
@@ -164,20 +198,20 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
                         <span style={{ fontSize: '12px', color: '#22C55E', fontWeight: 500 }}>
                           ✓ {cvApps.length} {cvApps.length === 1 ? 'aplicación registrada' : 'aplicaciones registradas'}
                         </span>
-                        <button
-                          onClick={() => openApplyForm(cv)}
-                          style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '4px 10px', fontSize: '11px', color: '#64748B', cursor: 'pointer', fontFamily: 'inherit' }}
-                        >
+                        <button onClick={() => openApplyForm(cv)} style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '4px 10px', fontSize: '11px', color: '#64748B', cursor: 'pointer', fontFamily: 'inherit' }}>
                           Volví a aplicar con este CV
                         </button>
                       </div>
                     )}
                   </div>
 
-                  {/* Botones acción */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#4B6BFB', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      <IconDownload /> Descargar
+                    <button
+                      onClick={() => handleDownload(cv)}
+                      disabled={isDownloading}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: isDownloading ? '#A5B4FC' : '#4B6BFB', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 600, cursor: isDownloading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', width: '100%' }}
+                    >
+                      <IconDownload /> {isDownloading ? 'Generando...' : 'Descargar'}
                     </button>
                     <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#fff', color: '#1A2B4C', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       <IconMail /> Enviar por e-mail
@@ -188,7 +222,6 @@ const { data: appsData } = await supabase.from('job_applications').select('id, c
                   </div>
                 </div>
 
-                {/* Formulario inline */}
                 {isFormOpen && (
                   <div style={{ borderTop: '1px solid #F1F5F9', padding: '16px 20px', background: '#F8FAFC' }}>
                     <p style={{ fontSize: '12px', fontWeight: 600, color: '#1A2B4C', margin: '0 0 12px' }}>Registrar aplicación</p>

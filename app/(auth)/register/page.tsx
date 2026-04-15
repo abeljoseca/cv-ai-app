@@ -25,7 +25,7 @@ export default function RegisterPage() {
       return
     }
 
-    router.push('/app/chat')
+    router.push('/app/profile')
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
