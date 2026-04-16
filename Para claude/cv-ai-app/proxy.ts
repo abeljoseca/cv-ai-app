@@ -58,23 +58,6 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  // Protección de onboarding — usuario NO puede ir a ningún lado hasta completar /app/profile
-  if (user && request.nextUrl.pathname.startsWith('/app')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarding_completed')
-      .eq('id', user.id)
-      .single()
-
-    // Si onboarding NO está completado
-    if (profile && !profile.onboarding_completed) {
-      // Permitir SOLO /app/profile
-      if (request.nextUrl.pathname !== '/app/profile') {
-        return NextResponse.redirect(new URL('/app/profile', request.url))
-      }
-    }
-  }
-
   return supabaseResponse
 }
 

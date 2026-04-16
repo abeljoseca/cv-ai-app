@@ -24,8 +24,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-const { data } = await supabase.from('profiles').select('first_name, last_name, profile_photo_url').eq('id', user.id).single()      
-if (data?.first_name) {
+      const { data } = await supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single()
+      if (data?.first_name) {
         const name = `${data.first_name} ${data.last_name ?? ''}`.trim()
         setUserName(name)
         setUserInitial(name.charAt(0).toUpperCase())
@@ -34,26 +34,8 @@ if (data?.first_name) {
         setUserName(name)
         setUserInitial(name.charAt(0).toUpperCase())
       }
-      if (data?.profile_photo_url) {
-  setUserPhoto(data.profile_photo_url)
-}
     }
     loadUser()
-    async function checkOnboarding() {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  
-  const { data: profile } = await supabase.from('profiles')
-    .select('onboarding_completed')
-    .eq('id', user.id)
-    .single()
-  
-  if (profile && !profile.onboarding_completed && pathname !== '/app/profile') {
-    router.push('/app/profile')
-  }
-}
-
-checkOnboarding()
 
     function handleProfileUpdate(e: Event) {
       const detail = (e as CustomEvent).detail

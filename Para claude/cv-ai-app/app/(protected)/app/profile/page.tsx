@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 function calcScore(data: any): number {
   if (!data) return 0
@@ -39,7 +39,6 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('')
   const [location, setLocation] = useState('')
   const [linkedinUrl, setLinkedinUrl] = useState('')
-  const [emailCv, setEmailCv] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -52,34 +51,20 @@ export default function ProfilePage() {
   const photoInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const router = useRouter()
-  const pathname = usePathname()
 
   useEffect(() => { loadProfile() }, [])
-
-  useEffect(() => {
-    async function checkOnboarding() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single()
-      if (profile && !profile.onboarding_completed && pathname !== '/app/profile') {
-        router.push('/app/profile')
-      }
-    }
-    checkOnboarding()
-  }, [pathname, router])
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
     setUserId(user.id)
-    const { data } = await supabase.from('profiles').select('first_name, last_name, phone, location, linkedin_url, profile_photo_url, email_cv').eq('id', user.id).single()
+    const { data } = await supabase.from('profiles').select('first_name, last_name, phone, location, linkedin_url, profile_photo_url').eq('id', user.id).single()
     if (data) {
       setFirstName(data.first_name || '')
       setLastName(data.last_name || '')
       setPhone(data.phone || '')
       setLocation(data.location || '')
       setLinkedinUrl(data.linkedin_url || '')
-      setEmailCv(data.email_cv || user.email || '')
       if (data.profile_photo_url) setPhotoUrl(data.profile_photo_url)
     }
     const { data: profData } = await supabase.from('professional_profiles').select('data, completeness_score').eq('id', user.id).single()
@@ -94,23 +79,13 @@ export default function ProfilePage() {
   }
 
   async function handleSave() {
-    if (!firstName.trim() || !lastName.trim() || !emailCv.trim()) {
-      setMessage('Nombre, apellido y correo electrónico son obligatorios.')
-      return
-    }
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setSaving(true)
     setMessage('')
     const { error } = await supabase.from('profiles').update({
-      first_name: firstName, 
-      last_name: lastName,
-      phone, 
-      location, 
-      linkedin_url: linkedinUrl,
-      email_cv: emailCv,
-      onboarding_completed: true,
+      first_name: firstName, last_name: lastName,
+      phone, location, linkedin_url: linkedinUrl,
       updated_at: new Date().toISOString(),
     }).eq('id', user.id)
     if (!error) {
@@ -143,7 +118,7 @@ export default function ProfilePage() {
       window.dispatchEvent(new CustomEvent('profile-updated', { detail: { firstName, lastName, photoUrl: publicUrl } }))
     } catch {
       setMessage('Error subiendo la foto. Intenta de nuevo.')
-      setTimeout(() => setMessage(''), 1500)
+setTimeout(() => setMessage(''), 1500)
     } finally {
       setUploadingPhoto(false)
       e.target.value = ''
@@ -286,32 +261,31 @@ export default function ProfilePage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>Nombre <span style={{ color: '#EF4444' }}>*</span></label>
-                <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Alex" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>Nombre</label>
+                <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Abel" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
               </div>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>Apellido <span style={{ color: '#EF4444' }}>*</span></label>
-                <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Johnson" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>Apellido</label>
+                <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Colmenares" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>Teléfono</label>
-                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 555 000 0000" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+58 412 000 0000" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
               </div>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>Ciudad y país</label>
-                <input value={location} onChange={e => setLocation(e.target.value)} placeholder="New York, USA" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Caracas, Venezuela" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
               </div>
             </div>
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>Correo electrónico <span style={{ color: '#EF4444' }}>*</span></label>
-              <input value={emailCv} onChange={e => setEmailCv(e.target.value)} placeholder="ejemplo@correo.com" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
-              <small style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px', display: 'block' }}>Este correo aparecerá en tus CVs generados</small>
+              <label style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>LinkedIn URL</label>
+              <input value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} placeholder="https://linkedin.com/in/tu-perfil" style={inputStyle} onFocus={e => e.target.style.borderColor = '#4B6BFB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
             </div>
 
             {message && (
-              <div style={{ fontSize: '12px', padding: '10px 14px', borderRadius: '8px', background: message.includes('Error') || message.includes('obligatorios') ? '#FEF2F2' : '#F0FDF4', color: message.includes('Error') || message.includes('obligatorios') ? '#B91C1C' : '#15803D', border: `1px solid ${message.includes('Error') || message.includes('obligatorios') ? '#FECACA' : '#BBF7D0'}`, textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', padding: '10px 14px', borderRadius: '8px', background: message.includes('Error') ? '#FEF2F2' : '#F0FDF4', color: message.includes('Error') ? '#B91C1C' : '#15803D', border: `1px solid ${message.includes('Error') ? '#FECACA' : '#BBF7D0'}`, textAlign: 'center' }}>
                 {message}
               </div>
             )}

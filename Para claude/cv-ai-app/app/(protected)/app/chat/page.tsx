@@ -77,7 +77,7 @@ export default function ChatPage() {
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
-    const { data: prof } = await supabase.from('profiles').select('first_name, last_name, phone, location, email_cv, profile_photo_url').eq('id', user.id).single()
+    const { data: prof } = await supabase.from('profiles').select('first_name, last_name, phone, location, linkedin_url').eq('id', user.id).single()
     setProfile(prof)
     const { data: pd } = await supabase.from('professional_profiles').select('data').eq('id', user.id).single()
     if (pd?.data) setProfileData(pd.data)
@@ -150,12 +150,9 @@ export default function ChatPage() {
 
           {/* Foto + nombre — flex-shrink: 0 */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flexShrink: 0 }}>
-            <div style={{ width: '72px', height: '72px', borderRadius: '14px', background: '#EEF2FF', border: '1px solid #E0E7FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4C6FFF', flexShrink: 0, overflow: 'hidden' }}>
-  {profile?.profile_photo_url
-    ? <img src={profile.profile_photo_url} alt="Foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-    : <IconUser />
-  }
-</div>
+            <div style={{ width: '72px', height: '72px', borderRadius: '14px', background: '#EEF2FF', border: '1px solid #E0E7FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4C6FFF', flexShrink: 0 }}>
+              <IconUser />
+            </div>
             <div style={{ paddingTop: '4px' }}>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#1C1C1E', letterSpacing: '-0.3px', lineHeight: 1.3 }}>
                 {fullName || '—'}
@@ -194,27 +191,28 @@ export default function ChatPage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 16px' }}>
-  <div style={{ color: '#BBBBBB', flexShrink: 0 }}>
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-      <path d="M22 6L12 13 2 6"/>
-    </svg>
-  </div>
-  <div style={{ flex: 1, minWidth: 0 }}>
-    <div style={{ fontSize: '10px', color: '#BBBBBB', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1px' }}>Correo</div>
-    <div style={{ fontSize: '13px', fontWeight: profile?.email_cv ? 700 : 400, color: profile?.email_cv ? '#1C1C1E' : '#DDDDDD', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-      {profile?.email_cv || '—'}
-    </div>
-  </div>
-  {profile?.email_cv && <div style={{ flexShrink: 0 }}><IconCheck /></div>}
-</div>
+              <div style={{ color: '#BBBBBB', flexShrink: 0 }}><IconLink /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '10px', color: '#BBBBBB', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>LinkedIn</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <span style={{ fontSize: '13px', fontWeight: profile?.linkedin_url ? 700 : 400, color: profile?.linkedin_url ? '#1C1C1E' : '#DDDDDD', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                    {profile?.linkedin_url || '—'}
+                  </span>
+                  {profile?.linkedin_url && (
+                    <button onClick={copyLinkedin} style={{ background: copied ? '#F0FDF4' : '#F5F5F5', color: copied ? '#16A34A' : '#888', border: 'none', borderRadius: '8px', padding: '3px 8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 500, transition: 'all 0.15s', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      {copied ? <><IconCheck /> Copiado</> : <><IconCopy /> Copiar</>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Skills — crece libremente, el scroll de la columna lo maneja */}
           {allSkills.length > 0 ? (
             <div style={{ background: '#FFFFFF', borderRadius: '14px', border: '1px solid #EFEFEF', padding: '14px' }}>
-              <SkillGroup title="Habilidades técnicas" skills={hard} showAll={showAllHard} onToggle={() => setShowAllHard(p => !p)} />
-              <SkillGroup title="Habilidades blandas" skills={soft} showAll={showAllSoft} onToggle={() => setShowAllSoft(p => !p)} />
+              <SkillGroup title="Hard Skills" skills={hard} showAll={showAllHard} onToggle={() => setShowAllHard(p => !p)} />
+              <SkillGroup title="Soft Skills" skills={soft} showAll={showAllSoft} onToggle={() => setShowAllSoft(p => !p)} />
             </div>
           ) : (
             <div style={{ background: '#FAFAFA', borderRadius: '14px', border: '1px dashed #E5E5E5', padding: '20px', textAlign: 'center' }}>
