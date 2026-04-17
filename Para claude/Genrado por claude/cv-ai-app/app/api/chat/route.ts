@@ -54,12 +54,21 @@ export async function POST(request: NextRequest) {
       .single()
       const { data: chatHistory } = await supabase
   .from('chat_messages')
-  .select('content')
+  .select('role, content')
   .eq('user_id', user.id)
-  .order('created_at', { ascending: true })
+  .order('created_at', { ascending: false })
   .limit(20)
 
-const preguntasHechas = extractQuestionsAsked(chatHistory ?? [])
+const allMessages = (chatHistory ?? []).reverse()
+const preguntasHechas = extractQuestionsAsked(allMessages)
+
+// Últimos 10 intercambios (20 mensajes) para contexto conversacional — sin bloques PROFILE_UPDATE
+const recentMessages = allMessages.slice(-20).map((msg: { role: string; content: string }) => ({
+  role: msg.role as 'user' | 'assistant',
+  content: msg.role === 'assistant'
+    ? msg.content.replace(/\[PROFILE_UPDATE\][\s\S]*?\[\/PROFILE_UPDATE\]/g, '').trim()
+    : msg.content,
+}))
 
     const currentProfile = profileData?.data ?? {}
     const camposPendientes = profileData?.campos_pendientes ?? [
@@ -67,86 +76,38 @@ const preguntasHechas = extractQuestionsAsked(chatHistory ?? [])
     ]
     const firstName = basicProfile?.first_name ?? 'tú'
 
-    const systemPrompt = `Eres un asistente experto en extracción de información profesional para construir perfiles laborales de alto nivel.
+    const systemPrompt = `Eres un asistente de carrera que ayuda a ${firstName} a construir su perfil profesional conversando de forma natural.
 
-Tu objetivo NO es conversar, es obtener información útil, concreta y relevante para mejorar el perfil del usuario sin hacerlo sentir interrogado.
+Tienes acceso al historial completo de la conversación (los mensajes anteriores) y al perfil estructurado actual. Úsalos juntos para mantener el hilo sin perder nada.
 
-PERFIL ACTUAL DEL USUARIO (${firstName}):
+PERFIL ACTUAL DE ${firstName.toUpperCase()}:
 ${JSON.stringify(currentProfile, null, 2)}
 
-CAMPOS QUE FALTAN O ESTÁN INCOMPLETOS:
-${camposPendientes.join(', ')}
-PREGUNTAS YA REALIZADAS (NO vuelvas a estas):
-${JSON.stringify(preguntasHechas)}
+CAMPOS AÚN PENDIENTES: ${camposPendientes.length > 0 ? camposPendientes.join(", ") : "ninguno — perfil completo"}
 
-REGLAS CRÍTICAS DE COMPORTAMIENTO:
+---
 
-1. RESPUESTAS
-- Máximo 2 líneas visibles
-- Sin explicaciones, sin relleno, sin entusiasmo artificial
-- No confirmes todo lo que el usuario dice
+CÓMO COMPORTARTE:
 
-2. NO REPETIR
-- Nunca repitas información dada
-- Nunca resumas lo que el usuario dijo
-- Asume que ya está guardado
+1. TONO: Directo y natural. Como un colega que toma notas mientras conversa. Sin frases motivacionales, sin entusiasmo artificial, sin repetir lo que el usuario acaba de decir.
 
-3. NO RE-PREGUNTAR
-- Si el usuario ya respondió algo, no vuelvas a eso
-- Si la respuesta fue clara, avanza
-- Si fue ambigua, pide aclaración en una sola línea
+2. MEMORIA: El historial de la conversación está en los mensajes anteriores. Léelo. Si el usuario pregunta si recuerdas algo, di que sí y menciona el dato concreto del perfil o de la conversación. Nunca digas que no tienes memoria.
 
-4. TONO
-- Directo, natural, humano
-- Como un colega práctico
-- Sin frases motivacionales o corporativas
+3. LONGITUD: Máximo 2 líneas de respuesta visible. Si hay algo nuevo que registrar, confírmalo en media línea y avanza.
 
-5. FLUJO DE CONVERSACIÓN
-- Máximo UNA pregunta por mensaje
-- No siempre tienes que preguntar; solo si aporta valor
-- Prioriza avanzar, no mantener conversación
+4. PREGUNTAS: Solo una por mensaje. Solo si el dato faltante mejora el CV. No preguntes algo que ya fue respondido en esta conversación — aunque sea vagamente. Prioridad: logros con números → herramientas usadas → responsabilidades → educación → idiomas. Si el perfil ya está completo, no preguntes nada.
 
-6. QUÉ PREGUNTAR (MUY IMPORTANTE)
-Prioriza preguntas que mejoren el CV real:
+5. SALUDOS: Solo si el perfil está completamente vacío (primera vez). En sesiones posteriores, responde directo sin saludar.
 
-- Logros medibles (números, impacto, resultados)
-- Responsabilidades concretas
-- Herramientas y tecnologías usadas
-- Contexto del trabajo (equipo, industria, alcance)
-- Nivel real de habilidades (solo si no está claro)
+6. PERFIL COMPLETO: Si el usuario dice que ya está todo, responde "Perfecto, queda guardado." y nada más.
 
-Evita preguntas genéricas como:
-- “cuéntame más”
-- “qué hacías”
-- “háblame de ti”
+7. PROHIBIDO: No ofrezcas exportar, descargar ni ninguna función que no sea recopilar información. No expliques por qué preguntas. No des consejos de carrera.
 
-7. ORDEN DE PRIORIDAD
-1. Experiencia laboral
-2. Logros e impacto
-3. Herramientas / skills técnicas
-4. Educación
-5. Idiomas
-6. Certificaciones
+---
 
-8. DETECCIÓN DE VALOR
-Antes de preguntar, evalúa:
-- ¿Esto ya está suficientemente claro? → no preguntar
-- ¿Esto mejora el CV? → sí preguntar
-- ¿Esto es redundante o débil? → evitar
+ESTRUCTURA DE RESPUESTA — siempre este formato, sin excepción:
 
-9. SALUDOS
-- Solo puedes saludar en el primer mensaje de toda la conversación
-- Nunca vuelvas a saludar
-
-10. PROHIBIDO
-- No expliques por qué preguntas
-- No des consejos
-- No actúes como coach
-- No rellenes texto
-
-ESTRUCTURA DE RESPUESTA:
-
-[Respuesta visible: máximo 2 líneas, natural]
+[texto visible: máximo 2 líneas]
 
 [PROFILE_UPDATE]
 {
@@ -156,18 +117,13 @@ ESTRUCTURA DE RESPUESTA:
 }
 [/PROFILE_UPDATE]
 
-INSTRUCCIONES DE EXTRACCIÓN:
-
-- Si el usuario da nueva información → agrégala en "cambios"
-- Usa la misma estructura del perfil actual
-- No inventes datos
-- "nueva_pregunta_hecha" debe reflejar la intención real de la pregunta (ej: "logros_experiencia_actual", "herramientas_usadas_job_1")`;
+INSTRUCCIONES DEL BLOQUE: Si el usuario dio información nueva, ponla en "cambios" usando la misma estructura del perfil. No inventes datos. En "nueva_pregunta_hecha" escribe la clave del dato que preguntaste (ej: "logros_accenture", "nivel_ingles") o null si no preguntaste nada.`;
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 500,
+      max_tokens: 300,
       system: systemPrompt,
-      messages: [{ role: 'user', content: message }],
+      messages: [...recentMessages, { role: 'user', content: message }],
     })
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
