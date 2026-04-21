@@ -25,8 +25,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresca la sesión
-  await supabase.auth.getUser();
+  // Refresca la sesión y actualiza cookies
+  const { data } = await supabase.auth.getUser();
 
   return response;
 }
