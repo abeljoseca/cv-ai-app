@@ -142,7 +142,7 @@ export default function Chat({ mode, onClose }: ChatProps) {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200">
+      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 space-y-2">
         <div className="flex gap-2">
           <input
             type="text"
@@ -159,6 +159,64 @@ export default function Chat({ mode, onClose }: ChatProps) {
           >
             Enviar
           </button>
+        </div>
+
+        {/* File Upload */}
+        <div className="flex gap-2">
+          <label className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 cursor-pointer">
+            📎 Subir documento
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={async (e) => {
+                const file = e.currentTarget.files?.[0];
+                if (!file || loading) return;
+
+                setLoading(true);
+                try {
+                  const formData = new FormData();
+                  formData.append('file', file);
+
+                  const response = await fetch('/api/parse-document', {
+                    method: 'POST',
+                    body: formData,
+                  });
+
+                  if (!response.ok) throw new Error('Error al procesar documento');
+
+                  const data = await response.json();
+
+                  // Agregar mensaje de éxito
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: Date.now().toString(),
+                      role: 'assistant',
+                      content: `✓ Documento procesado correctamente. Se extrajeron datos de tu CV.`,
+                      timestamp: new Date(),
+                    },
+                  ]);
+
+                  // Limpiar input de archivo
+                  e.currentTarget.value = '';
+                } catch (error) {
+                  console.error('Error uploading file:', error);
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: Date.now().toString(),
+                      role: 'assistant',
+                      content: 'Error al procesar el documento. Intenta de nuevo.',
+                      timestamp: new Date(),
+                    },
+                  ]);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="hidden"
+            />
+          </label>
         </div>
       </form>
     </div>

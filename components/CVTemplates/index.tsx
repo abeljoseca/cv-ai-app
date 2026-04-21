@@ -1,5 +1,8 @@
 import ClassicCV from './ClassicCV';
 import ModernCV from './ModernCV';
+import MinimalCV from './MinimalCV';
+import BoldCV from './BoldCV';
+import ExecutiveCV from './ExecutiveCV';
 
 interface CVData {
   nombre: string;
@@ -40,9 +43,14 @@ export default function CVRenderer({ estilo, data }: CVRendererProps) {
   switch (estilo) {
     case 'modern':
       return <ModernCV data={data} />;
+    case 'minimal':
+      return <MinimalCV data={data} />;
+    case 'bold':
+      return <BoldCV data={data} />;
+    case 'executive':
+      return <ExecutiveCV data={data} />;
     case 'classic':
     default:
       return <ClassicCV data={data} />;
-    // TODO: Implementar minimal, bold, executive
   }
 }
