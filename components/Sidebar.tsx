@@ -26,6 +26,7 @@ export default function Sidebar({ profile }: SidebarProps) {
     { href: '/mis-cvs', label: 'Mis CVs', icon: '📚' },
     { href: '/aplicaciones', label: 'Seguimiento', icon: '🎯' },
     { href: '/cuenta', label: 'Mejorar Cuenta', icon: '⚙️' },
+    { href: '/admin', label: 'Admin', icon: '🔧' },
   ];
 
   return (
