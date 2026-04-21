@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import Chat from '@/components/Chat';
 import Image from 'next/image';
 
 export default function OnboardingPage() {
@@ -105,7 +106,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-      <div className="max-w-2xl w-full bg-white rounded-lg shadow-sm p-8">
+      <div className="grid grid-cols-3 gap-6 max-w-5xl w-full">
+        {/* Form */}
+        <div className="col-span-2 bg-white rounded-lg shadow-sm p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Vamos a crear tu CV
         </h1>
@@ -246,6 +249,12 @@ export default function OnboardingPage() {
         <p className="text-center text-gray-600 text-sm mt-6">
           * Campos obligatorios
         </p>
+        </div>
+
+        {/* Chat */}
+        <div className="col-span-1">
+          <Chat mode="onboarding" />
+        </div>
       </div>
     </div>
   );

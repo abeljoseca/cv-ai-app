@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, Experiencia, Educacion, Habilidad, Logro, Idioma } from '@/types';
 import { calcularPuntajeCompletitud } from '@/lib/completitud';
+import Chat from '@/components/Chat';
 
 export default function PerfilPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -126,7 +127,10 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="grid grid-cols-3 gap-8">
+        {/* Main Content */}
+        <div className="col-span-2">
       {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Mi Perfil</h1>
@@ -276,14 +280,12 @@ export default function PerfilPage() {
         </div>
       </div>
 
-      {/* Chat Column Placeholder */}
-      <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Añadir información
-        </h3>
-        <p className="text-gray-600 text-sm">
-          Pronto podrás añadir información a través de un chat con IA.
-        </p>
+        </div>
+
+        {/* Chat Column */}
+        <div className="col-span-1">
+          <Chat mode="perfil" />
+        </div>
       </div>
     </div>
   );
