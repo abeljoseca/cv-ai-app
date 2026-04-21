@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Chat from '@/components/Chat';
 import Image from 'next/image';
 
 export default function OnboardingPage() {
+  const router = useRouter();
+  const supabase = createClient();
   const [loading, setLoading] = useState(false);
+  const [initLoading, setInitLoading] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     nombre: '',
@@ -20,8 +23,40 @@ export default function OnboardingPage() {
     foto_url: '',
   });
 
-  const router = useRouter();
-  const supabase = createClient();
+  // Verificar autenticación al cargar
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAuth() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          if (isMounted) {
+            router.replace('/login');
+          }
+          return;
+        }
+
+        if (isMounted) {
+          setInitLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        if (isMounted) {
+          router.replace('/login');
+        }
+      }
+    }
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router, supabase]);
 
   const requiredFields = ['nombre', 'apellido', 'email_cv', 'profesion_perfil'];
 
@@ -102,6 +137,14 @@ export default function OnboardingPage() {
         return newErrors;
       });
     }
+  }
+
+  if (initLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-500">Cargando...</p>
+      </div>
+    );
   }
 
   return (

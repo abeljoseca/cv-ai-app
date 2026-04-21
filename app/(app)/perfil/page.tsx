@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, Experiencia, Educacion, Habilidad, Logro, Idioma } from '@/types';
 import { calcularPuntajeCompletitud } from '@/lib/completitud';
 import Chat from '@/components/Chat';
 
 export default function PerfilPage() {
+  const router = useRouter();
+  const supabase = createClient();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [experiencias, setExperiencias] = useState<Experiencia[]>([]);
   const [educaciones, setEducaciones] = useState<Educacion[]>([]);
@@ -16,10 +19,35 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [completitud, setCompletitud] = useState(0);
 
-  const supabase = createClient();
-
   useEffect(() => {
-    loadProfileData();
+    let isMounted = true;
+
+    async function initPage() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        // Si no hay usuario, el layout lo redirige
+        if (!user) {
+          return;
+        }
+
+        // Cargar datos del usuario
+        if (isMounted) {
+          await loadProfileData();
+        }
+      } catch (error) {
+        console.error('Error in perfil page:', error);
+        // El error lo maneja el layout
+      }
+    }
+
+    initPage();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   async function loadProfileData() {

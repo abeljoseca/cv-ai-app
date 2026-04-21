@@ -8,7 +8,6 @@ import Link from 'next/link';
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -18,8 +17,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
+    if (!email || !password) {
+      setError('Completa todos los campos');
       return;
     }
 
@@ -31,26 +30,33 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const { data, error: signupError } = await supabase.auth.signUp({
+      // 1. Registrar usuario en Supabase Auth
+      const { data: authData, error: signupError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
 
       if (signupError) {
-        setError(signupError.message);
+        console.error('Signup error:', signupError);
+        setError(signupError.message || 'Error al registrarse');
+        setLoading(false);
         return;
       }
 
-      if (!data.user) {
+      if (!authData.user) {
         setError('Error al crear la cuenta');
+        setLoading(false);
         return;
       }
 
-      // Crear profile en base de datos
+      // 2. Crear profile en base de datos
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: data.user.id,
+          id: authData.user.id,
           nombre: '',
           apellido: '',
           email_cv: email,
@@ -59,13 +65,30 @@ export default function RegisterPage() {
         });
 
       if (profileError) {
+        console.error('Profile error:', profileError);
         setError('Error al crear el perfil');
+        setLoading(false);
         return;
       }
 
+      // 3. Auto-login después del registro
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginError) {
+        console.error('Login error:', loginError);
+        setError(loginError.message || 'Error al iniciar sesión automáticamente');
+        setLoading(false);
+        return;
+      }
+
+      // Éxito - ir a onboarding
       router.push('/onboarding');
     } catch (err: any) {
-      setError('Ocurrió un error al registrarse');
+      console.error('Register error:', err);
+      setError(err.message || 'Ocurrió un error al registrarse');
     } finally {
       setLoading(false);
     }
@@ -107,19 +130,6 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirmar contraseña
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="••••••••"
-            />
-          </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
