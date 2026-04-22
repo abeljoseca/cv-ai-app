@@ -44,12 +44,12 @@ export default function Sidebar({ profile }: SidebarProps) {
             />
           ) : (
             <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-              {profile.nombre[0]}
+              {profile.nombre?.[0] || profile.email_cv?.[0] || '?'}
             </div>
           )}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-gray-900 truncate">
-              {profile.nombre} {profile.apellido}
+              {profile.nombre && profile.apellido ? `${profile.nombre} ${profile.apellido}` : 'Mi Cuenta'}
             </p>
             <p className="text-sm text-gray-600 truncate">
               {profile.profesion_perfil || 'Sin profesión'}

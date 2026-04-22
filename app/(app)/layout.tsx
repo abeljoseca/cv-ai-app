@@ -50,6 +50,14 @@ export default function AppLayout({
           return;
         }
 
+        // Si no completó onboarding, redirigir (excepto si ya está en /onboarding)
+        if (!profileData.onboarding_completado && !window.location.pathname.includes('/onboarding')) {
+          if (isMounted) {
+            router.replace('/onboarding');
+          }
+          return;
+        }
+
         if (isMounted) {
           setProfile(profileData as Profile);
           setError(false);
@@ -72,7 +80,7 @@ export default function AppLayout({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [router]);
 
   if (loading) {
     return (

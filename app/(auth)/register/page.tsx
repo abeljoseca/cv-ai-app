@@ -52,26 +52,7 @@ export default function RegisterPage() {
         return;
       }
 
-      // 2. Crear profile en base de datos
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          nombre: '',
-          apellido: '',
-          email_cv: email,
-          onboarding_completado: false,
-          plan: 'gratuito',
-        });
-
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        setError('Error al crear el perfil');
-        setLoading(false);
-        return;
-      }
-
-      // 3. Auto-login después del registro
+      // 2. Auto-login después del registro para validar sesión
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -80,6 +61,25 @@ export default function RegisterPage() {
       if (loginError) {
         console.error('Login error:', loginError);
         setError(loginError.message || 'Error al iniciar sesión automáticamente');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Crear profile en base de datos (ahora con sesión autenticada)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          nombre: null,
+          apellido: null,
+          email_cv: email,
+          onboarding_completado: false,
+          plan: 'gratuito',
+        });
+
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        setError(profileError.message || 'Error al crear el perfil');
         setLoading(false);
         return;
       }
