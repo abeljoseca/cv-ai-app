@@ -394,7 +394,33 @@ El botón "Mejorar a Pro" en `/account` ahora es el botón real de PayPal (JS SD
 **Otros pendientes reales antes de cobrar dinero de verdad:**
 - Registrar el webhook de producción (`POST /v1/notifications/webhooks` con la URL real) y poner su `id` en `PAYPAL_WEBHOOK_ID` — el usado en las pruebas de Sandbox se creó apuntando a una URL falsa y ya se borró.
 - Correr `scripts/setup-paypal-plans.js` en modo Live para obtener los planes reales, y actualizar todas las variables `PAYPAL_*`/`NEXT_PUBLIC_PAYPAL_CLIENT_ID` en Vercel con las credenciales Live (nunca las de Sandbox).
-- **Hallazgo menor, sin resolver a propósito:** `/account` dice en el Plan Inicio "2 estilos de CV incluidos", pero no existe ningún gating de estilos por plan en el código real (los 7 estilos están disponibles para todos, confirmado en `CLAUDE.md`). Es un texto desactualizado de una versión anterior del modelo de precios — corregirlo o decidir si se implementa el gating de verdad es una decisión de producto, no técnica, así que se deja anotada en vez de tocarla sin preguntar.
+- ~~Hallazgo menor: `/account` decía "2 estilos de CV incluidos"~~ — **✅ RESUELTO (2026-09-22).** Corregido junto con dos afirmaciones falsas más en la lista de Pro ("Los 7 estilos disponibles" y "Análisis de compatibilidad avanzado" no correspondían a ningún gating real en el código). Ver punto 20 para el resto de lo verificado en esta misma tanda (suite de pruebas reparada).
+
+---
+
+## 19. 🔴 La saga de producción — Momentum nunca había estado realmente desplegado (2026-09-22)
+
+**El hallazgo más grande de toda la sesión, descubierto por accidente al preguntar "¿cómo se despliega esto a producción?".** Resumen para que nunca se vuelva a perder de vista:
+
+1. **El repo local no tenía remoto de git.** Todo el trabajo de esta sesión (y meses anteriores, a juzgar por el historial) vivía solo en esta máquina. El repo de GitHub conectado a Vercel (`github.com/abeljoseca/cv-ai-app`, rama `main`) tenía un historial de git **completamente distinto, sin ancestro común** — una versión primitiva del producto (rutas en español, sin `lib/cv/`, sin embajadores, sin CV Studio, sin pagos reales) cuyo último commit era del **17 de abril de 2026**, más de 5 meses de antigüedad.
+   - Resuelto: se respaldó el `main` viejo completo en la rama `legacy-abril-2026` (recuperable, nada se perdió), y se reemplazó `main` con el código real vía `git push --force`. Confirmado con el CEO antes de forzar.
+2. **A Vercel le faltaban variables de entorno** para todo lo construido esta sesión (`UPSTASH_*`, `PAYPAL_*`, `APIFY_TOKEN`) y tenía `NEXT_PUBLIC_SITE_URL=localhost` en producción.
+3. **"Vercel Authentication" (Standard Protection) estaba activado en el proyecto** — bloqueaba a cualquier visitante sin cuenta de Vercel, incluso en el dominio público. Desactivado.
+4. **`momentumcv.com` nunca había estado conectado a Vercel.** El dominio apuntaba a la página de estacionamiento por defecto de Aruba (el registrador). Conectado por primera vez: registro A (`@` → `216.198.79.1`) y CNAME (`www` → el valor que dio Vercel) configurados en Aruba, con cuidado de no tocar los registros de correo (`mail`, `mx`, `imap`, etc.) que sí eran reales.
+5. **El widget de Cloudflare Turnstile tenía un typo en los hostnames** (`momentum.com` en vez de `momentumcv.com`) — causaba el error 110200 ("dominio no autorizado") en login/registro. Corregido.
+6. **El más grave de todos: Vercel apuntaba a un proyecto de Supabase completamente distinto** (`tqgupcgocnjtbrvyxkjd`, el de la versión vieja de abril) del que se usó **toda la sesión** para migraciones, arreglos de permisos y pruebas (`otaehqzjwrhdkzdfchhr`, el de `.env.local`). Se confirmó con evidencia (actividad reciente real del super-admin, 30 usuarios todos de prueba del propio CEO) que `otaehqzjwrhdkzdfchhr` es el proyecto correcto. Corregido: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` actualizadas en Vercel.
+7. **Hallazgo aparte, todavía sin resolver:** "¿Olvidaste tu contraseña?" en `/login` es un link muerto (`href="#"`) — nunca se implementó `resetPasswordForEmail()`. Se desbloqueó al CEO manualmente vía la API admin de Supabase como parche puntual, pero **cualquier otro usuario que se bloquee hoy no tiene forma de recuperar su cuenta solo**. Ver pendiente en la sección de abajo.
+8. **El proyecto viejo de Supabase (`tqgupcgocnjtbrvyxkjd`) no se borró** — decisión deliberada: no se auditó por dentro y borrar un proyecto es irreversible. Revisar su contenido con calma antes de decidir si eliminarlo.
+
+**Estado final confirmado:** `www.momentumcv.com` sirve el código real con SSL, apunta a la base de datos correcta, el CEO pudo iniciar sesión de verdad. Primera vez que esto es cierto en la historia del proyecto.
+
+---
+
+## 20. Correcciones de copy y reparación de la suite de pruebas (2026-09-22)
+
+- **`/account`:** corregidas 3 afirmaciones falsas sobre diferencias entre planes (ver arriba). Ahora solo lista beneficios verificados en código: bloqueo de "un CV sin pagar" (Inicio) vs. sin bloqueo (Pro), límite de 5 aplicaciones (Inicio, verificado en `applications/page.tsx`) vs. ilimitadas (Pro), PDF (Inicio) vs. PDF+DOCX (Pro, verificado en `ExportButtons.tsx`).
+- **Suite de pruebas reparada:** `vitest` no podía ni arrancar (`jsdom` no estaba instalado pese a que la config lo requería, y no excluía los specs de Playwright, causando que intentara cargarlos y fallara). Arreglado — 14/14 tests unitarios pasan. Agregado `test`/`test:e2e` a `package.json`.
+- **`tests/e2e/*.spec.ts` — diagnosticados como obsoletos más allá de un arreglo rápido, no reparados.** Referencian rutas que ya no existen (`/create-cv/general`) y estilos viejos ("Clásico"), y ninguno autentica de verdad (`auth.spec.ts` choca directo con Turnstile; `cv-creation.spec.ts` tiene un `// TODO: usar credenciales de test` literal, nunca se implementó). Arreglarlos de verdad requiere primero construir un bypass de Turnstile para entorno de pruebas — es una decisión de producto, no un cambio de archivo de test.
 
 ---
 
