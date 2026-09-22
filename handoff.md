@@ -322,17 +322,14 @@ Ruta sugerida: `app/page.tsx` (actualmente hace redirect a /onboarding o /perfil
 
 ### 🟡 Media (sistema de embajadores incompleto)
 
-**5. Aplicar código de descuento en checkout**  
-La lógica existe en `lib/embajadores.ts` (`resolverCodigoDescuento`, `consumirCodigoDescuento`) pero NO está conectada.  
-- Falta campo de código en `PaymentModal.tsx`
-- Al crear pago, validar código con `resolverCodigoDescuento(codigo)` → aplicar descuento al precio
-- Al confirmar pago (webhook) → llamar `consumirCodigoDescuento(codigoId)`
-- También actualizar `referidos.codigo_descuento_usado` con el código usado
+**5. Aplicar código de descuento en checkout — ✅ RESUELTO (2026-09-22)**  
+`PaymentModal.tsx` tiene campo de código + botón "Aplicar" que llama a `POST /api/payments/validate-codigo` (también usado para mostrar el precio real, ya no hardcodeado). `/api/payments/create` y `/api/payments/create-inspiracion` re-resuelven el código server-side (nunca confían en un precio del cliente) y guardan `codigo_descuento_id`/`monto_original` en `pagos`. El webhook llama `consumirCodigoDescuento()` y `registrarAtribucionPorCodigo()` (nueva función en `lib/embajadores.ts`) ANTES de generar la comisión — esto también crea la atribución `referidos` (origen='codigo') si el comprador no venía de un enlace, algo que antes no pasaba nunca. Verificado de punta a punta con un pago real simulado (firma HMAC-SHA512 real del webhook).
 
-**6. Solicitudes de pago de embajadores — UI**  
-La tabla `solicitudes_pago` existe en BD pero los embajadores solo ven mensaje de "enviar email".  
-- Falta: formulario en tab "Pagos" del dashboard del embajador para crear solicitud (wallet + red)
-- Falta: sección en admin para que el CEO procese solicitudes (marcar pagada, poner hash de tx)
+**5b. Red TRON deshabilitada temporalmente — hallazgo nuevo (2026-09-22), pendiente de decisión final**  
+Al verificar el punto 5, se descubrió que NOWPayments rechaza pagos en TRON (USDT-TRC20) al precio actual de CV Único/CV Studio ($2.99) por estar bajo su monto mínimo — **incluso sin ningún descuento aplicado**. BSC y Polygon funcionan bien en ambos casos (con y sin descuento del 20%). Decisión temporal del CEO: quitar TRON de las opciones (`PaymentModal.tsx` y el `ALLOWED_NETWORKS` de ambas rutas de creación de pago) hasta decidir si se sube el precio o se deja fuera permanentemente. La red sigue siendo válida en el schema de `pagos` (`red CHECK IN ('TRON','BSC','MATIC')`) por si se reactiva sin migración.
+
+**6. Solicitudes de pago de embajadores — ✅ RESUELTO (2026-09-22)**  
+`app/(app)/ambassador/page.tsx` (tab Pagos) ahora tiene un formulario real (red + wallet) que llama a `POST /api/embajador/solicitudes` — bloquea todas las comisiones `disponible` en la solicitud (pasan a `solicitada`) para que no se puedan contar dos veces, y exige `umbral_minimo_pago` + acuerdo aceptado (ver punto 8). `/admin` → tab Embajadores tiene una cola "Solicitudes de retiro pendientes" (`GET/PATCH /api/admin/solicitudes-pago[/id]`) para marcar pagada (con hash de tx) o rechazar (libera las comisiones de vuelta a `disponible`). Verificado de punta a punta: solicitud creada → comisión bloqueada → admin marca pagada → comisión pasa a `pagada` → aparece en el historial del embajador.
 
 **7. Liberar comisiones — ✅ RESUELTO A MANO (2026-09-20)**  
 Decisión del CEO: el programa de embajadores es pequeño y exclusivo, y quiere revisar y aprobar/rechazar cada comisión personalmente, una por una — nunca en lote ni automático.  
@@ -343,10 +340,8 @@ Implementado como cola de revisión manual en `/admin` → tab **Embajadores** �
 - **Nota:** el campo `fecha_disponible` (holdback de 24h) ya no bloquea nada — es solo informativo. El CEO puede aprobar antes o después de esa fecha, a su criterio.
 - **Pendiente de smoke-test:** el join anidado de Supabase (`comisiones → embajador_perfil → profiles`) no se probó contra la base de datos real todavía — verificar que la cola cargue correctamente con al menos una comisión pendiente antes de confiar en ella para revisión real.
 
-**8. Acuerdo legal del embajador**  
-`embajador_perfil.acuerdo_aceptado` existe en BD pero nunca se actualiza.  
-- Falta: modal/checkbox "Acepto los términos del programa de embajadores" al primer acceso al dashboard
-- El texto del acuerdo lo debe redactar el CEO
+**8. Acuerdo legal del embajador — ✅ RESUELTO con placeholder (2026-09-22)**  
+Modal de bloqueo en `/ambassador` (primer acceso, mientras `acuerdo_aceptado = false`) con checkbox + botón "Aceptar y continuar" → `PATCH /api/embajador` con `{acuerdo_aceptado: true}`. El texto vive en una única constante `TEXTO_ACUERDO_EMBAJADORES` en `app/(app)/ambassador/page.tsx`, marcada `[PENDIENTE — reemplazar con el acuerdo legal completo]` — **el CEO/abogado debe reemplazar el texto ahí antes de lanzar**, sin tocar ninguna lógica. También bloqueado server-side: `POST /api/embajador/solicitudes` devuelve 403 si `acuerdo_aceptado` es falso.
 
 **9. Páginas legales (Términos, Privacidad, Cookies, Uso responsable de IA)**  
 No existen todavía. Decisión del CEO: van al final, justo antes de lanzar públicamente — no antes. La landing no debe enlazarlas hasta que existan (evitar 404 en el footer).
@@ -358,8 +353,14 @@ La landing planea una columna de footer con guías (qué es ATS friendly, cómo 
 
 **11. Clasificación de habilidades con `tipo` — ✅ RESUELTO, esta nota estaba obsoleta.** Confirmado 2026-09-22: `chat`, `parse-document` y `profile/hydrate` YA clasifican `tipo` de forma confiable. Además, la categorización técnica/blanda ya llega al CV generado (ver sección 17).
 
-**12. Curación de texto LinkedIn — referencia corregida 2026-09-22**  
-El prompt real es `STRUCTURE_PROMPT` en `app/api/profile/hydrate/route.ts` (NO `lib/embajadores.ts`, que no tiene nada de LinkedIn — esa nota estaba mal referenciada). Hoy el `resumen`/`about` se copia casi literal del perfil de LinkedIn; falta reescribirlo profesionalmente sin inventar datos (contexto: el CEO ya lo pidió en sesión anterior). Pendiente de implementar — ver Fase 2 del plan maestro.
+**12. Curación de texto LinkedIn — ✅ RESUELTO (2026-09-22)**  
+El prompt real es `STRUCTURE_PROMPT` en `app/api/profile/hydrate/route.ts` (no `lib/embajadores.ts`, que no tiene nada de LinkedIn — esa referencia estaba mal). Ahora reescribe `about` en tono profesional de CV (sin emojis/hashtags/muletillas, condensado a 2-4 líneas) en vez de copiarlo literal, con la misma regla anti-alucinación del resto del sistema (nunca inventa hechos que no estén ya en el "about"). Verificado con una llamada real a Anthropic.
+
+**13. Sistema de match unificado — ✅ RESUELTO (2026-09-22)**  
+Existían dos números de compatibilidad distintos: el determinístico de `computeMatchScore()` (`lib/cv/pipelines/vacancy.ts`) y el que devolvía la IA en `/api/match-vacante` (P8), que podían no coincidir. Ahora `computeMatchScore()` es la única fuente del porcentaje — `/api/match-vacante` lo recibe como dato ya calculado y solo genera `recomendaciones`/`explicacion` coherentes con él (con re-anclaje defensivo por si el modelo intenta devolver su propio número). `create-cv/preview/page.tsx` actualizado para nunca dejar que la respuesta de esa llamada sobreescriba el porcentaje. Verificado con una generación real en modo vacante: el mismo número (60%) aparece en `cvs.match_porcentaje`, en la respuesta de `generate-cv`, y en la respuesta de `match-vacante`.
+
+**14. `pagos` sin permisos de tabla — 🔴 CRÍTICO, ✅ RESUELTO (2026-09-22)**  
+Hallazgo grave durante la verificación del punto 5: `public.pagos` y `public.suscripciones` se crearon con RLS activado pero **sin los `GRANT` que sí tienen todas las demás tablas** del sistema. Confirmado empíricamente que tanto `authenticated` como `service_role` recibían `permission denied for table pagos` — es decir, ningún pago cripto pudo haberse creado o confirmado nunca en producción, y el historial de pagos de cualquier usuario en `/account` se veía silenciosamente vacío (el código hace `data || []`, sin mostrar el error). Arreglado con `scripts/migration-pagos-grants.sql`, ya ejecutado y verificado.
 
 ---
 

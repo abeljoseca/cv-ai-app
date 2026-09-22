@@ -27,7 +27,11 @@ interface DiscountState {
   precio_final: number
 }
 
-const NETWORKS: CryptoNetwork[] = ['TRON', 'BSC', 'MATIC']
+// TRON temporarily disabled: at the current CV Único/CV Studio price, NOWPayments
+// rejects it for being under their minimum-amount threshold for USDT-TRC20 — even
+// with no discount applied. BSC and MATIC both work fine. Re-add once the pricing
+// question (item still open, see handoff.md) is resolved.
+const NETWORKS: CryptoNetwork[] = ['BSC', 'MATIC']
 const POLL_INTERVAL = 12_000 // 12 segundos
 
 const STEP_SELECT  = 'select'

@@ -6,7 +6,8 @@ import { getConfig } from '@/lib/config'
 import { resolverCodigoDescuento, calcularPrecioConDescuento } from '@/lib/embajadores'
 import type { CryptoNetwork } from '@/types'
 import { NextRequest, NextResponse } from 'next/server'
-const ALLOWED_NETWORKS: CryptoNetwork[] = ['TRON', 'BSC', 'MATIC']
+// TRON temporarily disabled server-side too — see components/PaymentModal.tsx for why.
+const ALLOWED_NETWORKS: CryptoNetwork[] = ['BSC', 'MATIC']
 
 export async function POST(request: NextRequest) {
   try {
