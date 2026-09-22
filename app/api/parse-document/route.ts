@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit: 5 uploads per minute per user
-    if (!rateLimit(user.id, 5, 60_000)) {
+    if (!(await rateLimit(user.id, 5, 60_000))) {
       return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento.' }, { status: 429 });
     }
 

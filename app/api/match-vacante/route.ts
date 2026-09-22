@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    if (!rateLimit(user.id, 10, 60_000)) {
+    if (!(await rateLimit(user.id, 10, 60_000))) {
       return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento.' }, { status: 429 })
     }
 
