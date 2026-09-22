@@ -333,10 +333,11 @@ Componentes compartidos: `EditableField.tsx` (edición inline), `SkillsBlock.tsx
 - **Regla de bloqueo — la más importante del modelo de negocio, ✅ implementada y verificada:** sin Pro, no puedes crear un segundo CV mientras tengas uno sin pagar. Se aplica en el servidor vía `user_has_unpaid_cv()`, chequeada en `/api/generate-cv` y en la policy RLS de `cvs_inspiracion`.
 - Sin branding "Creado con Momentum" en ningún plan.
 
-### Plan Pro (suscripción)
-- `precio_mensual`/`precio_anual` en `configuracion` (default $9.99/mes, $79/año).
+### Plan Pro (suscripción vía PayPal Subscriptions)
+- `precio_mensual`/`precio_anual` en `configuracion` (default $9.99/mes, $79/año) — NOWPayments no soporta cobro recurrente, por eso Pro usa PayPal, no cripto.
 - CVs y descargas ilimitadas, sin el bloqueo de "un CV sin pagar a la vez". Exportación DOCX exclusiva de Pro (PDF no tiene esa restricción, solo el paywall de pago-o-Pro).
-- **⚠️ No se puede comprar todavía.** Cobro decidido: PayPal Subscriptions (NOWPayments no soporta recurrencia). Es la última fase pendiente del plan maestro — deliberadamente al final.
+- **✅ Comprable, verificado en Sandbox.** `lib/paypal.ts` + `app/api/paypal/{create-subscription,confirm-subscription,cancel-subscription,webhook}`. El botón real de PayPal vive en `/account`, cargado vía su JS SDK (necesita `https://www.paypal.com`/`https://www.paypalobjects.com` en la CSP de `next.config.ts` — si el botón deja de renderizar, revisa ahí primero). Cancelación baja a Plan Inicio **de inmediato** (decisión del CEO, no espera a fin de período). Pagos fallidos: se confía en los reintentos automáticos de PayPal, la app solo reacciona a `SUSPENDED`/`CANCELLED`.
+- **Antes de cobrar dinero real:** correr `scripts/setup-paypal-plans.js` en modo Live, registrar el webhook de producción, y poner las credenciales Live en Vercel — ver `handoff.md` sección 18 para el detalle completo, incluyendo el único hueco real que queda (la entrega del webhook nunca se probó de punta a punta porque no hubo forma de exponer `localhost` públicamente durante el desarrollo).
 
 ### Pago único vía NOWPayments (cripto)
 - Redes: **BSC y Polygon únicamente.** TRON está deshabilitado (`components/PaymentModal.tsx` + ambos `ALLOWED_NETWORKS` server-side) porque NOWPayments rechaza el monto mínimo en USDT-TRC20 al precio actual, incluso sin descuento. El valor `'TRON'` sigue siendo válido en el CHECK de `pagos.red` por si se reactiva sin migración — pendiente de decisión de precio.
@@ -419,4 +420,4 @@ Sistema de referidos con comisiones y códigos de descuento, gestionado desde `/
 
 ## Qué falta (a la fecha de esta reescritura)
 
-Única fase pendiente del plan maestro: **PayPal Subscriptions para el Plan Pro** (Fase 8, deliberadamente la última). Todo lo demás del plan (commits, limpieza, motor de generación, match unificado, embajadores completos, rate limiting real, landing, legal) está resuelto y verificado. Para el detalle día a día de qué se hizo, cuándo y cómo se verificó, usa `handoff.md` — este archivo es la arquitectura estable, `handoff.md` es el log vivo.
+Las 8 fases del plan maestro están completas y verificadas (commits, limpieza, motor de generación, match unificado, embajadores completos, rate limiting real, landing, legal, PayPal). Lo único que queda antes de cobrar dinero real de Pro: correr el setup de PayPal en modo Live (no Sandbox), registrar el webhook de producción, y probar su entrega de punta a punta contra una URL pública real — ver `handoff.md` sección 18 para el detalle. Para el resto del historial día a día, usa `handoff.md` — este archivo es la arquitectura estable, `handoff.md` es el log vivo.

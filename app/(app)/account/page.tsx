@@ -1,8 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, Pago } from '@/types';
+
+declare global {
+  interface Window {
+    paypal?: any;
+  }
+}
 
 const CONCEPTO_LABELS: Record<Pago['tipo'], string> = {
   cv_unico: 'CV Único',
@@ -46,7 +52,23 @@ export default function CuentaPage() {
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<'mensual' | 'anual'>('mensual');
   const [prices, setPrices] = useState({ precio_mensual: 9.99, precio_anual: 79 });
+  const [paypalReady, setPaypalReady] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const paypalButtonRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
+
+  // Load the PayPal JS SDK once
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+    if (!clientId) return;
+    if (window.paypal) { setPaypalReady(true); return; }
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&vault=true&intent=subscription`;
+    script.onload = () => setPaypalReady(true);
+    document.body.appendChild(script);
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -67,6 +89,64 @@ export default function CuentaPage() {
     }
     load();
   }, []);
+
+  async function refreshProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    setProfile(data as Profile);
+  }
+
+  // Render the real PayPal Subscribe button whenever the SDK is ready, the
+  // billing cycle toggle changes, or the user isn't Pro (nothing to render if they already are).
+  useEffect(() => {
+    if (!paypalReady || !window.paypal || !paypalButtonRef.current) return;
+    if (profile?.plan === 'pro') return;
+
+    paypalButtonRef.current.innerHTML = '';
+    setUpgradeError(null);
+
+    const buttons = window.paypal.Buttons({
+      style: { shape: 'pill', color: 'blue', layout: 'horizontal', label: 'subscribe', height: 45 },
+      createSubscription: async () => {
+        const res = await fetch('/api/paypal/create-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo: billing }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setUpgradeError(data.error || 'Error al iniciar la suscripción.'); throw new Error(data.error); }
+        return data.id;
+      },
+      onApprove: async (data: { subscriptionID: string }) => {
+        const res = await fetch('/api/paypal/confirm-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription_id: data.subscriptionID }),
+        });
+        const result = await res.json();
+        if (!res.ok || !result.ok) { setUpgradeError('El pago se procesó pero no pudimos activar tu plan. Contáctanos.'); return; }
+        await refreshProfile();
+      },
+      onError: () => setUpgradeError('Ocurrió un error con PayPal. Intenta de nuevo.'),
+    });
+    buttons.render(paypalButtonRef.current);
+
+    return () => { if (paypalButtonRef.current) paypalButtonRef.current.innerHTML = ''; };
+  }, [paypalReady, billing, profile?.plan]);
+
+  async function handleCancelSubscription() {
+    setCancelling(true);
+    try {
+      const res = await fetch('/api/paypal/cancel-subscription', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { setUpgradeError(data.error || 'Error al cancelar.'); return; }
+      await refreshProfile();
+      setShowCancelConfirm(false);
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -137,7 +217,8 @@ export default function CuentaPage() {
           </p>
 
           <button
-            disabled={!isPro}
+            disabled={!isPro || cancelling}
+            onClick={() => setShowCancelConfirm(true)}
             style={{
               width: '100%', padding: '13px 18px', borderRadius: 10,
               background: 'var(--surface)', border: '1px solid var(--line)',
@@ -200,25 +281,32 @@ export default function CuentaPage() {
             Para quien busca trabajo en serio.
           </p>
 
-          <button
-            disabled={isPro}
-            style={{
-              width: '100%', padding: '13px 18px', borderRadius: 10,
-              background: isPro ? 'var(--surface)' : 'var(--blue)',
-              border: isPro ? '1px solid var(--line)' : 'none',
-              color: isPro ? 'var(--mute)' : '#fff',
-              fontWeight: 600, fontSize: 14.5,
-              cursor: isPro ? 'not-allowed' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: isPro ? 'none' : '0 1px 2px rgba(15,23,42,.06), 0 6px 14px -6px rgba(75,107,251,.45)',
-              transition: 'all .15s var(--ease)',
-            }}
-            onMouseEnter={e => { if (!isPro) (e.currentTarget as HTMLElement).style.background = 'var(--blue-600)'; }}
-            onMouseLeave={e => { if (!isPro) (e.currentTarget as HTMLElement).style.background = 'var(--blue)'; }}
-          >
-            {!isPro && <SparklesIcon size={16} />}
-            {isPro ? 'Plan actual' : 'Mejorar a Pro'}
-          </button>
+          {isPro ? (
+            <button
+              disabled
+              style={{
+                width: '100%', padding: '13px 18px', borderRadius: 10,
+                background: 'var(--surface)', border: '1px solid var(--line)',
+                color: 'var(--mute)', fontWeight: 600, fontSize: 14.5, cursor: 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              Plan actual
+            </button>
+          ) : (
+            <div>
+              <div ref={paypalButtonRef} style={{ minHeight: 45 }}>
+                {!paypalReady && (
+                  <div style={{ height: 45, borderRadius: 999, background: 'var(--hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--blue)', borderTopColor: 'transparent', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+                  </div>
+                )}
+              </div>
+              {upgradeError && (
+                <p style={{ color: '#B42318', fontSize: 12.5, marginTop: 8 }}>{upgradeError}</p>
+              )}
+            </div>
+          )}
 
           <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {PRO_FEATURES.map(f => (
@@ -284,6 +372,39 @@ export default function CuentaPage() {
           </table>
         </div>
       )}
+
+      {showCancelConfirm && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => !cancelling && setShowCancelConfirm(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, padding: '24px 26px', maxWidth: 420, width: '100%', boxShadow: '0 24px 64px rgba(15,23,42,.22)' }}
+          >
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--deep)' }}>¿Cancelar tu suscripción Pro?</h3>
+            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--mute)', lineHeight: 1.5 }}>
+              Perderás el acceso a Pro de inmediato — CVs y descargas ilimitadas, DOCX, los 7 estilos y soporte prioritario. Puedes volver a suscribirte cuando quieras.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                disabled={cancelling}
+                style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontWeight: 600, fontSize: 13.5, cursor: 'pointer' }}
+              >
+                Volver
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={cancelling}
+                style={{ padding: '9px 16px', borderRadius: 9, border: 'none', background: '#DC2626', color: '#fff', fontWeight: 600, fontSize: 13.5, cursor: cancelling ? 'not-allowed' : 'pointer', opacity: cancelling ? 0.6 : 1 }}
+              >
+                {cancelling ? 'Cancelando…' : 'Cancelar suscripción'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -300,13 +421,6 @@ function CrownIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="var(--blue)" stroke="none">
       <path d="M3 7l4 3 5-6 5 6 4-3-2 12H5z"/>
-    </svg>
-  );
-}
-function SparklesIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <path d="M12 2l1.7 4.3L18 8l-4.3 1.7L12 14l-1.7-4.3L6 8l4.3-1.7zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9zM5 14l.9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9z"/>
     </svg>
   );
 }

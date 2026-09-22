@@ -14,7 +14,7 @@ Plataforma SaaS de creación de CVs con IA. Ex-Resumint/Resumika. Tres tipos de 
 | Plan | Modelo | Precio |
 |---|---|---|
 | **Inicio** | Crear cualquier tipo de CV es gratis → pagar para descargar | $2.99 por CV (configurable, clave `precio_cv_unico`) |
-| **Pro** | Suscripción | $9.99/mes · $79/año (configurable) — **no comprable aún**, ver pendiente #1 |
+| **Pro** | Suscripción | $9.99/mes · $79/año (configurable) — **✅ comprable vía PayPal Subscriptions (Sandbox), ver sección 18** |
 
 **✅ Decidido (2026-09-21): CV Studio NO conserva la excepción de "primera descarga gratis".** Se paga desde la primera descarga, igual que un CV estándar. `descarga_gratis_inspiracion_usada` quedó sin usar (columna todavía existe en BD, inofensiva) y se eliminó `/api/inspiracion/mark-free-download` — `EditorContainer.tsx` ahora solo revisa `plan === 'pro'`.
 
@@ -378,6 +378,23 @@ Encontrado por casualidad corriendo `scripts/setup-paypal-plans.js` (Fase 8): `c
 Arreglado con `scripts/migration-grants-sweep.sql`, ejecutado y verificado (incluyendo una prueba real de insert/update/select en `cvs_inspiracion` con un usuario autenticado de prueba, no solo con el cliente admin).
 
 **Nota para el futuro:** esto ya son 6 tablas (`pagos`, `suscripciones`, `configuracion`, `cvs_inspiracion`, `linkedin_profiles_cache`, `cv_templates`) encontradas con este mismo patrón en dos hallazgos separados. Cualquier tabla nueva creada con SQL crudo (no desde el editor de tablas de Supabase) debe llevar su bloque `GRANT` explícito desde el primer momento — ver la advertencia ya agregada en `CLAUDE.md` sección de base de datos.
+
+**18. PayPal Subscriptions para el Plan Pro — ✅ IMPLEMENTADO Y VERIFICADO EN SANDBOX (2026-09-22, Fase 8 — última fase del plan maestro)**  
+El botón "Mejorar a Pro" en `/account` ahora es el botón real de PayPal (JS SDK, `intent=subscription`), y "Cambiar a Plan Inicio" cancela de verdad.
+- **`lib/paypal.ts`** — OAuth2 (con caché en memoria), creación/consulta/cancelación de suscripciones, verificación de firma de webhook contra la API real de PayPal (no HMAC simple como NOWPayments).
+- **`scripts/setup-paypal-plans.js`** — script de una sola vez que crea el Producto "Momentum Pro" y los 2 Billing Plans (mensual/anual) leyendo el precio real de `configuracion`. Ya corrido en Sandbox: `PAYPAL_PLAN_ID_MENSUAL`/`PAYPAL_PLAN_ID_ANUAL` en `.env.local`. **Falta correrlo en Live** cuando se lance de verdad (cambiar `PAYPAL_MODE=live` + credenciales Live).
+- **Endpoints:** `POST /api/paypal/create-subscription` (server decide el `custom_id`, nunca el cliente), `POST /api/paypal/confirm-subscription` (camino rápido tras `onApprove`, re-verifica contra PayPal antes de subir a Pro), `POST /api/paypal/cancel-subscription` (downgrade **inmediato**, decisión del CEO), `POST /api/paypal/webhook` (fuente de verdad durable — `ACTIVATED`→Pro, `SUSPENDED`/`CANCELLED`/`EXPIRED`→gratuito, `PAYMENT.SALE.COMPLETED`→fila en `pagos` para el historial).
+- **`suscripciones`** ganó `paypal_subscription_id` (UNIQUE) y `paypal_plan_id` — `scripts/migration-paypal.sql`.
+- **CSP arreglada** (`next.config.ts`): el SDK de PayPal (`www.paypal.com`, `www.paypalobjects.com`) estaba bloqueado por la Content-Security-Policy existente — se descubrió al probar el botón real en navegador, no solo con `tsc`. Agregado a `script-src`, `connect-src`, `img-src`, `frame-src`.
+
+**Verificado de punta a punta con Sandbox real** (no simulado): creación de suscripción real → aprobación real en el checkout de PayPal (navegador controlado con Playwright, cuenta buyer de sandbox) → PayPal confirma `status: ACTIVE` → `confirm-subscription` sube `profiles.plan` a `pro` y crea la fila en `suscripciones` → `cancel-subscription` baja a `gratuito` de inmediato Y PayPal confirma `status: CANCELLED` de su lado → un segundo intento de cancelar da 404 correctamente. También verificado que el botón real de PayPal renderiza sin errores de consola tras el fix de CSP (capturado con screenshot).
+
+**⚠️ Lo único que NO se pudo verificar con entrega real: el webhook.** ngrok bloqueó la IP de este entorno de ejecución (`ERR_NGROK_9040`, no relacionado a la cuenta ni al token) y no había otra forma de exponer `localhost` públicamente sin desplegar a un dominio real. Se verificó en su lugar: (a) que una firma forjada es rechazada de verdad por la API de PayPal (401, mismo patrón que NOWPayments), y (b) que la lógica de negocio del handler usa exactamente los mismos campos (`custom_id`, `plan_id`, `billing_info.next_billing_time`) ya probados en `confirm-subscription`/`cancel-subscription` contra la API real. **Pendiente real:** probar la entrega del webhook end-to-end una vez haya una URL pública (staging o producción) — hasta entonces, la activación/cancelación funcionan igual gracias al camino rápido de `confirm-subscription`/`cancel-subscription`, pero si un usuario cierra la pestaña antes de que esos endpoints respondan, o si PayPal suspende por fallos de pago sin que el usuario haga nada, el único camino que lo reflejaría es el webhook — no probado con entrega real todavía.
+
+**Otros pendientes reales antes de cobrar dinero de verdad:**
+- Registrar el webhook de producción (`POST /v1/notifications/webhooks` con la URL real) y poner su `id` en `PAYPAL_WEBHOOK_ID` — el usado en las pruebas de Sandbox se creó apuntando a una URL falsa y ya se borró.
+- Correr `scripts/setup-paypal-plans.js` en modo Live para obtener los planes reales, y actualizar todas las variables `PAYPAL_*`/`NEXT_PUBLIC_PAYPAL_CLIENT_ID` en Vercel con las credenciales Live (nunca las de Sandbox).
+- **Hallazgo menor, sin resolver a propósito:** `/account` dice en el Plan Inicio "2 estilos de CV incluidos", pero no existe ningún gating de estilos por plan en el código real (los 7 estilos están disponibles para todos, confirmado en `CLAUDE.md`). Es un texto desactualizado de una versión anterior del modelo de precios — corregirlo o decidir si se implementa el gating de verdad es una decisión de producto, no técnica, así que se deja anotada en vez de tocarla sin preguntar.
 
 ---
 
