@@ -155,7 +155,7 @@ export default function CreateCVV2Page() {
   }, [])
 
   const handleContinueStep1 = useCallback(() => {
-    if (intent === 'studio') { router.push('/create-cv/inspiration'); return }
+    if (intent === 'studio') { router.push('/create-cv/studio'); return }
     setStep(2)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [intent, router])

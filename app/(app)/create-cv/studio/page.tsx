@@ -48,7 +48,7 @@ export default function InspiracioGalleryPage() {
       }
 
       const record = await createCVInspiración(userId, templateId, initialState)
-      router.push(`/create-cv/inspiration/editor/${record.id}`)
+      router.push(`/create-cv/studio/editor/${record.id}`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e)
       console.error('Error al crear CV inspiración:', e)

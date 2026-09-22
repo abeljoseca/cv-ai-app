@@ -20,7 +20,7 @@ export default function AppLayout({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const isEditor = pathname?.includes('/create-cv/inspiration/editor/') ?? false;
+  const isEditor = pathname?.includes('/create-cv/studio/editor/') ?? false;
   const [sidebarOpen, setSidebarOpen] = useState(!isEditor);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 

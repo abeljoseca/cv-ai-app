@@ -236,7 +236,7 @@ export default function MisCVsPage() {
                     <div style={{ flex: 1 }} />
                     <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
                       <button
-                        onClick={() => router.push(`/create-cv/inspiration/editor/${cv.id}`)}
+                        onClick={() => router.push(`/create-cv/studio/editor/${cv.id}`)}
                         style={{
                           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                           padding: '7px 10px', borderRadius: 8, border: 'none',

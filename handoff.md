@@ -358,8 +358,8 @@ La landing planea una columna de footer con guías (qué es ATS friendly, cómo 
 
 **11. Clasificación de habilidades con `tipo` — ✅ RESUELTO, esta nota estaba obsoleta.** Confirmado 2026-09-22: `chat`, `parse-document` y `profile/hydrate` YA clasifican `tipo` de forma confiable. Además, la categorización técnica/blanda ya llega al CV generado (ver sección 17).
 
-**12. Curación de texto LinkedIn**  
-El prompt de `lib/embajadores.ts` curación de texto importado de LinkedIn puede mejorar: reescribir descripciones profesionalmente sin inventar datos (contexto: el CEO ya lo pidió en sesión anterior).
+**12. Curación de texto LinkedIn — referencia corregida 2026-09-22**  
+El prompt real es `STRUCTURE_PROMPT` en `app/api/profile/hydrate/route.ts` (NO `lib/embajadores.ts`, que no tiene nada de LinkedIn — esa nota estaba mal referenciada). Hoy el `resumen`/`about` se copia casi literal del perfil de LinkedIn; falta reescribirlo profesionalmente sin inventar datos (contexto: el CEO ya lo pidió en sesión anterior). Pendiente de implementar — ver Fase 2 del plan maestro.
 
 ---
 

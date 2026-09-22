@@ -74,7 +74,18 @@ export default function TechCV({ data, isEditMode = false, onFieldChange, accent
       {!data.tech_stack && data.habilidades.length > 0 && (
         <div style={{ marginBottom: '22px' }}>
           {sectionHeader('Stack Tecnológico')}
-          <p style={{ fontSize: '10pt', color: '#374151' }}>{data.habilidades.join('  ·  ')}</p>
+          <p style={{ fontSize: '10pt', color: '#374151' }}>
+            {(data.habilidades_tecnicas && data.habilidades_tecnicas.length > 0
+              ? data.habilidades_tecnicas
+              : data.habilidades
+            ).join('  ·  ')}
+          </p>
+          {data.habilidades_blandas && data.habilidades_blandas.length > 0 && (
+            <p style={{ fontSize: '9pt', color: '#6B7280', marginTop: '6px' }}>
+              <span style={{ fontWeight: 700 }}>Habilidades blandas: </span>
+              {data.habilidades_blandas.join(', ')}
+            </p>
+          )}
         </div>
       )}
 

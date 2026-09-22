@@ -665,14 +665,14 @@ function PlantillasTab() {
       if (existing) {
         setResumingId(t.id);
         sessionStorage.setItem('editor_template_source_id', t.id);
-        router.push(`/create-cv/inspiration/editor/${existing.id}`);
+        router.push(`/create-cv/studio/editor/${existing.id}`);
         return;
       }
 
       // Crear nueva sesión
       const record = await createCVInspiración(user.id, t.id, t.canvas_state);
       sessionStorage.setItem('editor_template_source_id', t.id);
-      router.push(`/create-cv/inspiration/editor/${record.id}`);
+      router.push(`/create-cv/studio/editor/${record.id}`);
     } catch { setEditingId(null); setResumingId(null); }
   }
 

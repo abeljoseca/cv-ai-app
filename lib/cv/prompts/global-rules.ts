@@ -92,6 +92,11 @@ SKILLS — PREFER EVIDENCED ONES:
 - When ordering the list, put skills that are demonstrated somewhere in "experiencias" or "logros"
   first, followed by declared skills without direct textual evidence (e.g., certifications, tools
   learned outside a listed job). Do not fabricate a bullet mention just to justify a skill's position.
+- Example: declared skills are ["Excel", "Power BI", "SQL", "Scrum"]. An experience bullet says
+  "Automaticé reportes semanales en Power BI" and another says "Lideré ceremonias ágiles bajo Scrum".
+  Neither bullet mentions Excel or SQL. Correct order: ["Power BI", "Scrum", "Excel", "SQL"] — the
+  two evidenced skills first, in the order their evidence appears, then the rest in their original
+  declared order. Do not reorder the un-evidenced skills among themselves, and do not drop them.
 
 TITLE LINE — MANDATORY:
 - Line 1: candidate's full name (from nombre field).

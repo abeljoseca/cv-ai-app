@@ -79,18 +79,27 @@ export default function SiliconValleyCV({ data, isEditMode = false, onFieldChang
         </div>
       )}
 
-      {/* If no tech_stack but has habilidades — render as chips */}
+      {/* If no tech_stack but has habilidades — render técnicas as chips, blandas as a separate line */}
       {!data.tech_stack && data.habilidades.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           {sectionHeader('Stack Tecnológico')}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-            {data.habilidades.map((h, idx) => (
+            {(data.habilidades_tecnicas && data.habilidades_tecnicas.length > 0
+              ? data.habilidades_tecnicas
+              : data.habilidades
+            ).map((h, idx) => (
               <span key={idx} style={{
                 fontSize: '9pt', color: '#0A0A0A', backgroundColor: '#F3F4F6',
                 padding: '2px 8px', borderRadius: '4px', border: '1px solid #E5E7EB'
               }}>{h}</span>
             ))}
           </div>
+          {data.habilidades_blandas && data.habilidades_blandas.length > 0 && (
+            <p style={{ fontSize: '9pt', color: '#6B7280', marginTop: '8px' }}>
+              <span style={{ fontWeight: 700 }}>Habilidades blandas: </span>
+              {data.habilidades_blandas.join(', ')}
+            </p>
+          )}
         </div>
       )}
 
