@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Resumint — Prototipo</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* palette */
+    --ink:        #0F172A;   /* soft black, body text */
+    --deep:       #1A2B4C;   /* deep navy, headings + hero */
+    --blue:       #4B6BFB;   /* primary */
+    --blue-600:   #3854E4;   /* primary hover */
+    --blue-50:    #EEF1FE;   /* primary tint */
+    --blue-100:   #DDE3FE;
+    --lav:        #F0F1FE;   /* nav-selected, soft surfaces */
+    --mute:       #64748B;   /* labels, placeholders */
+    --line:       #E2E8F0;   /* borders */
+    --line-soft:  #EEF1F5;
+    --bg:         #F7F8FB;   /* app canvas */
+    --surface:    #FFFFFF;
+    --surface-2:  #F8FAFC;
+    --hover:      #F1F5F9;
+    --success:    #22C55E;
+    --success-50: #E8F9EF;
+    --warn:       #F59E0B;
+    --warn-50:    #FFF4DF;
+    --danger:     #EF4444;
+    --danger-50:  #FEECEC;
+
+    --r-sm: 8px;
+    --r-md: 10px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-2xl: 20px;
+
+    --sh-1: 0 1px 2px rgba(15,23,42,.04);
+    --sh-2: 0 1px 2px rgba(15,23,42,.04), 0 6px 16px -8px rgba(15,23,42,.08);
+    --sh-3: 0 2px 4px rgba(15,23,42,.04), 0 16px 36px -18px rgba(15,23,42,.14);
+
+    --ease: cubic-bezier(.2,.7,.2,1);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01";
+  }
+  button { font-family: inherit; cursor: pointer; }
+  input, textarea, select { font-family: inherit; }
+  a { color: inherit; }
+  #root { min-height: 100vh; }
+
+  /* scrollbar for panels */
+  .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll::-webkit-scrollbar-thumb { background: #D7DCE3; border-radius: 6px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+
+  /* keyframes */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none;} }
+  @keyframes fadeIn { from { opacity: 0;} to { opacity: 1;} }
+  @keyframes spin { to { transform: rotate(360deg);} }
+  @keyframes confettiFall {
+    0%   { transform: translate3d(var(--cx,0), -40px, 0) rotate(0deg); opacity: 0;}
+    15%  { opacity: 1;}
+    100% { transform: translate3d(calc(var(--cx,0) + var(--dx,0)), 110vh, 0) rotate(var(--rot, 720deg)); opacity: 1;}
+  }
+
+  ::selection { background: var(--blue-100); color: var(--deep); }
+
+  /* focus ring */
+  .focus-ring:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="src/icons.jsx"></script>
+<script type="text/babel" src="src/primitives.jsx"></script>
+<script type="text/babel" src="src/shell.jsx"></script>
+<script type="text/babel" src="src/screen-auth.jsx"></script>
+<script type="text/babel" src="src/screen-onboarding.jsx"></script>
+<script type="text/babel" src="src/screen-chat.jsx"></script>
+<script type="text/babel" src="src/screen-perfil.jsx"></script>
+<script type="text/babel" src="src/screen-editar-perfil.jsx"></script>
+<script type="text/babel" src="src/screen-crear.jsx"></script>
+<script type="text/babel" src="src/screen-preview.jsx"></script>
+<script type="text/babel" src="src/screen-exito.jsx"></script>
+<script type="text/babel" src="src/screen-miscvs.jsx"></script>
+<script type="text/babel" src="src/screen-seguimiento.jsx"></script>
+<script type="text/babel" src="src/screen-planes.jsx"></script>
+<script type="text/babel" src="src/cv-styles.jsx"></script>
+<script type="text/babel" src="src/app.jsx"></script>
+</body>
+</html>

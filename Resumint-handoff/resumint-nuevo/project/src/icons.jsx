@@ -1,0 +1,55 @@
+// Lightweight icon set, stroke-based to match the Lucide/Tabler feel referenced in moodboard.
+// All icons accept a `size` (default 20) and inherit currentColor.
+
+const iconBase = (size = 20) => ({
+  width: size, height: size, viewBox: "0 0 24 24",
+  fill: "none", stroke: "currentColor",
+  strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round",
+});
+
+const Ic = {
+  user:   (p) => <svg {...iconBase(p.size)} {...p}><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.8-3.6 5-5 7.5-5s5.7 1.4 7.5 5"/></svg>,
+  file:   (p) => <svg {...iconBase(p.size)} {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>,
+  folder: (p) => <svg {...iconBase(p.size)} {...p}><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>,
+  history:(p) => <svg {...iconBase(p.size)} {...p}><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>,
+  track:  (p) => <svg {...iconBase(p.size)} {...p}><path d="M4 6h16M4 12h10M4 18h16"/><circle cx="18" cy="12" r="2"/></svg>,
+  crown:  (p) => <svg {...iconBase(p.size)} fill="currentColor" stroke="none" {...p}><path d="M3 7l4 3 5-6 5 6 4-3-2 12H5z"/></svg>,
+  logout: (p) => <svg {...iconBase(p.size)} {...p}><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>,
+  mail:   (p) => <svg {...iconBase(p.size)} {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/></svg>,
+  phone:  (p) => <svg {...iconBase(p.size)} {...p}><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.1 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.8a16 16 0 0 0 6.3 6.3l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6A2 2 0 0 1 22 16.9z"/></svg>,
+  pin:    (p) => <svg {...iconBase(p.size)} {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  send:   (p) => <svg {...iconBase(p.size)} fill="currentColor" stroke="none" {...p}><path d="M3.4 20.6 21 12 3.4 3.4 3 10l12 2-12 2z"/></svg>,
+  paperclip:(p) => <svg {...iconBase(p.size)} {...p}><path d="m21 12-8.6 8.6a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.6 8.6a2 2 0 0 1-3-3L15 7"/></svg>,
+  plus:   (p) => <svg {...iconBase(p.size)} {...p}><path d="M12 5v14M5 12h14"/></svg>,
+  check:  (p) => <svg {...iconBase(p.size)} {...p}><path d="m4 12 5 5L20 6"/></svg>,
+  checkCircle:(p) => <svg {...iconBase(p.size)} {...p}><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>,
+  close:  (p) => <svg {...iconBase(p.size)} {...p}><path d="M18 6 6 18M6 6l12 12"/></svg>,
+  chevR:  (p) => <svg {...iconBase(p.size)} {...p}><path d="m9 6 6 6-6 6"/></svg>,
+  chevL:  (p) => <svg {...iconBase(p.size)} {...p}><path d="m15 6-6 6 6 6"/></svg>,
+  chevD:  (p) => <svg {...iconBase(p.size)} {...p}><path d="m6 9 6 6 6-6"/></svg>,
+  eye:    (p) => <svg {...iconBase(p.size)} {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>,
+  eyeOff: (p) => <svg {...iconBase(p.size)} {...p}><path d="M4 4l16 16"/><path d="M9.9 5.1A10 10 0 0 1 22 12a10 10 0 0 1-3.5 4.4M6.6 6.6A10 10 0 0 0 2 12s3.5 7 10 7a9 9 0 0 0 4-.9"/><path d="M9.3 9.3a3 3 0 0 0 4.4 4.4"/></svg>,
+  sparkles:(p) => <svg {...iconBase(p.size)} fill="currentColor" stroke="none" {...p}><path d="M12 2l1.7 4.3L18 8l-4.3 1.7L12 14l-1.7-4.3L6 8l4.3-1.7zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9zM5 14l.9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9z"/></svg>,
+  brain:  (p) => <svg {...iconBase(p.size)} {...p}><path d="M9.5 2a3.5 3.5 0 0 0-3.4 4.2A3.5 3.5 0 0 0 4 9.5C4 11 5 12 5 12a3.5 3.5 0 0 0 1 5 3.5 3.5 0 0 0 6 1 3.5 3.5 0 0 0 6-1 3.5 3.5 0 0 0 1-5s1-1 1-2.5a3.5 3.5 0 0 0-2.1-3.3A3.5 3.5 0 0 0 14.5 2 3.5 3.5 0 0 0 12 3a3.5 3.5 0 0 0-2.5-1z"/><path d="M12 3v18"/></svg>,
+  puzzle: (p) => <svg {...iconBase(p.size)} {...p}><path d="M10 3h4v3a2 2 0 1 0 4 0V3h3v4h-3a2 2 0 1 0 0 4h3v6h-4v-3a2 2 0 1 0-4 0v3H6v-4h3a2 2 0 1 0 0-4H6V3h4z"/></svg>,
+  briefcase:(p) => <svg {...iconBase(p.size)} {...p}><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>,
+  grad:   (p) => <svg {...iconBase(p.size)} {...p}><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c2 2 8 2 10 0v-5"/><path d="M21 9v5"/></svg>,
+  globe:  (p) => <svg {...iconBase(p.size)} {...p}><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>,
+  award:  (p) => <svg {...iconBase(p.size)} {...p}><circle cx="12" cy="9" r="6"/><path d="m8 13-2 8 6-3 6 3-2-8"/></svg>,
+  upload: (p) => <svg {...iconBase(p.size)} {...p}><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>,
+  camera: (p) => <svg {...iconBase(p.size)} {...p}><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>,
+  download:(p) => <svg {...iconBase(p.size)} {...p}><path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>,
+  trash:  (p) => <svg {...iconBase(p.size)} {...p}><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>,
+  edit:   (p) => <svg {...iconBase(p.size)} {...p}><path d="M4 20h4L20 8l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>,
+  search: (p) => <svg {...iconBase(p.size)} {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>,
+  filter: (p) => <svg {...iconBase(p.size)} {...p}><path d="M3 5h18l-7 9v6l-4-2v-4z"/></svg>,
+  dots:   (p) => <svg {...iconBase(p.size)} fill="currentColor" stroke="none" {...p}><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>,
+  info:   (p) => <svg {...iconBase(p.size)} {...p}><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>,
+  sidebarToggle:(p) => <svg {...iconBase(p.size)} {...p}><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>,
+  target: (p) => <svg {...iconBase(p.size)} {...p}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>,
+  bolt:   (p) => <svg {...iconBase(p.size)} fill="currentColor" stroke="none" {...p}><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>,
+  pdf:    (p) => <svg {...iconBase(p.size)} {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14h1a1.5 1.5 0 1 1 0 3H9v-3zm0 0v4M14 14h2M14 14v4M14 16h1.5"/></svg>,
+  bell:   (p) => <svg {...iconBase(p.size)} {...p}><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.5 20a2 2 0 0 0 3 0"/></svg>,
+};
+
+window.Ic = Ic;

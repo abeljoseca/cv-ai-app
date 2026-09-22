@@ -1,0 +1,102 @@
+flowchart TD
+    A([Inicio]) --> B[Registro con email y contraseña]
+    B --> C{¿Onboarding completado?}
+    C -- No --> D[Pantalla de Onboarding\nNombre · Apellido · Email CV · Foto · Profesión · Teléfono · Ciudad]
+    D --> E{¿Campos obligatorios\ncompletos?}
+    E -- No --> F[Mostrar errores por campo\nBloqueado hasta completar]
+    F --> D
+    E -- Sí --> G[Guardar perfil base\nActivar botón Continuar]
+    C -- Sí --> H
+    G --> H[Pantalla principal: Chat con IA\nPanel: Adjuntar documento · Generar CV]
+
+    H --> I{¿El usuario sube un documento?}
+    I -- Sí --> J[Parser IA — P3\nExtraer información del documento]
+    J --> K{¿Parseo exitoso?}
+    K -- No --> L[Informar error · Permitir reintento\nNo guardar datos parciales]
+    L --> H
+    K -- Sí --> M[Fusionar con perfil acumulativo\nRespetar profesion_perfil\nAgregar profesiones detectadas a profesiones_inferidas]
+    M --> H
+
+    I -- No --> N[Usuario conversa con IA — P1 / P2\nAcumular perfil: experiencia · educación\nhabilidades · logros · idiomas · resumen]
+    N --> H
+
+    H --> O[Usuario hace clic en Generar CV]
+    O --> P{Puntaje de completitud}
+
+    P -- Menos de 30% --> Q[Redirigir a completar perfil\nNo permite continuar]
+    Q --> H
+
+    P -- 30% a 35% --> R1[Advertencia: el CV será muy básico\nPermite continuar]
+    P -- 35% a 50% --> R2[Aviso: sería ideal completar más información\nPermite continuar]
+    P -- 51% a 75% --> R3[Mensaje: se puede generar un buen CV, puede mejorar\nPermite continuar]
+    P -- 76% a 85% --> R4[Mensaje: puede generar un CV muy bueno\nPermite continuar]
+    P -- Más de 85% --> R5[Continúa directamente\nSin advertencia]
+
+    R1 --> U
+    R2 --> U
+    R3 --> U
+    R4 --> U
+    R5 --> U
+
+    U[Selección de intención del CV]
+    U --> V{¿Qué tipo de CV?}
+
+    V -- CV para vacante específica --> W[Pegar descripción de vacante\nSeleccionar estilo visual\nBotón Previsualizar activo cuando ambos estén completos]
+    W --> X{¿Usuario tiene experiencia laboral?}
+    X -- Sí --> Y[Generar CV optimizado ATS — P4\nExtraer keywords · cruzar con perfil real\nAdaptar título al cargo objetivo]
+    X -- No --> Z[Generar CV sin experiencia — P5\nPriorizar educación · habilidades · logros]
+
+    V -- CV general --> AA[Seleccionar estilo visual\nBotón Previsualizar activo al elegir estilo]
+    AA --> AB{¿Usuario tiene experiencia laboral?}
+    AB -- Sí --> AC[Generar CV general — P6\nFiel a trayectoria · Título desde profesion_perfil]
+    AB -- No --> AD[Generar CV general junior — P7\nOrientado a primer empleo]
+
+    Y --> AE[Pantalla de previsualización\nCV renderizado con estilo elegido\nMatch con vacante — P8\n80–100% Excelente · 55–79% Buena · menos de 55% Baja]
+    Z --> AE
+    AC --> AF[Pantalla de previsualización\nCV renderizado con estilo elegido\nSin indicador de match]
+    AD --> AF
+
+    AE --> AG{¿Error en generación?}
+    AF --> AG
+    AG -- Sí --> AH[Reintentar automáticamente una vez\nSi falla de nuevo: mensaje simple al usuario\nNo descontar créditos]
+    AH --> AE
+    AG -- No --> AI[Previsualización exitosa]
+
+    AI --> AJ{¿El usuario quiere editar?}
+
+    AJ -- Sí --> AK[Edición manual del texto\nBotón Crear CV desactivado\nBotón principal cambia a Guardar y revisar]
+    AK --> AL[Guardar y revisar\nIA corrige ortografía y gramática — P9\nNo altera hechos · no inventa contenido]
+    AL --> AM{¿Se hicieron correcciones?}
+    AM -- Sí --> AN[Mostrar indicador sutil\nCorrecciones menores aplicadas]
+    AN --> AO
+    AM -- No --> AO
+
+    AO[Botón Crear CV reactivo\nBotón Editar disponible nuevamente]
+    AO --> AJ
+
+    AJ -- No, continuar --> AP{¿El usuario quiere retroceder?}
+    AP -- Sí --> AQ[Modal de confirmación\nVolver atrás genera un CV nuevo\ny consume una generación adicional]
+    AQ -- Sí, volver --> U
+    AQ -- Cancelar --> AI
+
+    AP -- No --> AR[Usuario hace clic en Crear CV]
+    AR --> AS[CV guardado automáticamente en Mis CVs\nMetadatos: intención · estilo · contenido · fecha\nSe descuenta una generación solo si llegó aquí exitosamente]
+
+    AS --> AT[Pantalla de éxito\nAnimación de confeti]
+    AT --> AU{¿Plan del usuario?}
+    AU -- Gratuito --> AV[Descarga PDF\nBranding sutil en footer: Creado con Resumint]
+    AU -- Pro --> AW[Descarga PDF y DOCX\nSin branding]
+
+    AV --> AX{¿Qué hace el usuario?}
+    AW --> AX
+
+    AX -- Generar otro CV --> U
+    AX -- Enviar por email --> AY[Enviar CV al correo del usuario]
+    AY --> AX
+
+    AX -- Ver CVs creados --> AZ[Mis CVs — Historial\nKPIs: CVs generados · Trabajos aplicados · Entrevistas conseguidas]
+    AZ --> BA[Tarjetas de CV\nDescargar · Enviar · Eliminar\nApliqué con este CV]
+    BA --> BB{¿Marca Apliqué con este CV?}
+    BB -- Sí --> BC[Mini formulario\nPuesto · Empresa · Fecha · Estado · Nota\nSi vacante: datos precompletos · Si general: vacío]
+    BC --> BD[Seguimiento de Aplicaciones\nEstados: En espera · Entrevistando · Contratado · Rechazado · Sin respuesta\nFiltros · Búsqueda · Ordenamiento\nGratuito: máx. 5 aplicaciones · Pro: ilimitado]
+    BB -- No --> BD

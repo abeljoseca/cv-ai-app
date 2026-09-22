@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Onboarding - Confirmación de import</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+    min-height: 100vh;
+    background: #F5F6FA;
+    color: #1A1F36;
+    overflow-x: hidden;
+  }
+
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    width: 260px;
+    background: #FFFFFF;
+    border-right: 1px solid #E5E7EB;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    margin-bottom: 8px;
+  }
+
+  .sidebar-brand-text {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1A1F36;
+    letter-spacing: -0.5px;
+  }
+
+  .sidebar-brand-icon {
+    width: 28px;
+    height: 28px;
+    color: #5B5BF5;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: #6B7280;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .nav-item:hover {
+    background: #F4F5F9;
+    color: #1A1F36;
+  }
+
+  .nav-item svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-spacer {
+    flex: 1;
+  }
+
+  .upgrade-card {
+    background: linear-gradient(135deg, #F4F5F9 0%, #ECEDF7 100%);
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid #E5E7EB;
+  }
+
+  .upgrade-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .upgrade-crown {
+    width: 18px;
+    height: 18px;
+    color: #F59E0B;
+  }
+
+  .upgrade-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1A1F36;
+  }
+
+  .upgrade-desc {
+    font-size: 12px;
+    color: #6B7280;
+    line-height: 1.4;
+    margin-bottom: 12px;
+  }
+
+  .upgrade-button {
+    width: 100%;
+    height: 36px;
+    background: #5B5BF5;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border-top: 1px solid #E5E7EB;
+    padding-top: 16px;
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #C7D2FE 0%, #A5B4FC 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .user-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1A1F36;
+  }
+
+  .user-link {
+    font-size: 11px;
+    color: #6B7280;
+  }
+
+  /* ============ MAIN CONTENT (placeholder) ============ */
+  .main-content {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ============ OVERLAY OSCURECEDOR ============ */
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  /* ============ CARD PRINCIPAL CENTRADA ============ */
+  .confirmation-card {
+    position: fixed;
+    top: 50%;
+    left: calc(50% + 130px);
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    background: #FFFFFF;
+    border-radius: 24px;
+    padding: 40px 44px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 
+      0 20px 60px rgba(15, 23, 42, 0.25),
+      0 8px 24px rgba(15, 23, 42, 0.1);
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -45%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  /* ============ HEADER CON CHECK GRANDE ============ */
+  .card-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .success-circle {
+    width: 84px;
+    height: 84px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 
+      0 0 0 6px rgba(16, 185, 129, 0.08),
+      0 8px 16px rgba(16, 185, 129, 0.15);
+    animation: pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+  }
+
+  @keyframes pop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .success-check {
+    width: 42px;
+    height: 42px;
+    color: #10B981;
+    stroke-width: 3;
+  }
+
+  .confirmation-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1A1F36;
+    letter-spacing: -0.4px;
+    margin-bottom: 10px;
+  }
+
+  .confirmation-subtitle {
+    font-size: 15px;
+    color: #6B7280;
+    line-height: 1.5;
+    max-width: 380px;
+    margin: 0 auto 14px;
+  }
+
+  .detected-profile {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #F4F5F9;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #6B7280;
+  }
+
+  .detected-profile strong {
+    color: #1A1F36;
+    font-weight: 600;
+  }
+
+  /* ============ SEPARADOR ============ */
+  .separator {
+    height: 1px;
+    background: #E5E7EB;
+    margin: 0 -8px 28px;
+  }
+
+  /* ============ LISTA DE ITEMS DETECTADOS ============ */
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .item-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: #FAFBFC;
+    border: 1px solid #F4F5F9;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    animation: fadeInRight 0.4s ease both;
+  }
+
+  .item-row:nth-child(1) { animation-delay: 0.4s; }
+  .item-row:nth-child(2) { animation-delay: 0.5s; }
+  .item-row:nth-child(3) { animation-delay: 0.6s; }
+  .item-row:nth-child(4) { animation-delay: 0.7s; }
+
+  @keyframes fadeInRight {
+    from {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .item-row:hover {
+    background: #F8FAFC;
+    border-color: #E5E7EB;
+  }
+
+  .item-check {
+    width: 24px;
+    height: 24px;
+    background: #D1FAE5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .item-check svg {
+    width: 14px;
+    height: 14px;
+    color: #10B981;
+    stroke-width: 3.5;
+  }
+
+  .item-text {
+    font-size: 14px;
+    color: #4B5563;
+    font-weight: 400;
+  }
+
+  .item-text strong {
+    color: #1A1F36;
+    font-weight: 700;
+  }
+
+  /* ============ COMPLETITUD ============ */
+  .completeness {
+    margin-bottom: 28px;
+  }
+
+  .completeness-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .completeness-label {
+    font-size: 14px;
+    color: #6B7280;
+    font-weight: 500;
+  }
+
+  .completeness-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1A1F36;
+  }
+
+  .progress-track {
+    height: 8px;
+    background: #F4F5F9;
+    border-radius: 100px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #5B5BF5 0%, #7C7CF7 100%);
+    border-radius: 100px;
+    width: 0;
+    animation: fillProgress 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.3) 50%, 
+      transparent 100%);
+    animation: shimmer 2s ease-in-out infinite 1.5s;
+  }
+
+  @keyframes fillProgress {
+    to { width: 60%; }
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* ============ BOTÓN PRIMARIO ============ */
+  .primary-button {
+    width: 100%;
+    height: 54px;
+    background: #5B5BF5;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 
+      0 2px 6px rgba(91, 91, 245, 0.25),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+    font-family: inherit;
+  }
+
+  .primary-button:hover {
+    background: #4A4AE4;
+    transform: translateY(-1px);
+    box-shadow: 
+      0 4px 12px rgba(91, 91, 245, 0.35),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+  }
+
+  .primary-button:active {
+    transform: translateY(0);
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 900px) {
+    .confirmation-card {
+      left: 50%;
+      max-width: calc(100% - 40px);
+      padding: 32px 28px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .sidebar {
+      display: none;
+    }
+    .confirmation-card {
+      max-width: calc(100% - 32px);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-brand-text">Momentum</span>
+      <svg class="sidebar-brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        Mi Perfil
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        Crear CV
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Mis CVs
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Historial
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        Seguimiento
+      </div>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="upgrade-card">
+      <div class="upgrade-header">
+        <svg class="upgrade-crown" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+        </svg>
+        <span class="upgrade-title">Mejora tu cuenta</span>
+      </div>
+      <p class="upgrade-desc">Desbloquea más funciones y herramientas premium.</p>
+      <button class="upgrade-button">Mejorar ahora</button>
+    </div>
+
+    <div class="user-profile">
+      <div class="user-avatar">A</div>
+      <div class="user-info">
+        <div class="user-name">Abel Colmenares</div>
+        <div class="user-link">Editar perfil ›</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content"></main>
+
+  <!-- ============ OVERLAY OSCURECEDOR ============ -->
+  <div class="overlay"></div>
+
+  <!-- ============ CARD CENTRADA DE CONFIRMACIÓN ============ -->
+  <div class="confirmation-card">
+
+    <div class="card-header">
+      <div class="success-circle">
+        <svg class="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h1 class="confirmation-title">Importamos tu perfil</h1>
+      <p class="confirmation-subtitle">
+        Tenemos una buena base. Revisa tus datos y completa lo que falte en el siguiente paso.
+      </p>
+      <div class="detected-profile">
+        Detectamos el perfil de <strong>Abel Colmenares</strong>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="items-list">
+      <div class="item-row">
+        <div class="item-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="item-text"><strong>5</strong> experiencias laborales</div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="item-text"><strong>1</strong> título académico</div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="item-text"><strong>20</strong> habilidades</div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="item-text"><strong>4</strong> logros</div>
+      </div>
+    </div>
+
+    <div class="completeness">
+      <div class="completeness-header">
+        <span class="completeness-label">Completitud del perfil</span>
+        <span class="completeness-value">60%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <button class="primary-button">Continuar</button>
+
+  </div>
+
+</div>
+
+</body>
+</html>
