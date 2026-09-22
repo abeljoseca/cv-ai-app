@@ -429,6 +429,18 @@ El botón "Mejorar a Pro" en `/account` ahora es el botón real de PayPal (JS SD
 
 ---
 
+## 21. Lista de pendientes activa post-lanzamiento (2026-09-22)
+
+Acordada con el CEO tras confirmar que producción ya sirve el código real. Se trabaja uno por uno, marcando cada uno al cerrarlo:
+
+1. ✅ **"¿Olvidaste tu contraseña?"** — **RESUELTO (2026-09-22).** `/forgot-password` (pide el correo, `resetPasswordForEmail` + Turnstile) y `/reset-password` (establece la nueva contraseña) implementadas de verdad, con el enlace de `/login` ya conectado. El enlace de recuperación llega como tokens en el fragmento hash (`#access_token=...&type=recovery`) en vez del `?code=` de PKCE — el cliente de Supabase no lo auto-detectaba, así que `/reset-password` lo parsea a mano y llama `setSession()` directamente; también soporta el caso `?code=` por si algún día cambia. Verificado de punta a punta con un usuario de prueba real: enlace generado → sesión establecida → contraseña cambiada → pantalla de éxito real (no solo "no dio error").
+2. ⬜ **Verificación de Google OAuth** — hoy solo funciona para usuarios de prueba agregados a mano en Google Cloud; falta enviar a verificación para que cualquier usuario real pueda usarlo.
+3. ⬜ **PayPal Live** — pasar de Sandbox a credenciales reales (`scripts/setup-paypal-plans.js` en modo Live, webhook de producción, variables en Vercel).
+4. ⬜ **Contenido legal y acuerdo de embajadores** — el CEO/abogado redacta el texto real para reemplazar los placeholders ya estructurados.
+5. ⬜ **Proyecto viejo de Supabase (`tqgupcgocnjtbrvyxkjd`)** — auditar contenido y decidir si se elimina.
+
+---
+
 ## 13. Patrones de código importantes
 
 ### Admin vs User client

@@ -171,7 +171,7 @@ export default function LoginPage() {
                 />
                 Recordarme
               </label>
-              <a href="#" style={{ color: 'var(--blue)', textDecoration: 'none', fontWeight: 500 }}>
+              <a href="/forgot-password" style={{ color: 'var(--blue)', textDecoration: 'none', fontWeight: 500 }}>
                 ¿Olvidaste tu contraseña?
               </a>
             </div>
