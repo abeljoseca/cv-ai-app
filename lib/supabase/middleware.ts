@@ -37,11 +37,11 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const protectedRoutes = [
     '/onboarding',
-    '/perfil',
-    '/crear-cv',
-    '/mis-cvs',
-    '/aplicaciones',
-    '/cuenta',
+    '/profile',
+    '/create-cv',
+    '/cvs',
+    '/applications',
+    '/account',
   ];
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -66,7 +66,7 @@ export async function updateSession(request: NextRequest) {
 
   // Si está logueado y va a login/register, redirigir a perfil
   if (user && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/perfil', request.url));
+    return NextResponse.redirect(new URL('/profile', request.url));
   }
 
   return supabaseResponse;

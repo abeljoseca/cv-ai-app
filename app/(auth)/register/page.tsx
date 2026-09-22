@@ -1,158 +1,372 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [email, setEmail]             = useState('');
+  const [password, setPassword]       = useState('');
+  const [pw2, setPw2]                 = useState('');
+  const [showPw, setShowPw]           = useState(false);
+  const [error, setError]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [emailSent, setEmailSent]     = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance>(null);
+  const router   = useRouter();
   const supabase = createClient();
+
+  async function handleGoogleLogin() {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  }
+
+  async function handleLinkedInLogin() {
+    await supabase.auth.signInWithOAuth({
+      provider: 'linkedin_oidc',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  }
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-
-    if (!email || !password) {
-      setError('Completa todos los campos');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
+    if (password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres'); return; }
+    if (password !== pw2)    { setError('Las contraseñas no coinciden'); return; }
+    if (TURNSTILE_SITE_KEY && !captchaToken) { setError('Completa la verificación de seguridad'); return; }
     setLoading(true);
-
     try {
-      // 1. Registrar usuario en Supabase Auth
       const { data: authData, error: signupError } = await supabase.auth.signUp({
-        email,
-        password,
+        email, password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          ...(captchaToken ? { captchaToken } : {}),
         },
       });
 
-      if (signupError) {
-        console.error('Signup error:', signupError);
-        setError(signupError.message || 'Error al registrarse');
-        setLoading(false);
+      // Reset captcha after each attempt
+      turnstileRef.current?.reset?.();
+      setCaptchaToken(null);
+
+      if (signupError) { setError(signupError.message || 'Error al crear la cuenta'); return; }
+      if (!authData.user) { setError('Error al crear la cuenta'); return; }
+
+      // Email confirmation required → show "check your inbox" screen
+      if (!authData.user.email_confirmed_at) {
+        setEmailSent(true);
         return;
       }
 
-      if (!authData.user) {
-        setError('Error al crear la cuenta');
-        setLoading(false);
-        return;
-      }
-
-      // 2. Auto-login después del registro para validar sesión
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Email confirmation disabled (dev/testing) → sign in and create profile immediately
+      await supabase.auth.signInWithPassword({ email, password });
+      await supabase.from('profiles').insert({
+        id: authData.user.id, nombre: null, apellido: null,
+        email_cv: email, onboarding_completado: false, plan: 'gratuito',
       });
-
-      if (loginError) {
-        console.error('Login error:', loginError);
-        setError(loginError.message || 'Error al iniciar sesión automáticamente');
-        setLoading(false);
-        return;
-      }
-
-      // 3. Crear profile en base de datos (ahora con sesión autenticada)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          nombre: null,
-          apellido: null,
-          email_cv: email,
-          onboarding_completado: false,
-          plan: 'gratuito',
-        });
-
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        setError(profileError.message || 'Error al crear el perfil');
-        setLoading(false);
-        return;
-      }
-
-      // Éxito - ir a onboarding
       router.push('/onboarding');
-    } catch (err: any) {
-      console.error('Register error:', err);
-      setError(err.message || 'Ocurrió un error al registrarse');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ocurrió un error al registrarse');
     } finally {
       setLoading(false);
     }
   }
 
+  // ── Email confirmation screen ────────────────────────────────────────
+  if (emailSent) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ width: 420, maxWidth: '100%', textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#4B6BFB" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/>
+            </svg>
+          </div>
+          <h1 style={{ margin: '0 0 10px', fontSize: 24, fontWeight: 700, color: 'var(--deep)', letterSpacing: '-0.02em' }}>
+            Revisa tu correo
+          </h1>
+          <p style={{ margin: '0 0 8px', color: 'var(--ink)', fontSize: 15, lineHeight: 1.6 }}>
+            Te enviamos un enlace de confirmación a<br />
+            <strong>{email}</strong>
+          </p>
+          <p style={{ margin: '0 0 28px', color: 'var(--mute)', fontSize: 13.5 }}>
+            Haz clic en el enlace para activar tu cuenta. Si no lo ves, revisa la carpeta de spam.
+          </p>
+          <a href="/login" style={{ display: 'inline-block', padding: '10px 24px', borderRadius: 10, background: 'var(--blue)', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>
+            Ir al inicio de sesión
+          </a>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="max-w-md w-full px-6">
-        <h1 className="text-2xl font-bold text-center mb-8 text-blue-600">
-          Resumint
-        </h1>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+      {/* Left — form */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 32px' }}>
+        <div style={{ width: 400, maxWidth: '100%' }}>
 
-        <form onSubmit={handleRegister} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="tu@email.com"
-            />
+          <img src="/momentum-logo.svg" alt="Momentum" style={{ height: 32, marginBottom: 40 }} />
+
+          <h1 style={{ margin: '0 0 6px', fontSize: 28, fontWeight: 700, color: 'var(--deep)', letterSpacing: '-0.02em' }}>
+            Crea tu cuenta
+          </h1>
+          <p style={{ margin: '0 0 24px', color: 'var(--mute)', fontSize: 14.5 }}>
+            Empieza a crear CVs profesionales en minutos.
+          </p>
+
+          {/* Social — vía principal */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
+            <button type="button" onClick={handleLinkedInLogin}
+              style={{
+                width: '100%', padding: '12px 18px', borderRadius: 10,
+                background: '#0A66C2', color: '#fff', border: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 6px 14px -6px rgba(10,102,194,.5)',
+                transition: 'background .15s var(--ease)',
+              }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#085296'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#0A66C2'}
+            >
+              <LinkedInIcon />
+              Continuar con LinkedIn
+            </button>
+
+            <button type="button" onClick={handleGoogleLogin}
+              style={{
+                width: '100%', padding: '11px 18px', borderRadius: 10,
+                background: 'var(--surface)', border: '1px solid var(--line)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                fontSize: 14, fontWeight: 500, color: 'var(--ink)',
+                cursor: 'pointer', transition: 'background .15s var(--ease)',
+              }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
+            >
+              <GoogleIcon />
+              Continuar con Google
+            </button>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="••••••••"
-            />
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--mute)', fontSize: 12.5, margin: '0 0 22px' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+            o regístrate con email
+            <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
           </div>
 
+          {!showEmailForm ? (
+            <button type="button" onClick={() => setShowEmailForm(true)}
+              style={{
+                width: '100%', padding: '11px 18px', borderRadius: 10,
+                background: 'var(--surface)', border: '1px solid var(--line)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                fontSize: 14, fontWeight: 500, color: 'var(--ink)',
+                cursor: 'pointer', transition: 'background .15s var(--ease)',
+              }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
+            >
+              <MailIcon />
+              Registrarme con email
+            </button>
+          ) : (
+          <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <FieldInput
+              label="Correo electrónico" required
+              type="email" placeholder="tu@correo.com"
+              value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              leftIcon={<MailIcon />}
+            />
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
-              {error}
-            </div>
+            <FieldInput
+              label="Contraseña" required
+              type={showPw ? 'text' : 'password'}
+              placeholder="Mínimo 8 caracteres"
+              value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              rightSlot={
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--mute)', display: 'flex', padding: 0, cursor: 'pointer' }}>
+                  {showPw ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              }
+            />
+
+            <FieldInput
+              label="Confirmar contraseña" required
+              type={showPw ? 'text' : 'password'}
+              placeholder="Repite tu contraseña"
+              value={pw2} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPw2(e.target.value)}
+            />
+
+            {/* Cloudflare Turnstile — only renders when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set */}
+            {TURNSTILE_SITE_KEY && (
+              <div style={{ marginTop: 2, display: 'flex', justifyContent: 'center' }}>
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={token => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                  options={{ theme: 'light', language: 'es' }}
+                />
+              </div>
+            )}
+
+            {error && (
+              <div style={{ padding: '10px 14px', background: 'var(--danger-50)', border: '1px solid #F3C2C2', borderRadius: 10, fontSize: 13, color: '#B52020' }}>
+                {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading || (!!TURNSTILE_SITE_KEY && !captchaToken)} style={{
+              marginTop: 6, padding: '12px 18px', borderRadius: 10,
+              background: 'var(--blue)', color: '#fff',
+              fontWeight: 600, fontSize: 15, border: 'none',
+              boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 6px 14px -6px rgba(75,107,251,.45)',
+              cursor: (loading || (!!TURNSTILE_SITE_KEY && !captchaToken)) ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'all .18s var(--ease)',
+              opacity: (loading || (!!TURNSTILE_SITE_KEY && !captchaToken)) ? 0.6 : 1,
+            }}>
+              {loading && <Spinner />}
+              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+            </button>
+          </form>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Creando cuenta...' : 'Registrarse'}
-          </button>
-        </form>
+          <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13.5, color: 'var(--mute)' }}>
+            ¿Ya tienes cuenta?{' '}
+            <a href="/login" style={{ color: 'var(--blue)', textDecoration: 'none', fontWeight: 600 }}>
+              Inicia sesión
+            </a>
+          </div>
+        </div>
+      </div>
 
-        <p className="text-center mt-6 text-gray-600 text-sm">
-          ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline font-medium">
-            Inicia sesión
-          </Link>
-        </p>
+      {/* Right — dark hero */}
+      <div style={{
+        flex: 1, background: 'var(--deep)',
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', padding: 48,
+      }}>
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: .08 }}>
+          <defs>
+            <pattern id="g2" width="48" height="48" patternUnits="userSpaceOnUse">
+              <path d="M48 0H0V48" fill="none" stroke="#fff" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#g2)" />
+        </svg>
+        <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(75,107,251,.35), transparent 70%)' }} />
+
+        <div style={{ position: 'relative', maxWidth: 440 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.15)', fontSize: 12.5, fontWeight: 500, color: '#C8D0FE', marginBottom: 20 }}>
+            <SparklesIcon size={12} /> Impulsado con IA
+          </div>
+          <h2 style={{ margin: '0 0 14px', fontSize: 34, fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+            Tu CV profesional te espera.
+          </h2>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,.72)', fontSize: 15, lineHeight: 1.55 }}>
+            Crea una cuenta gratis y genera tu primer CV en menos de 10 minutos con la ayuda de IA.
+          </p>
+          <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {[
+              ['Sin experiencia en diseño', 'La IA genera el formato perfecto por ti.'],
+              ['Optimizado para cada vacante', 'Personaliza tu CV con un clic.'],
+              ['100% gratis para empezar', 'Sin tarjeta de crédito requerida.'],
+            ].map(([t, d]) => (
+              <div key={t} style={{ display: 'flex', gap: 12 }}>
+                <span style={{ width: 24, height: 24, borderRadius: 8, flexShrink: 0, background: 'rgba(75,107,251,.25)', color: '#C8D0FE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckIcon size={13} />
+                </span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{t}</div>
+                  <div style={{ color: 'rgba(255,255,255,.6)', fontSize: 13 }}>{d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
+}
+
+/* ── Sub-components ─────────────────────────────────────────────────── */
+function FieldInput({ label, required, leftIcon, rightSlot, ...props }: {
+  label: string;
+  required?: boolean;
+  leftIcon?: React.ReactNode;
+  rightSlot?: React.ReactNode;
+} & React.InputHTMLAttributes<HTMLInputElement>) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--deep)' }}>
+        {label}{required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
+      </span>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: 'var(--surface)',
+        border: `1px solid ${focus ? 'var(--blue)' : 'var(--line)'}`,
+        borderRadius: 10, padding: leftIcon ? '10px 14px 10px 12px' : '10px 14px',
+        boxShadow: focus ? '0 0 0 3px rgba(75,107,251,.15)' : 'none',
+        transition: 'all .15s var(--ease)',
+      }}>
+        {leftIcon && <span style={{ color: 'var(--mute)', display: 'flex', flexShrink: 0 }}>{leftIcon}</span>}
+        <input {...props} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+          style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: 14, color: 'var(--ink)' }} />
+        {rightSlot}
+      </div>
+    </label>
+  );
+}
+
+function Spinner() {
+  return <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />;
+}
+
+function MailIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/>
+    </svg>
+  );
+}
+function EyeIcon() {
+  return <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>;
+}
+function EyeOffIcon() {
+  return <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l16 16"/><path d="M9.9 5.1A10 10 0 0 1 22 12a10 10 0 0 1-3.5 4.4M6.6 6.6A10 10 0 0 0 2 12s3.5 7 10 7a9 9 0 0 0 4-.9"/><path d="M9.3 9.3a3 3 0 0 0 4.4 4.4"/></svg>;
+}
+function LinkedInIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+    </svg>
+  );
+}
+function GoogleIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.9 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6c1.9-5.6 7.2-9.7 13.6-9.7z"/>
+      <path fill="#4285F4" d="M46.5 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.7c-.6 3-2.3 5.5-4.9 7.2l7.5 5.8c4.4-4.1 7.2-10.1 7.2-17.5z"/>
+      <path fill="#FBBC05" d="M10.4 28.9c-.5-1.4-.8-2.9-.8-4.4s.3-3 .8-4.4l-7.8-6C.9 17.1 0 20.5 0 24s.9 6.9 2.6 9.9l7.8-5z"/>
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.2-8.4 2.2-6.4 0-11.8-4.3-13.7-10l-7.8 6C6.5 42.6 14.6 48 24 48z"/>
+    </svg>
+  );
+}
+function SparklesIcon({ size = 12 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.7 4.3L18 8l-4.3 1.7L12 14l-1.7-4.3L6 8l4.3-1.7zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9zM5 14l.9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9z"/></svg>;
+}
+function CheckIcon({ size = 13 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m4 12 5 5L20 6"/></svg>;
 }

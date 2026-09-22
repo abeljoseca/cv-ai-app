@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 28" fill="none">
+  <rect width="28" height="28" rx="7" fill="#4B6BFB"/>
+  <rect x="5.5" y="7.5" width="17" height="2" rx="1" fill="white"/>
+  <rect x="5.5" y="12" width="11.5" height="2" rx="1" fill="white"/>
+  <rect x="5.5" y="16.5" width="14" height="2" rx="1" fill="white"/>
+  <rect x="5.5" y="21" width="8.5" height="2" rx="1" fill="white"/>
+  <text x="38" y="20.5" font-family="Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="16" letter-spacing="-0.3" fill="#1A2B4C">Resumint</text>
+</svg>
