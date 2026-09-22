@@ -93,7 +93,7 @@ export default function AdminUsersTable() {
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="all">Todos los planes</option>
-            <option value="gratuito">Gratuito</option>
+            <option value="gratuito">Plan Inicio</option>
             <option value="pro">Pro</option>
           </select>
         </div>
@@ -142,7 +142,7 @@ export default function AdminUsersTable() {
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      {user.plan === 'pro' ? 'Pro' : 'Gratuito'}
+                      {user.plan === 'pro' ? 'Pro' : 'Plan Inicio'}
                     </span>
                   </td>
                   <td className="px-6 py-4">

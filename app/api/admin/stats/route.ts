@@ -1,35 +1,43 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Verificar si el usuario es admin (por ahora permitir acceso)
-    // TODO: Implementar verificación de rol admin
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    // Verify admin role server-side — never trust client-side checks alone
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.is_admin) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+
+    // Use admin client to bypass RLS for aggregate stats
+    const admin = createAdminClient();
+
     // Total de usuarios
-    const { count: totalUsers } = await supabase
+    const { count: totalUsers } = await admin
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
     // Total de CVs
-    const { count: totalCVs } = await supabase
+    const { count: totalCVs } = await admin
       .from('cvs')
       .select('*', { count: 'exact', head: true });
 
     // CVs por estilo
-    const { data: cvsByStyle } = await supabase
+    const { data: cvsByStyle } = await admin
       .from('cvs')
       .select('estilo');
 
@@ -39,7 +47,7 @@ export async function GET(request: NextRequest) {
     }, {});
 
     // CVs por intención
-    const { data: cvsByIntention } = await supabase
+    const { data: cvsByIntention } = await admin
       .from('cvs')
       .select('intencion');
 
@@ -52,17 +60,17 @@ export async function GET(request: NextRequest) {
     );
 
     // Total de aplicaciones registradas
-    const { count: totalApplications } = await supabase
+    const { count: totalApplications } = await admin
       .from('aplicaciones')
       .select('*', { count: 'exact', head: true });
 
     // Plan distribution
-    const { data: planData } = await supabase
+    const { data: planData } = await admin
       .from('profiles')
       .select('plan');
 
-    const planCount = (planData || []).reduce((acc: Record<string, number>, profile) => {
-      acc[profile.plan] = (acc[profile.plan] || 0) + 1;
+    const planCount = (planData || []).reduce((acc: Record<string, number>, p) => {
+      acc[p.plan] = (acc[p.plan] || 0) + 1;
       return acc;
     }, {});
 
@@ -70,7 +78,7 @@ export async function GET(request: NextRequest) {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const { count: cvs7days } = await supabase
+    const { count: cvs7days } = await admin
       .from('cvs')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', sevenDaysAgo.toISOString());

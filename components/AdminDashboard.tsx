@@ -67,12 +67,12 @@ export default function AdminDashboard() {
   }));
 
   const intentionChartData = Object.entries(stats.cvs.byIntention).map(([intention, count]) => ({
-    name: intention === 'general' ? 'CV General' : 'CV Vacante',
+    name: intention === 'general' ? 'CV General' : intention === 'job' ? 'CV Vacante' : 'CV Mirror',
     value: count,
   }));
 
   const planChartData = Object.entries(stats.plans).map(([plan, count]) => ({
-    name: plan === 'gratuito' ? 'Gratuito' : 'Pro',
+    name: plan === 'gratuito' ? 'Plan Inicio' : 'Pro',
     value: count,
   }));
 

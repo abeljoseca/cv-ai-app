@@ -3,6 +3,8 @@
 Este archivo es la fuente única de verdad para el desarrollo de Resumint.
 Léelo completo antes de escribir cualquier línea de código.
 
+⚠️ **Este archivo está desactualizado más allá de la sección de Planes (ya corregida).** La arquitectura de rutas de abajo (`/crear-cv/vacante`, `/crear-cv/general`, `/mis-cvs`, etc.) describe un flujo anterior en español que ya no existe — las rutas reales son en inglés (`/create-cv`, `/cvs`, `/account`...) y `/create-cv` es hoy un wizard de 2 pasos (intención → estilo), no páginas separadas por modo. CV Mirror fue eliminado por completo (2026-09-21). **Hasta que se reescriba este archivo (pendiente #9 de `handoff.md`), tratar `handoff.md` + el código real como la fuente de verdad**, no esta sección de arquitectura.
+
 ---
 
 ## Qué es Resumint
@@ -445,40 +447,24 @@ El sistema usa 9 prompts separados. Nunca un prompt universal.
 
 ## Estilos de CV disponibles
 
-| ID | Nombre | Uso ideal |
-|---|---|---|
-| classic | Clásico | Perfiles tradicionales, corporativo |
-| modern | Moderno | Tech, startups, diseño |
-| minimal | Minimal | Creativos, portfolios |
-| bold | Bold | Ventas, marketing, liderazgo |
-| executive | Ejecutivo | Cargos senior, dirección |
-
-- Plan Gratuito: acceso a 2 estilos (classic, modern).
-- Plan Pro: los 5 estilos.
+⚠️ **DESACTUALIZADO — pendiente de la reescritura completa de este archivo.** Los estilos reales hoy son 7: Harvard, Stanford, Silicon Valley, Tech, Minimalista, Europass, Ejecutivo (ver `lib/cv/styles/index.ts`). No hay gating de estilos por plan — ver sección Planes abajo.
 
 ---
 
 ## Planes
 
-### Gratuito ($0/mes)
-- 2 CVs generales/mes
-- 2 CVs para vacante/mes
-- 2 estilos disponibles (classic, modern)
-- Descarga PDF con branding footer
-- Historial últimos 3 CVs
-- Seguimiento máx. 5 aplicaciones
+**DECISIÓN DEL CEO (2026-09-21): solo 2 planes, reemplaza cualquier modelo de créditos/cuotas mensuales descrito antes en este archivo.**
 
-### Pro ($9.99/mes o $24/trimestre)
-- CVs ilimitados (general y vacante)
-- 5 estilos disponibles
-- Descarga PDF + DOCX
-- Historial completo
-- Seguimiento ilimitado
-- Sin branding
-- Prioridad en cola de generación
-- Soporte prioritario
+### Plan Inicio (pago único, sin suscripción)
+- Crear un CV (cualquier tipo: General, Vacante, CV Studio) es gratis.
+- **Descargarlo cuesta $2.99** (precio dinámico, ver tabla `configuracion` / `lib/config.ts`, clave `precio_cv_unico`).
+- **Regla de bloqueo — la más importante de todo el modelo de negocio:** un usuario sin Pro no puede crear un segundo CV mientras tenga uno sin pagar. Generar el *texto* de un CV ya cuenta como "crear un CV" — no existe forma de generar contenido repetidamente sin pagar el anterior. Debe cumplirse **en el servidor**, nunca solo en la UI. Ver `handoff.md` sección 12 para el diseño de la validación y su estado de implementación — a la fecha de esta nota, **todavía no está implementada de verdad** (el único bloqueo hoy es visual en el frontend, no hay ningún chequeo en `/api/generate-cv` ni en el resto de endpoints que crean un CV).
+- No hay branding "Creado con Momentum" en ningún plan — todo el mundo paga tarde o temprano, así que no aplica.
 
-**Estado actual:** Plan Pro se muestra como "Próximamente" para validar interés. Sin cobro activo en fase inicial.
+### Plan Pro (suscripción)
+- $9.99/mes o $79/año (mismas claves en `configuracion`: `precio_mensual`, `precio_anual`).
+- CVs y descargas ilimitadas, sin el bloqueo de "un CV sin pagar a la vez".
+- **Estado actual: no se puede comprar todavía** — el botón "Mejorar a Pro" no tiene backend conectado. Cobro decidido: PayPal (NOWPayments no soporta recurrencia). Bloqueante de lanzamiento, ver `handoff.md` pendiente #1.
 
 ---
 

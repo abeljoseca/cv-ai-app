@@ -49,6 +49,6 @@ test.describe('Autenticación', () => {
     await page.click('button:has-text("Continuar")');
 
     // Debe redirigir a perfil
-    await expect(page).toHaveURL('/perfil');
+    await expect(page).toHaveURL('/profile');
   });
 });
