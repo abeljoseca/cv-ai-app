@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@')
@@ -28,7 +28,7 @@ export async function GET() {
     return NextResponse.json({ error: 'No eres embajador' }, { status: 403 })
   }
 
-  const [referidosRes, comisionesRes, codigosRes] = await Promise.all([
+  const [referidosRes, comisionesRes, codigosRes, solicitudesRes] = await Promise.all([
     admin
       .from('referidos')
       .select('id, usuario_referido_id, origen, codigo_descuento_usado, fecha_clic_atribucion, fecha_registro, fecha_primera_suscripcion, created_at')
@@ -44,6 +44,11 @@ export async function GET() {
       .select('*')
       .eq('embajador_id', perfil.id)
       .order('created_at', { ascending: false }),
+    admin
+      .from('solicitudes_pago')
+      .select('id, monto_total, red_blockchain, direccion_wallet, estado, fecha_solicitud, fecha_pago, hash_transaccion, nota_admin')
+      .eq('embajador_id', perfil.id)
+      .order('fecha_solicitud', { ascending: false }),
   ])
 
   // Enrich referidos: join profile data (plan) + mask email
@@ -108,7 +113,32 @@ export async function GET() {
     referidos,
     comisiones,
     codigos:          codigosData,
+    solicitudes:      solicitudesRes.data ?? [],
     saldo_disponible: parseFloat(saldoDisponible.toFixed(2)),
     total_ganado:     parseFloat(totalGanado.toFixed(2)),
   })
+}
+
+// PATCH /api/embajador — the ambassador accepts the program agreement.
+// This is the only field this endpoint lets an ambassador self-update.
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const body = await request.json().catch(() => ({}))
+  if (body.acuerdo_aceptado !== true) {
+    return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 })
+  }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('embajador_perfil')
+    .update({ acuerdo_aceptado: true, acuerdo_aceptado_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select()
+    .single()
+
+  if (error || !data) return NextResponse.json({ error: 'No eres embajador' }, { status: 403 })
+  return NextResponse.json(data)
 }

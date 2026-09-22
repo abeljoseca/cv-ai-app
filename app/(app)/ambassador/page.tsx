@@ -60,14 +60,36 @@ interface Codigo {
   created_at: string;
 }
 
+interface Solicitud {
+  id: string;
+  monto_total: number;
+  red_blockchain: 'TRON' | 'POLYGON';
+  direccion_wallet: string;
+  estado: 'solicitada' | 'en_proceso' | 'pagada' | 'rechazada';
+  fecha_solicitud: string;
+  fecha_pago: string | null;
+  hash_transaccion: string | null;
+  nota_admin: string | null;
+}
+
 interface DashData {
   perfil: Perfil;
   referidos: Referido[];
   comisiones: Comision[];
   codigos: Codigo[];
+  solicitudes: Solicitud[];
   saldo_disponible: number;
   total_ganado: number;
 }
+
+// [PENDIENTE — reemplazar con el texto real del acuerdo del programa de
+// embajadores antes de lanzar]. Único lugar donde vive este texto — se puede
+// reemplazar sin tocar ninguna lógica del gating/checkbox de abajo.
+const TEXTO_ACUERDO_EMBAJADORES = `Al participar como embajador de Momentum aceptas los términos y condiciones
+del programa de referidos: las comisiones se calculan sobre pagos confirmados de usuarios que
+referiste, están sujetas a un período de espera antes de estar disponibles para retiro, y Momentum
+puede suspender tu cuenta de embajador en caso de fraude o abuso del sistema de códigos de
+descuento. [PENDIENTE — reemplazar con el acuerdo legal completo del programa de embajadores.]`;
 
 const TABS: { id: EmbTab; label: string }[] = [
   { id: 'resumen',   label: 'Resumen' },
@@ -293,6 +315,16 @@ export default function EmbajadorPage() {
   const [planFilter, setPlanFilter]   = useState<'all' | 'gratuito' | 'pro'>('all');
   const [gananciasRef, setGananciasRef] = useState<string | null>(null); // referido id for popup
 
+  // Agreement gate
+  const [acceptingAcuerdo, setAcceptingAcuerdo] = useState(false);
+  const [acuerdoChecked, setAcuerdoChecked]     = useState(false);
+
+  // Withdrawal request form
+  const [wRed, setWRed]           = useState<'TRON' | 'POLYGON'>('TRON');
+  const [wWallet, setWWallet]     = useState('');
+  const [wSubmitting, setWSubmitting] = useState(false);
+  const [wError, setWError]       = useState<string | null>(null);
+
   useEffect(() => { setSiteUrl(window.location.origin); }, []);
 
   const loadDash = useCallback(async () => {
@@ -307,6 +339,43 @@ export default function EmbajadorPage() {
   }, []);
 
   useEffect(() => { loadDash(); }, [loadDash]);
+
+  async function aceptarAcuerdo() {
+    setAcceptingAcuerdo(true);
+    try {
+      const res = await fetch('/api/embajador', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acuerdo_aceptado: true }),
+      });
+      if (res.ok) {
+        setData(prev => prev ? { ...prev, perfil: { ...prev.perfil, acuerdo_aceptado: true } } : prev);
+      }
+    } finally {
+      setAcceptingAcuerdo(false);
+    }
+  }
+
+  async function solicitarRetiro() {
+    setWError(null);
+    if (!wWallet.trim()) { setWError('Ingresa tu dirección de wallet.'); return; }
+    setWSubmitting(true);
+    try {
+      const res = await fetch('/api/embajador/solicitudes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ red_blockchain: wRed, direccion_wallet: wWallet.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setWError(d.error || 'Error al crear la solicitud.'); return; }
+      setWWallet('');
+      await loadDash();
+    } catch {
+      setWError('Error al crear la solicitud. Intenta de nuevo.');
+    } finally {
+      setWSubmitting(false);
+    }
+  }
 
   async function loadCodigos() {
     const res = await fetch('/api/embajador/codigos');
@@ -348,7 +417,8 @@ export default function EmbajadorPage() {
   if (!data) return null;
 
   const { sidebarOpen } = useSidebar();
-  const { perfil, referidos, comisiones, saldo_disponible, total_ganado } = data;
+  const { perfil, referidos, comisiones, solicitudes, saldo_disponible, total_ganado } = data;
+  const solicitudPendiente = solicitudes.find(s => s.estado === 'solicitada' || s.estado === 'en_proceso');
   const enlace = `${siteUrl}/r/${perfil.codigo_referido}`;
   const registros    = referidos.filter(r => r.fecha_registro).length;
   const conversiones = referidos.filter(r => r.fecha_primera_suscripcion).length;
@@ -374,6 +444,35 @@ export default function EmbajadorPage() {
 
   return (
     <div style={{ maxWidth: sidebarOpen ? 1060 : 1400, animation: 'fadeUp .25s var(--ease) both' }}>
+      {/* Agreement gate — blocks the whole dashboard until accepted, first access only */}
+      {!perfil.acuerdo_aceptado && typeof document !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15,23,42,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 520, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,.3)' }}>
+            <p style={{ margin: '0 0 12px', fontSize: 17, fontWeight: 700, color: 'var(--ink)' }}>Acuerdo del programa de embajadores</p>
+            <div style={{ maxHeight: 220, overflowY: 'auto', padding: '12px 14px', background: 'var(--hover)', borderRadius: 10, marginBottom: 16 }}>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--mute)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{TEXTO_ACUERDO_EMBAJADORES}</p>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginBottom: 18 }}>
+              <input
+                type="checkbox"
+                checked={acuerdoChecked}
+                onChange={e => setAcuerdoChecked(e.target.checked)}
+                style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
+              />
+              <span style={{ fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.5 }}>He leído y acepto los términos del programa de embajadores de Momentum.</span>
+            </label>
+            <button
+              onClick={aceptarAcuerdo}
+              disabled={!acuerdoChecked || acceptingAcuerdo}
+              style={{ width: '100%', padding: '11px 16px', borderRadius: 10, border: 'none', background: acuerdoChecked ? 'var(--blue)' : 'var(--line)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: acuerdoChecked ? 'pointer' : 'not-allowed' }}
+            >
+              {acceptingAcuerdo ? 'Guardando…' : 'Aceptar y continuar'}
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--deep)', letterSpacing: '-0.015em' }}>Panel de Embajador</h1>
@@ -779,7 +878,16 @@ export default function EmbajadorPage() {
             </div>
           </div>
 
-          {saldo_disponible < perfil.umbral_minimo_pago ? (
+          {solicitudPendiente ? (
+            <div style={{ ...card, border: '1px solid #BFDBFE', background: '#EFF6FF' }}>
+              <p style={{ margin: '0 0 6px', fontSize: 13.5, color: '#1E40AF', fontWeight: 600 }}>
+                Tienes una solicitud de retiro en curso — ${solicitudPendiente.monto_total.toFixed(2)} vía {solicitudPendiente.red_blockchain}
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: '#1E40AF', lineHeight: 1.6 }}>
+                Solicitada el {new Date(solicitudPendiente.fecha_solicitud).toLocaleDateString('es')}. Te notificaremos cuando se procese.
+              </p>
+            </div>
+          ) : saldo_disponible < perfil.umbral_minimo_pago ? (
             <div style={{ ...card }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--lav)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -799,10 +907,67 @@ export default function EmbajadorPage() {
             </div>
           ) : (
             <div style={{ ...card, border: '1px solid #BBF7D0', background: '#F0FDF4' }}>
-              <p style={{ margin: '0 0 8px', fontSize: 13.5, color: '#166534', fontWeight: 600 }}>Tienes ${saldo_disponible.toFixed(2)} disponibles para retirar.</p>
-              <p style={{ margin: 0, fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
-                Escribe a <strong>pagos@momentumcv.com</strong> con el asunto "Solicitud de pago — {perfil.codigo_referido}" indicando tu wallet USDT (TRON o Polygon).
+              <p style={{ margin: '0 0 12px', fontSize: 13.5, color: '#166534', fontWeight: 600 }}>
+                Tienes ${saldo_disponible.toFixed(2)} disponibles para retirar.
               </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 380 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#166534', marginBottom: 4 }}>Red</label>
+                  <Select
+                    value={wRed}
+                    onChange={v => setWRed(v as 'TRON' | 'POLYGON')}
+                    options={[{ value: 'TRON', label: 'TRON (USDT-TRC20)' }, { value: 'POLYGON', label: 'Polygon (USDT)' }]}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#166534', marginBottom: 4 }}>Dirección de wallet</label>
+                  <input
+                    type="text"
+                    value={wWallet}
+                    onChange={e => setWWallet(e.target.value)}
+                    placeholder="Tu dirección USDT"
+                    style={{ width: '100%', padding: '9px 12px', fontSize: 13.5, borderRadius: 10, border: '1px solid #BBF7D0', background: '#fff' }}
+                  />
+                </div>
+                {wError && <p style={{ margin: 0, fontSize: 12.5, color: '#DC2626' }}>{wError}</p>}
+                <button
+                  onClick={solicitarRetiro}
+                  disabled={wSubmitting}
+                  style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#16A34A', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer', opacity: wSubmitting ? 0.6 : 1 }}
+                >
+                  {wSubmitting ? 'Enviando…' : `Solicitar retiro de $${saldo_disponible.toFixed(2)}`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {solicitudes.length > 0 && (
+            <div style={card}>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>Historial de solicitudes de retiro</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--line)' }}>
+                    {['Fecha', 'Monto', 'Red', 'Estado', 'Hash'].map(h => (
+                      <th key={h} style={{ padding: '10px 0', textAlign: 'left', color: 'var(--mute)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {solicitudes.map(s => (
+                    <tr key={s.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                      <td style={{ padding: '10px 0', color: 'var(--ink)' }}>{new Date(s.fecha_solicitud).toLocaleDateString('es')}</td>
+                      <td style={{ padding: '10px 0', color: 'var(--ink)' }}>${s.monto_total.toFixed(2)}</td>
+                      <td style={{ padding: '10px 0', color: 'var(--mute)' }}>{s.red_blockchain}</td>
+                      <td style={{ padding: '10px 0' }}>
+                        {s.estado === 'pagada' && <Badge label="Pagada" color="#166534" bg="#F0FDF4" border="#BBF7D0" />}
+                        {s.estado === 'rechazada' && <Badge label="Rechazada" color="#DC2626" bg="#FEF2F2" border="#FECACA" />}
+                        {(s.estado === 'solicitada' || s.estado === 'en_proceso') && <Badge label="En proceso" color="#1E40AF" bg="#EFF6FF" border="#BFDBFE" />}
+                      </td>
+                      <td style={{ padding: '10px 0', color: 'var(--mute)', fontFamily: 'monospace', fontSize: 12 }}>{s.hash_transaccion || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 

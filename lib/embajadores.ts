@@ -176,3 +176,64 @@ export async function consumirCodigoDescuento(codigoId: string): Promise<void> {
   const admin = createAdminClient()
   await admin.rpc('increment_codigo_descuento_uso', { codigo_id: codigoId })
 }
+
+/**
+ * Applies a discount percentage to a base price, rounded to 2 decimals.
+ */
+export function calcularPrecioConDescuento(precioBase: number, porcentaje: number): number {
+  return Math.round(precioBase * (1 - porcentaje / 100) * 100) / 100
+}
+
+/**
+ * Called from the payments webhook when a confirmed payment used a discount code.
+ * Attributes the paying user to the code's ambassador (origen='codigo') unless the
+ * user already has an attribution (e.g. from a referral link click) — in that case
+ * it just records which discount code they used, without overriding who gets credit.
+ */
+export async function registrarAtribucionPorCodigo(
+  usuarioId: string,
+  codigoDescuentoId: string,
+): Promise<void> {
+  const admin = createAdminClient()
+
+  const { data: codigo } = await admin
+    .from('codigos_descuento')
+    .select('codigo, embajador_id')
+    .eq('id', codigoDescuentoId)
+    .single()
+
+  if (!codigo) return
+
+  const { data: embajador } = await admin
+    .from('embajador_perfil')
+    .select('id, codigo_referido, estado')
+    .eq('id', codigo.embajador_id)
+    .single()
+
+  if (!embajador || embajador.estado !== 'activo') return
+
+  const { data: existing } = await admin
+    .from('referidos')
+    .select('id, codigo_descuento_usado')
+    .eq('usuario_referido_id', usuarioId)
+    .single()
+
+  if (existing) {
+    if (!existing.codigo_descuento_usado) {
+      await admin.from('referidos')
+        .update({ codigo_descuento_usado: codigo.codigo })
+        .eq('id', existing.id)
+    }
+    return
+  }
+
+  await admin.from('referidos').insert({
+    embajador_id:           embajador.id,
+    usuario_referido_id:    usuarioId,
+    codigo_referido_usado:  embajador.codigo_referido,
+    codigo_descuento_usado: codigo.codigo,
+    origen:                 'codigo',
+    fecha_clic_atribucion:  new Date().toISOString(),
+    fecha_registro:         new Date().toISOString(),
+  })
+}

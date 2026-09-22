@@ -909,6 +909,20 @@ interface ComisionPendiente {
   } | null;
 }
 
+interface SolicitudPendiente {
+  id: string;
+  monto_total: number;
+  red_blockchain: 'TRON' | 'POLYGON';
+  direccion_wallet: string;
+  estado: string;
+  fecha_solicitud: string;
+  embajador_perfil: {
+    id: string;
+    codigo_referido: string;
+    profiles: { nombre: string; apellido: string; email_cv: string } | null;
+  } | null;
+}
+
 function EmbajadoresTab() {
   const [list, setList]             = useState<EmbajadorRow[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -921,6 +935,12 @@ function EmbajadoresTab() {
   const [comisiones, setComisiones]           = useState<ComisionPendiente[]>([]);
   const [comisionesLoading, setComisionesLoading] = useState(true);
   const [comisionBusyId, setComisionBusyId]   = useState<string | null>(null);
+
+  // Solicitudes de retiro pendientes de procesar
+  const [solicitudes, setSolicitudes]           = useState<SolicitudPendiente[]>([]);
+  const [solicitudesLoading, setSolicitudesLoading] = useState(true);
+  const [solicitudBusyId, setSolicitudBusyId]   = useState<string | null>(null);
+  const [hashInputs, setHashInputs]             = useState<Record<string, string>>({});
 
   // Assign-ambassador form state
   const [formUserId, setFormUserId]     = useState('');     // resolved UUID
@@ -960,6 +980,33 @@ function EmbajadoresTab() {
   }, []);
 
   useEffect(() => { loadComisiones(); }, [loadComisiones]);
+
+  const loadSolicitudes = useCallback(async () => {
+    setSolicitudesLoading(true);
+    const res = await fetch('/api/admin/solicitudes-pago?estado=solicitada');
+    const data = await res.json();
+    setSolicitudes(Array.isArray(data) ? data : []);
+    setSolicitudesLoading(false);
+  }, []);
+
+  useEffect(() => { loadSolicitudes(); }, [loadSolicitudes]);
+
+  async function resolverSolicitud(s: SolicitudPendiente, nuevoEstado: 'pagada' | 'rechazada') {
+    setSolicitudBusyId(s.id);
+    try {
+      const body: Record<string, unknown> = { estado: nuevoEstado };
+      if (nuevoEstado === 'pagada') body.hash_transaccion = hashInputs[s.id]?.trim();
+      const res = await fetch(`/api/admin/solicitudes-pago/${s.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      setSolicitudes(prev => prev.filter(x => x.id !== s.id));
+      setToast({ msg: nuevoEstado === 'pagada' ? 'Solicitud marcada como pagada' : 'Solicitud rechazada — comisiones liberadas', type: 'success' });
+    } catch (e: unknown) {
+      setToast({ msg: e instanceof Error ? e.message : 'Error', type: 'error' });
+    } finally { setSolicitudBusyId(null); }
+  }
 
   async function resolverComision(c: ComisionPendiente, nuevoEstado: 'disponible' | 'rechazada') {
     setComisionBusyId(c.id);
@@ -1180,6 +1227,86 @@ function EmbajadoresTab() {
                       style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
                     >
                       Aprobar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Solicitudes de retiro pendientes de procesar */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 20, boxShadow: 'var(--sh-1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: solicitudesLoading || solicitudes.length > 0 ? 14 : 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--deep)' }}>Solicitudes de retiro pendientes</span>
+          {!solicitudesLoading && solicitudes.length > 0 && (
+            <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 999, padding: '2px 8px' }}>
+              {solicitudes.length}
+            </span>
+          )}
+        </div>
+        {solicitudesLoading ? (
+          <Spinner size={16} />
+        ) : solicitudes.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--mute)' }}>No hay solicitudes de retiro pendientes.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {solicitudes.map(s => {
+              const p = s.embajador_perfil?.profiles;
+              const busy = solicitudBusyId === s.id;
+              return (
+                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--hover)', borderRadius: 10, opacity: busy ? 0.6 : 1, transition: 'opacity .15s', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--deep)' }}>
+                      ${Number(s.monto_total).toFixed(2)}
+                      <span style={{ marginLeft: 8, fontWeight: 500, color: 'var(--mute)', fontSize: 12.5 }}>vía {s.red_blockchain}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>
+                      {p ? `${p.nombre} ${p.apellido} (${p.email_cv})` : 'Embajador desconocido'}
+                      {' · '}código {s.embajador_perfil?.codigo_referido ?? '—'}
+                      {' · '}solicitada {new Date(s.fecha_solicitud).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 4, fontFamily: 'monospace' }}>
+                      wallet: {s.direccion_wallet}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="hash de transacción"
+                      value={hashInputs[s.id] ?? ''}
+                      onChange={e => setHashInputs(prev => ({ ...prev, [s.id]: e.target.value }))}
+                      disabled={busy}
+                      style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 8, border: '1px solid var(--line)', width: 180 }}
+                    />
+                    <button
+                      disabled={busy}
+                      onClick={() => setConfirm({
+                        title: '¿Rechazar esta solicitud?',
+                        description: `Las comisiones incluidas volverán a estar disponibles para ${p?.nombre ?? 'el embajador'}.`,
+                        confirmLabel: 'Rechazar',
+                        variant: 'danger',
+                        onConfirm: () => resolverSolicitud(s, 'rechazada'),
+                        onCancel: () => setConfirm(null),
+                      })}
+                      style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #FECACA', background: '#FEF2F2', color: '#B91C1C', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
+                    >
+                      Rechazar
+                    </button>
+                    <button
+                      disabled={busy || !hashInputs[s.id]?.trim()}
+                      onClick={() => setConfirm({
+                        title: '¿Marcar como pagada?',
+                        description: `Confirmas que enviaste $${Number(s.monto_total).toFixed(2)} a ${s.direccion_wallet} vía ${s.red_blockchain}.`,
+                        confirmLabel: 'Marcar pagada',
+                        variant: 'default',
+                        onConfirm: () => resolverSolicitud(s, 'pagada'),
+                        onCancel: () => setConfirm(null),
+                      })}
+                      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: (busy || !hashInputs[s.id]?.trim()) ? 'not-allowed' : 'pointer', opacity: !hashInputs[s.id]?.trim() ? 0.5 : 1 }}
+                    >
+                      Marcar pagada
                     </button>
                   </div>
                 </div>

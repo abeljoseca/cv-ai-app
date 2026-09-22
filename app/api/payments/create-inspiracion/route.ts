@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { createNOWPayment, NETWORK_CURRENCY } from '@/lib/nowpayments'
 import { getConfig } from '@/lib/config'
+import { resolverCodigoDescuento, calcularPrecioConDescuento } from '@/lib/embajadores'
 import type { CryptoNetwork } from '@/types'
 import { NextRequest, NextResponse } from 'next/server'
 const ALLOWED_NETWORKS: CryptoNetwork[] = ['TRON', 'BSC', 'MATIC']
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { cv_inspiracion_id, red } = body as { cv_inspiracion_id?: string; red?: CryptoNetwork }
+    const { cv_inspiracion_id, red, codigo } = body as { cv_inspiracion_id?: string; red?: CryptoNetwork; codigo?: string }
 
     if (!cv_inspiracion_id || !red) {
       return NextResponse.json({ error: 'Faltan parámetros: cv_inspiracion_id y red son requeridos.' }, { status: 400 })
@@ -29,7 +30,19 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient()
-    const { precio_inspiracion: INSPIRACION_PRICE } = await getConfig()
+    const { precio_inspiracion: PRECIO_ORIGINAL } = await getConfig()
+
+    // Discount code is always re-resolved server-side — never trust a client-sent price.
+    let INSPIRACION_PRICE = PRECIO_ORIGINAL
+    let codigoDescuentoId: string | null = null
+    if (codigo?.trim()) {
+      const resuelto = await resolverCodigoDescuento(codigo)
+      if (!resuelto) {
+        return NextResponse.json({ error: 'El código de descuento ya no es válido.' }, { status: 400 })
+      }
+      INSPIRACION_PRICE = calcularPrecioConDescuento(PRECIO_ORIGINAL, resuelto.porcentaje)
+      codigoDescuentoId = resuelto.codigoId
+    }
 
     // Verify CV Inspiración belongs to this user
     const { data: cvInsp } = await admin
@@ -92,6 +105,8 @@ export async function POST(request: NextRequest) {
       cv_inspiracion_id,
       tipo:                       'inspiracion_descarga',
       monto:                      INSPIRACION_PRICE,
+      monto_original:             codigoDescuentoId ? PRECIO_ORIGINAL : null,
+      codigo_descuento_id:        codigoDescuentoId,
       moneda:                     'USDT',
       red,
       estado:                     'pendiente',

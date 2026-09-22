@@ -4,7 +4,7 @@ import {
   PAYMENT_FINISHED,
   PAYMENT_FAILED,
 } from '@/lib/nowpayments'
-import { generarComision } from '@/lib/embajadores'
+import { generarComision, consumirCodigoDescuento, registrarAtribucionPorCodigo } from '@/lib/embajadores'
 import { NextRequest, NextResponse } from 'next/server'
 
 // NOWPayments IPN (Instant Payment Notification) webhook
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const { data: pago } = await admin
       .from('pagos')
-      .select('id, user_id, cv_id, tipo, monto, estado')
+      .select('id, user_id, cv_id, tipo, monto, estado, codigo_descuento_id')
       .eq('nowpayments_payment_id', paymentId)
       .single()
 
@@ -75,6 +75,17 @@ export async function POST(request: NextRequest) {
       }
 
       console.log(`[webhook] Payment confirmed: pago_id=${pago.id} user_id=${pago.user_id}`)
+
+      // If a discount code was used, consume it and attribute the sale to its
+      // ambassador BEFORE generating the commission (which reads the referidos row).
+      if (pago.codigo_descuento_id) {
+        await consumirCodigoDescuento(pago.codigo_descuento_id).catch(err =>
+          console.error('[webhook] consumirCodigoDescuento error:', err),
+        )
+        await registrarAtribucionPorCodigo(pago.user_id, pago.codigo_descuento_id).catch(err =>
+          console.error('[webhook] registrarAtribucionPorCodigo error:', err),
+        )
+      }
 
       // Generate ambassador commission if applicable (fire-and-forget)
       generarComision(pago.id).catch(err =>

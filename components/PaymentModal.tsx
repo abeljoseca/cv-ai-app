@@ -21,6 +21,12 @@ interface PaymentData {
   red: CryptoNetwork
 }
 
+interface DiscountState {
+  porcentaje: number
+  precio_original: number
+  precio_final: number
+}
+
 const NETWORKS: CryptoNetwork[] = ['TRON', 'BSC', 'MATIC']
 const POLL_INTERVAL = 12_000 // 12 segundos
 
@@ -38,8 +44,15 @@ export default function PaymentModal({ cvId, cvInspirationId, onSuccess, onClose
   const [error, setError]             = useState<string | null>(null)
   const [copied, setCopied]           = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const [precioBase, setPrecioBase]   = useState<number | null>(null)
+  const [codigoInput, setCodigoInput] = useState('')
+  const [checkingCode, setCheckingCode] = useState(false)
+  const [codeError, setCodeError]     = useState<string | null>(null)
+  const [discount, setDiscount]       = useState<DiscountState | null>(null)
   const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const tipo = cvInspirationId ? 'inspiracion_descarga' : 'cv_unico'
 
   const clearTimers = useCallback(() => {
     if (pollRef.current)  clearInterval(pollRef.current)
@@ -47,6 +60,42 @@ export default function PaymentModal({ cvId, cvInspirationId, onSuccess, onClose
   }, [])
 
   useEffect(() => () => clearTimers(), [clearTimers])
+
+  // Fetch the real configured price on open — the header no longer hardcodes it.
+  useEffect(() => {
+    fetch('/api/payments/validate-codigo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo }),
+    })
+      .then(res => res.json())
+      .then(data => { if (typeof data.precio_original === 'number') setPrecioBase(data.precio_original) })
+      .catch(() => { /* keep fallback display */ })
+  }, [tipo])
+
+  async function handleApplyCode() {
+    if (!codigoInput.trim()) return
+    setCheckingCode(true)
+    setCodeError(null)
+    try {
+      const res = await fetch('/api/payments/validate-codigo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, codigo: codigoInput.trim() }),
+      })
+      const data = await res.json()
+      if (data.valido) {
+        setDiscount({ porcentaje: data.porcentaje, precio_original: data.precio_original, precio_final: data.precio_final })
+      } else {
+        setDiscount(null)
+        setCodeError(data.error || 'Código inválido o expirado.')
+      }
+    } catch {
+      setCodeError('No se pudo validar el código. Intenta de nuevo.')
+    } finally {
+      setCheckingCode(false)
+    }
+  }
 
   async function handleCreatePayment(network: CryptoNetwork) {
     setLoading(true)
@@ -57,9 +106,10 @@ export default function PaymentModal({ cvId, cvInspirationId, onSuccess, onClose
       const endpoint = cvInspirationId
         ? '/api/payments/create-inspiracion'
         : '/api/payments/create'
+      const codigo = discount ? codigoInput.trim() : undefined
       const payload = cvInspirationId
-        ? { cv_inspiracion_id: cvInspirationId, red: network }
-        : { cv_id: cvId, red: network }
+        ? { cv_inspiracion_id: cvInspirationId, red: network, codigo }
+        : { cv_id: cvId, red: network, codigo }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -170,13 +220,26 @@ export default function PaymentModal({ cvId, cvInspirationId, onSuccess, onClose
             </div>
             <div>
               <p className="text-white/60 text-xs font-medium tracking-wide uppercase">Desbloquear descarga</p>
-              <p className="text-white text-lg font-bold leading-tight">CV Único</p>
+              <p className="text-white text-lg font-bold leading-tight">{cvInspirationId ? 'CV Studio' : 'CV Único'}</p>
             </div>
           </div>
 
-          <div className="flex items-baseline gap-1 mt-3">
-            <span className="text-3xl font-bold text-white">$2.99</span>
-            <span className="text-white/50 text-sm">USDT</span>
+          <div className="flex items-baseline gap-2 mt-3">
+            {discount ? (
+              <>
+                <span className="text-lg font-medium text-white/40 line-through">${discount.precio_original.toFixed(2)}</span>
+                <span className="text-3xl font-bold text-white">${discount.precio_final.toFixed(2)}</span>
+                <span className="text-white/50 text-sm">USDT</span>
+                <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: '#22C55E', color: '#052e16' }}>
+                  -{discount.porcentaje}%
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-3xl font-bold text-white">${precioBase !== null ? precioBase.toFixed(2) : '—'}</span>
+                <span className="text-white/50 text-sm">USDT</span>
+              </>
+            )}
           </div>
           <p className="text-white/50 text-xs mt-1">Pago único · Descarga inmediata tras confirmación</p>
         </div>
@@ -187,6 +250,44 @@ export default function PaymentModal({ cvId, cvInspirationId, onSuccess, onClose
           {/* STEP: SELECT NETWORK */}
           {step === STEP_SELECT && (
             <div>
+              {/* Discount code */}
+              <div className="mb-4">
+                {discount ? (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-green-50 border border-green-200">
+                    <p className="text-xs text-green-800">
+                      Código <strong>{codigoInput.trim().toUpperCase()}</strong> aplicado (-{discount.porcentaje}%)
+                    </p>
+                    <button
+                      onClick={() => { setDiscount(null); setCodigoInput(''); setCodeError(null) }}
+                      className="text-xs text-green-700 hover:text-green-900 font-medium"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={codigoInput}
+                        onChange={e => { setCodigoInput(e.target.value); setCodeError(null) }}
+                        placeholder="¿Tienes un código de descuento?"
+                        className="flex-1 px-3 py-2 text-sm rounded-xl border border-[#e2e8f0] focus:outline-none focus:border-[#4B6BFB]"
+                        disabled={checkingCode || loading}
+                      />
+                      <button
+                        onClick={handleApplyCode}
+                        disabled={checkingCode || loading || !codigoInput.trim()}
+                        className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#1e293b] text-white disabled:opacity-40"
+                      >
+                        {checkingCode ? '...' : 'Aplicar'}
+                      </button>
+                    </div>
+                    {codeError && <p className="text-xs text-red-600 mt-1.5">{codeError}</p>}
+                  </div>
+                )}
+              </div>
+
               <p className="text-sm font-semibold text-[#1e293b] mb-3">Elige tu red de pago</p>
               <div className="flex flex-col gap-2">
                 {NETWORKS.map(net => (
