@@ -32,7 +32,7 @@ function formatFecha(iso: string): string {
 const FREE_FEATURES = [
   'Crea todos los CVs que quieras',
   'Paga $2.99 solo al descargar — debes pagar tu CV para crear el siguiente',
-  '2 estilos de CV incluidos',
+  'Los 7 estilos de CV disponibles',
   'Descarga en PDF',
   'Hasta 5 aplicaciones en seguimiento',
 ];
@@ -41,8 +41,6 @@ const PRO_FEATURES = [
   'CVs y descargas ilimitadas, sin pagar por separado',
   'Aplicaciones ilimitadas',
   'Descarga en PDF y DOCX',
-  'Los 7 estilos de CV disponibles',
-  'Análisis de compatibilidad avanzado',
   'Soporte prioritario',
 ];
 
