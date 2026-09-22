@@ -12,9 +12,11 @@ interface Message {
 interface ChatProps {
   mode: 'onboarding' | 'perfil';
   onClose?: () => void;
+  onDataSaved?: () => void;
+  embedded?: boolean;
 }
 
-export default function Chat({ mode, onClose }: ChatProps) {
+export default function Chat({ mode, onClose, onDataSaved, embedded }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,10 +28,8 @@ export default function Chat({ mode, onClose }: ChatProps) {
 
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
-
     if (!input.trim()) return;
 
-    // Agregar mensaje del usuario
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -42,23 +42,22 @@ export default function Chat({ mode, onClose }: ChatProps) {
     setLoading(true);
 
     try {
+      const messagesToSend = [
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: 'user' as const, content: userMessage.content },
+      ];
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-          mode,
-        }),
+        body: JSON.stringify({ messages: messagesToSend, mode }),
       });
 
-      if (!response.ok) {
-        throw new Error('Error en el chat');
-      }
-
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.details || data.error || 'Error en el chat');
+      }
 
       const assistantMessage: Message = {
         id: Date.now().toString(),
@@ -68,14 +67,16 @@ export default function Chat({ mode, onClose }: ChatProps) {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+
+      if (onDataSaved) onDataSaved();
+    } catch (error: any) {
       console.error('Chat error:', error);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'Error al procesar tu mensaje. Intenta de nuevo.',
+          content: 'Hubo un error al procesar tu mensaje. Intenta de nuevo.',
           timestamp: new Date(),
         },
       ]);
@@ -84,20 +85,24 @@ export default function Chat({ mode, onClose }: ChatProps) {
     }
   }
 
+  const wrapperStyle = embedded
+    ? { display: 'flex', flexDirection: 'column' as const, height: '100%' }
+    : undefined;
+  const wrapperClass = embedded ? '' : 'flex flex-col h-96 bg-white rounded-lg shadow-sm border border-gray-200';
+
   return (
-    <div className="flex flex-col h-96 bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className={wrapperClass} style={wrapperStyle}>
       {/* Header */}
+      {!embedded && (
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 className="font-semibold text-gray-900">Asistente IA</h3>
         {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             ✕
           </button>
         )}
       </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -110,9 +115,7 @@ export default function Chat({ mode, onClose }: ChatProps) {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
                   className={`max-w-xs px-4 py-2 rounded-lg ${
@@ -163,8 +166,8 @@ export default function Chat({ mode, onClose }: ChatProps) {
 
         {/* File Upload */}
         <div className="flex gap-2">
-          <label className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 cursor-pointer">
-            📎 Subir documento
+          <label className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 cursor-pointer text-center">
+            📎 Subir documento (PDF, Word, TXT)
             <input
               type="file"
               accept=".pdf,.doc,.docx,.txt"
@@ -173,6 +176,7 @@ export default function Chat({ mode, onClose }: ChatProps) {
                 if (!file || loading) return;
 
                 setLoading(true);
+                const fileInput = e.currentTarget;
                 try {
                   const formData = new FormData();
                   formData.append('file', file);
@@ -182,36 +186,35 @@ export default function Chat({ mode, onClose }: ChatProps) {
                     body: formData,
                   });
 
-                  if (!response.ok) throw new Error('Error al procesar documento');
-
                   const data = await response.json();
 
-                  // Agregar mensaje de éxito
+                  if (!response.ok) throw new Error(data.error || 'Error al procesar documento');
+
                   setMessages((prev) => [
                     ...prev,
                     {
                       id: Date.now().toString(),
                       role: 'assistant',
-                      content: `✓ Documento procesado correctamente. Se extrajeron datos de tu CV.`,
+                      content: 'He analizado tu documento y ya integré la información en tu perfil. Puedes seguir añadiendo detalles o generar tu CV cuando quieras.',
                       timestamp: new Date(),
                     },
                   ]);
 
-                  // Limpiar input de archivo
-                  e.currentTarget.value = '';
-                } catch (error) {
+                  if (onDataSaved) onDataSaved();
+                } catch (error: any) {
                   console.error('Error uploading file:', error);
                   setMessages((prev) => [
                     ...prev,
                     {
                       id: Date.now().toString(),
                       role: 'assistant',
-                      content: 'Error al procesar el documento. Intenta de nuevo.',
+                      content: 'No pude procesar el documento. Intenta de nuevo o cuéntame sobre tu experiencia directamente.',
                       timestamp: new Date(),
                     },
                   ]);
                 } finally {
                   setLoading(false);
+                  if (fileInput) fileInput.value = '';
                 }
               }}
               className="hidden"

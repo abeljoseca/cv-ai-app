@@ -1,4 +1,6 @@
+import { createClient } from '@/lib/supabase/server';
 import { createAnthropicClient } from '@/lib/anthropic';
+import { rateLimit } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 
 const P8_MATCH_VACANTE = `Analiza el CV generado vs la descripción de la vacante.
@@ -10,6 +12,17 @@ Devuelve JSON con:
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    if (!rateLimit(user.id, 10, 60_000)) {
+      return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento.' }, { status: 429 })
+    }
+
     const { cv, vacante } = await request.json();
 
     if (!cv || !vacante) {

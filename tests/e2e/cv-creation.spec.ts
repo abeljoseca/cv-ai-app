@@ -8,13 +8,13 @@ test.describe('Creación de CV', () => {
   });
 
   test('debe navegar a crear CV desde perfil', async ({ page }) => {
-    await page.goto('/perfil');
+    await page.goto('/profile');
     await page.click('text=Crear CV');
-    await expect(page).toHaveURL('/crear-cv');
+    await expect(page).toHaveURL('/create-cv');
   });
 
   test('debe mostrar advertencia si perfil muy incompleto', async ({ page }) => {
-    await page.goto('/crear-cv');
+    await page.goto('/create-cv');
     // Si completitud < 30%, debe mostrar bloqueo
     const bloqueado = await page.locator('text=Perfil muy incompleto').isVisible();
     if (bloqueado) {
@@ -23,18 +23,18 @@ test.describe('Creación de CV', () => {
   });
 
   test('debe permitir seleccionar tipo de CV', async ({ page }) => {
-    await page.goto('/crear-cv');
+    await page.goto('/create-cv');
 
     // Si no está bloqueado, debe mostrar opciones
     const generalButton = await page.locator('text=CV General').isVisible();
     if (generalButton) {
       await page.click('text=CV General');
-      await expect(page).toHaveURL('/crear-cv/general');
+      await expect(page).toHaveURL('/create-cv/general');
     }
   });
 
   test('debe permitir seleccionar estilo de CV', async ({ page }) => {
-    await page.goto('/crear-cv/general');
+    await page.goto('/create-cv/general');
 
     // Seleccionar un estilo
     const classicStyle = await page.locator('text=Clásico').isVisible();
