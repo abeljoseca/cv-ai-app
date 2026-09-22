@@ -4,11 +4,14 @@ import { rateLimit } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 
 const P8_MATCH_VACANTE = `Analiza el CV generado vs la descripción de la vacante.
+El porcentaje de compatibilidad YA fue calculado de forma determinística por el sistema (se te
+da como dato). Tu única tarea es explicar ESE porcentaje y dar recomendaciones — NUNCA calcules
+ni devuelvas tu propio porcentaje, y nunca lo contradigas.
+
 Devuelve JSON con:
-- match_porcentaje: número de 0-100
 - competencias_aplican: string[]
 - recomendaciones: string[]
-- explicacion: string`;
+- explicacion: string (breve, coherente con el porcentaje dado)`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,11 +26,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento.' }, { status: 429 })
     }
 
-    const { cv, vacante } = await request.json();
+    const { cv, vacante, match_porcentaje } = await request.json();
 
-    if (!cv || !vacante) {
+    if (!cv || !vacante || typeof match_porcentaje !== 'number') {
       return NextResponse.json(
-        { error: 'Falta CV o descripción de vacante' },
+        { error: 'Falta CV, descripción de vacante o match_porcentaje' },
         { status: 400 }
       );
     }
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'user',
-          content: `CV: ${JSON.stringify(cv)}\n\nVacante: ${vacante}`,
+          content: `Porcentaje de compatibilidad ya calculado: ${match_porcentaje}%\n\nCV: ${JSON.stringify(cv)}\n\nVacante: ${vacante}`,
         },
       ],
     });
@@ -49,17 +52,18 @@ export async function POST(request: NextRequest) {
     const content =
       response.content[0].type === 'text' ? response.content[0].text : '';
 
-    let matchData;
+    let matchData: Record<string, unknown>;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        matchData = JSON.parse(jsonMatch[0]);
-      } else {
-        matchData = { match_porcentaje: 0 };
-      }
-    } catch (e) {
-      matchData = { match_porcentaje: 0 };
+      matchData = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    } catch {
+      matchData = {};
     }
+
+    // Defensive: the number is only ever the deterministic one computed at
+    // generation time — never trust the model's own count even if it emits one.
+    delete matchData.match_porcentaje;
+    matchData.match_porcentaje = match_porcentaje;
 
     return NextResponse.json({
       success: true,

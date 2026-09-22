@@ -167,8 +167,16 @@ LOGROS
 - certifications[] NO son logros — se gestionan en otra sección, ignóralas aquí.
 
 RESUMEN
-- Fuente: about. Copia sin modificar.
-- Si termina en "…" o está vacío → null.
+- Fuente: about. NUNCA lo copies literal — reescríbelo en tono profesional de CV.
+- Elimina muletillas de LinkedIn ("apasionado por…", "actualmente buscando…", emojis, hashtags,
+  llamados a la acción tipo "¡Conectemos!"), primera persona informal excesiva, y saltos de línea
+  decorativos.
+- Condensa a un párrafo de 2-4 líneas que resuma perfil, área de expertise y valor diferencial.
+- REGLA ABSOLUTA (igual que el resto del sistema): no inventes logros, empresas, años de
+  experiencia, tecnologías ni cifras que no estén ya en el "about" original. Reescribir el tono,
+  nunca el contenido factual.
+- Si "about" está vacío, es puramente decorativo (solo emojis/hashtags) o termina en "…" sin
+  contenido aprovechable → null.
 
 PROFESIÓN
 - Usa headline si es un título profesional real y específico.

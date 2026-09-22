@@ -79,10 +79,11 @@ export default function PreviewPage() {
       }
       setCvData(data.contenido_json);
       setCvId(id);
-      if (p.mode === 'job' && data.match_porcentaje) {
+      if (p.mode === 'job' && typeof data.match_porcentaje === 'number') {
         setMatchData({ match_porcentaje: data.match_porcentaje });
-      } else if (p.mode === 'job' && data.contenido_json && p.descripcion_vacante) {
-        fetchMatch(data.contenido_json, p.descripcion_vacante);
+        if (data.contenido_json && p.descripcion_vacante) {
+          fetchMatch(data.contenido_json, p.descripcion_vacante, data.match_porcentaje);
+        }
       }
     } catch {
       sessionStorage.removeItem('cv_preview_id');
@@ -128,7 +129,10 @@ export default function PreviewPage() {
       setCvData(data.content);
       setCvId(data.cv.id);
       sessionStorage.setItem('cv_preview_id', data.cv.id);
-      if (p.mode === 'job' && data.content) fetchMatch(data.content, p.descripcion_vacante!);
+      if (p.mode === 'job' && typeof data.match === 'number') {
+        setMatchData({ match_porcentaje: data.match });
+        if (data.content) fetchMatch(data.content, p.descripcion_vacante!, data.match);
+      }
     } catch (err: any) {
       setError(err.message || 'No se pudo generar el CV. Intenta de nuevo.');
     } finally {
@@ -136,15 +140,19 @@ export default function PreviewPage() {
     }
   }
 
-  async function fetchMatch(cv: any, vacante: string) {
+  async function fetchMatch(cv: any, vacante: string, match_porcentaje: number) {
     try {
       const res = await fetch('/api/match-vacante', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cv, vacante }),
+        body: JSON.stringify({ cv, vacante, match_porcentaje }),
       });
       const data = await res.json();
-      if (res.ok && data.match) setMatchData(data.match);
+      // The number is always the deterministic one already shown — this call only
+      // enriches with explicacion/recomendaciones, it never gets to change the score.
+      if (res.ok && data.match) {
+        setMatchData(prev => ({ ...(prev ?? { match_porcentaje }), ...data.match, match_porcentaje }));
+      }
     } catch { /* non-critical */ }
   }
 
