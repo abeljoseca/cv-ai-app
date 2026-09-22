@@ -362,6 +362,13 @@ Existían dos números de compatibilidad distintos: el determinístico de `compu
 **14. `pagos` sin permisos de tabla — 🔴 CRÍTICO, ✅ RESUELTO (2026-09-22)**  
 Hallazgo grave durante la verificación del punto 5: `public.pagos` y `public.suscripciones` se crearon con RLS activado pero **sin los `GRANT` que sí tienen todas las demás tablas** del sistema. Confirmado empíricamente que tanto `authenticated` como `service_role` recibían `permission denied for table pagos` — es decir, ningún pago cripto pudo haberse creado o confirmado nunca en producción, y el historial de pagos de cualquier usuario en `/account` se veía silenciosamente vacío (el código hace `data || []`, sin mostrar el error). Arreglado con `scripts/migration-pagos-grants.sql`, ya ejecutado y verificado.
 
+**15. Rate limiting real con Upstash — ✅ RESUELTO (2026-09-22)**  
+`lib/rate-limit.ts` reescrito sobre `@upstash/ratelimit` + `@upstash/redis` (sliding window), con fallback a limitador en memoria si `UPSTASH_REDIS_REST_URL`/`TOKEN` no están configuradas o si Upstash no responde (fail-open). `rateLimit()` ahora es async — los 9 call-sites ya actualizados con `await`. Verificado contra la cuenta real de Upstash del CEO: se confirmó una clave real (`momentum-ratelimit:<user_id>:...`) escrita en la base de datos vía la REST API de Upstash, no solo el patrón de respuestas HTTP.
+
+**16. `NOWPAYMENTS_IPN_SECRET` era el placeholder sin rellenar — 🔴 CRÍTICO, ✅ RESUELTO en local (2026-09-22)**  
+Hallado por casualidad al editar `.env.local` para Upstash: el secreto IPN de NOWPayments era literalmente el texto `your_nowpayments_ipn_secret` sin reemplazar. Con eso, cualquiera podía forjar una llamada al webhook (`POST /api/payments/webhook`) firmada con ese valor público y marcar un pago como confirmado sin haber pagado nada. El CEO proporcionó el secreto real (dashboard de NOWPayments → Store settings → IPN). Verificado estructuralmente: una firma forjada con el placeholder viejo ahora es rechazada (401, el pago queda `pendiente`), y la firma real confirma el pago correctamente (200, `confirmado`).  
+**⚠️ Pendiente de acción del CEO — NO resuelto en producción todavía:** falta actualizar `NOWPAYMENTS_IPN_SECRET` en las variables de entorno de Vercel con este mismo valor y hacer redeploy. Mientras eso no pase, el webhook en producción sigue aceptando el secreto viejo (vulnerable).
+
 ---
 
 ## 13. Patrones de código importantes
