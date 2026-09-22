@@ -343,8 +343,8 @@ Implementado como cola de revisión manual en `/admin` → tab **Embajadores** �
 **8. Acuerdo legal del embajador — ✅ RESUELTO con placeholder (2026-09-22)**  
 Modal de bloqueo en `/ambassador` (primer acceso, mientras `acuerdo_aceptado = false`) con checkbox + botón "Aceptar y continuar" → `PATCH /api/embajador` con `{acuerdo_aceptado: true}`. El texto vive en una única constante `TEXTO_ACUERDO_EMBAJADORES` en `app/(app)/ambassador/page.tsx`, marcada `[PENDIENTE — reemplazar con el acuerdo legal completo]` — **el CEO/abogado debe reemplazar el texto ahí antes de lanzar**, sin tocar ninguna lógica. También bloqueado server-side: `POST /api/embajador/solicitudes` devuelve 403 si `acuerdo_aceptado` es falso.
 
-**9. Páginas legales (Términos, Privacidad, Cookies, Uso responsable de IA)**  
-No existen todavía. Decisión del CEO: van al final, justo antes de lanzar públicamente — no antes. La landing no debe enlazarlas hasta que existan (evitar 404 en el footer).
+**9. Páginas legales (Términos, Privacidad, Cookies, Uso responsable de IA) — ✅ ESTRUCTURA RESUELTA, CONTENIDO PENDIENTE (2026-09-22)**  
+Rutas públicas creadas: `/terminos`, `/privacidad`, `/cookies`, `/uso-de-ia`, compartiendo `components/LegalLayout.tsx`. Cada una tiene sus secciones esperadas con un marcador `[PENDIENTE — contenido a redactar por el CEO o asesoría legal]` en cada una — **no se inventó ningún texto legal real**, solo la estructura. El footer de la landing (`app/page.tsx`) NO las enlaza todavía, tal como se decidió, para evitar exponer páginas sin contenido real. Enlazarlas desde el footer/navegación es la última tarea, una vez el CEO/abogado reemplace el contenido.
 
 **10. Sección de blog/recursos en la landing**  
 La landing planea una columna de footer con guías (qué es ATS friendly, cómo redactar experiencia, etc.) para SEO. Decisión del CEO: no es prioridad ahora, pero cuando se construya debe permitirle publicar posts él mismo (no solo páginas estáticas hardcodeadas). No enlazar en el footer hasta que exista contenido real.
