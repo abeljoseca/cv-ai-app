@@ -76,6 +76,27 @@ QUANTIFICATION — A STRONG QUALITATIVE RESULT BEATS A WEAK FORCED NUMBER:
 - Only include a number when it is genuine and meaningfully strengthens the claim. A real metric always
   wins when the data supports it — this rule only governs what to do when it doesn't.
 
+THE QUALITATIVE OUTCOME ITSELF MUST NEVER BE INVENTED:
+- This is the single most common way DATA INTEGRITY gets violated, because the instruction above (find
+  a strong outcome) is in direct tension with it whenever the source is purely task-descriptive. When
+  that tension exists, DATA INTEGRITY always wins.
+- A closing outcome is only valid if it is (a) stated in the source somewhere — even in different words
+  — or (b) a near-tautological restatement of the action itself, not a separate claim requiring its own
+  evidence.
+- Concrete real failure caught in production — source said: "control de renovaciones y recordatorios de
+  pago; soporte a AP." The model wrote: "...consolidando el ciclo de renovaciones contractuales sin
+  interrupción operativa." Nothing in the source claims zero operational interruption — that is a
+  fabricated result, not a rephrasing, even though it sounds plausible and professional.
+- Same failure, different bullet — source said: "Preparación de investigaciones/briefs para decisiones
+  operativas y comerciales." The model wrote: "...reduciendo el tiempo de análisis previo a reuniones
+  ejecutivas." No time reduction is stated or implied anywhere in the source.
+- The test to apply before writing a closer: could this exact outcome be false without contradicting
+  anything the source says? If yes, it is an invented claim, not a valid inference — do not write it.
+- When no closer passes that test, end the bullet on a faithful, specific description of the scope or
+  method instead of a result — e.g., "gestionando el ciclo completo de renovaciones de servicios y
+  pagos" (scope, not outcome) rather than inventing "sin interrupción operativa." A precise, honest
+  description of what was done is always preferable to a fabricated result, no matter how plausible.
+
 ACHIEVEMENTS SECTION — NO DUPLICATION WITH EXPERIENCE:
 - Before writing the "logros" array, check every bullet already written in "experiencias".
 - Never restate, rephrase, or lightly reword an accomplishment that is already captured in an
