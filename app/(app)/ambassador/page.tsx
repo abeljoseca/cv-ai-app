@@ -82,14 +82,22 @@ interface DashData {
   total_ganado: number;
 }
 
-// [PENDIENTE — reemplazar con el texto real del acuerdo del programa de
-// embajadores antes de lanzar]. Único lugar donde vive este texto — se puede
-// reemplazar sin tocar ninguna lógica del gating/checkbox de abajo.
-const TEXTO_ACUERDO_EMBAJADORES = `Al participar como embajador de Momentum aceptas los términos y condiciones
-del programa de referidos: las comisiones se calculan sobre pagos confirmados de usuarios que
-referiste, están sujetas a un período de espera antes de estar disponibles para retiro, y Momentum
-puede suspender tu cuenta de embajador en caso de fraude o abuso del sistema de códigos de
-descuento. [PENDIENTE — reemplazar con el acuerdo legal completo del programa de embajadores.]`;
+// Único lugar donde vive este texto — se puede editar sin tocar ninguna
+// lógica del gating/checkbox de abajo. Refleja las reglas reales implementadas
+// en lib/embajadores.ts y las tablas embajador_perfil / comisiones / solicitudes_pago.
+const TEXTO_ACUERDO_EMBAJADORES = `Al participar como embajador de Momentum aceptas lo siguiente:
+
+Comisiones: ganas una comisión (el porcentaje se indica en tu panel de embajador, típicamente 25%) sobre pagos confirmados de usuarios que referiste a través de tu enlace o código de descuento, siempre que el pago alcance el monto mínimo indicado en tu panel. Para suscripciones del Plan Pro, la comisión es recurrente durante un máximo de 6 meses por usuario referido; para descargas de pago único, es una comisión única.
+
+Disponibilidad de fondos: cada comisión queda en estado "pendiente" y se libera automáticamente a "disponible" 24 horas después de generarse, para dar tiempo a que se resuelvan disputas o reembolsos del pago que la originó.
+
+Retiros: puedes solicitar el retiro de tu saldo disponible una vez que alcance el mínimo indicado en tu panel. Los retiros se pagan en criptomonedas a la dirección de wallet que registres, y son revisados y procesados manualmente por el equipo de Momentum. Si una solicitud es rechazada, el saldo correspondiente vuelve a estar disponible para una nueva solicitud.
+
+Códigos de descuento: los códigos que generes para tus referidos tienen un descuento máximo configurado en tu panel. El uso indebido del sistema de códigos (por ejemplo, aplicarlos a cuentas propias o compartirlas fuera del uso previsto del programa) se considera abuso.
+
+Suspensión: Momentum puede suspender tu cuenta de embajador en caso de fraude, abuso del sistema de códigos de descuento, o incumplimiento de estos términos. La suspensión no afecta comisiones ya liberadas y pagadas, pero puede retener comisiones pendientes mientras se investiga.
+
+Este acuerdo se complementa con los Términos y Condiciones generales y la Política de Privacidad de Momentum.`;
 
 const TABS: { id: EmbTab; label: string }[] = [
   { id: 'resumen',   label: 'Resumen' },

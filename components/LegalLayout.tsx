@@ -2,10 +2,11 @@
 
 interface LegalLayoutProps {
   title: string;
+  lastUpdated?: string;
   children: React.ReactNode;
 }
 
-export default function LegalLayout({ title, children }: LegalLayoutProps) {
+export default function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) {
   return (
     <div style={{ background: 'var(--bg)', color: 'var(--ink)', minHeight: '100vh' }}>
       <header style={{ borderBottom: '1px solid var(--line)' }}>
@@ -22,12 +23,13 @@ export default function LegalLayout({ title, children }: LegalLayoutProps) {
         </a>
         <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--ink)' }}>{title}</h1>
         <p className="text-sm mb-10" style={{ color: 'var(--mute)' }}>
-          Última actualización: <strong>[PENDIENTE — fecha de publicación real]</strong>
+          Última actualización: <strong>{lastUpdated ?? '[PENDIENTE — fecha de publicación real]'}</strong>
         </p>
 
         <div className="rounded-xl p-4 mb-10 text-sm leading-relaxed" style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}>
-          Esta página es un borrador estructural. El contenido legal definitivo debe ser redactado o
-          revisado por el equipo de Momentum o su asesoría legal antes de publicarse.
+          Este es un borrador sustantivo basado en cómo funciona Momentum realmente, redactado para
+          poder operar mientras se completa el proceso legal formal. Debe ser revisado y aprobado por
+          un abogado antes de considerarse el texto legal definitivo.
         </div>
 
         <div className="space-y-8">{children}</div>
@@ -37,6 +39,15 @@ export default function LegalLayout({ title, children }: LegalLayoutProps) {
         © {new Date().getFullYear()} Momentum CV.
       </footer>
     </div>
+  );
+}
+
+export function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--ink)' }}>{heading}</h2>
+      <div className="text-sm leading-relaxed space-y-3" style={{ color: 'var(--mute)' }}>{children}</div>
+    </section>
   );
 }
 
