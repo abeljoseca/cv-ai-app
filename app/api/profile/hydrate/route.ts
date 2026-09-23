@@ -63,7 +63,8 @@ interface ExtProfile {
   headline?: string;
   about?: string;
   photo?: string;
-  topSkills?: string;
+  topSkills?: string | Array<string | { name?: string }>;
+  skills?: Array<string | { name?: string }>;
   location?: ExtLocation;
   experience?: ExtExperience[];
   education?: ExtEducation[];
@@ -96,9 +97,19 @@ function consolidateSkills(profile: ExtProfile): string[] {
     const key = s.toLowerCase().trim();
     if (key && !seen.has(key)) { seen.add(key); out.push(s.trim()); }
   };
-  if (profile.topSkills) {
+  const pushEntry = (entry: string | { name?: string }) => {
+    if (typeof entry === 'string') push(entry);
+    else if (entry?.name) push(entry.name);
+  };
+  // El actor de Apify ha devuelto topSkills como string ("A • B • C") en
+  // versiones anteriores y como array de objetos {name} en la actual —
+  // soportamos ambas formas en vez de asumir una.
+  if (typeof profile.topSkills === 'string') {
     for (const s of profile.topSkills.split('•')) push(s);
+  } else if (Array.isArray(profile.topSkills)) {
+    for (const entry of profile.topSkills) pushEntry(entry);
   }
+  for (const entry of profile.skills ?? []) pushEntry(entry);
   for (const exp of profile.experience ?? []) {
     for (const s of exp.skills ?? []) push(s);
   }
@@ -108,7 +119,7 @@ function consolidateSkills(profile: ExtProfile): string[] {
 function preparePayload(profile: ExtProfile): Record<string, unknown> {
   const OMIT = new Set([
     'id', 'publicIdentifier', 'linkedinUrl', 'photo',
-    'topSkills',
+    'topSkills', 'skills',
     'openToWork', 'hiring', 'premium', 'influencer', 'verified',
     'registeredAt', 'connectionsCount', 'followerCount',
     'currentPosition', 'projects',
@@ -491,7 +502,13 @@ export async function POST(request: NextRequest) {
   const { data: existingProfile } = await supabase
     .from('profiles').select('foto_url').eq('id', user.id).single();
 
-  const result = await processProfile(canonicalUrl, user.id, existingProfile?.foto_url || null);
+  let result;
+  try {
+    result = await processProfile(canonicalUrl, user.id, existingProfile?.foto_url || null);
+  } catch (err) {
+    console.error('[hydrate] processProfile falló:', err);
+    return NextResponse.json({ ok: false });
+  }
   if (!result) return NextResponse.json({ ok: false });
 
   return NextResponse.json({ ok: true, patch: result.formFields, q: result.completitudEstimada });
