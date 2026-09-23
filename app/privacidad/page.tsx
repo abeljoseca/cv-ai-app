@@ -1,4 +1,4 @@
-import LegalLayout, { Section, PlaceholderSection } from '@/components/LegalLayout';
+import LegalLayout, { Section } from '@/components/LegalLayout';
 
 export default function PrivacidadPage() {
   return (
@@ -138,7 +138,15 @@ export default function PrivacidadPage() {
         </p>
       </Section>
 
-      <PlaceholderSection heading="13. Datos legales de la empresa (razón social, dirección, jurisdicción)" />
+      <Section heading="13. Sobre quién opera Momentum">
+        <p>
+          Momentum CV es un proyecto operado de forma independiente; actualmente no existe una entidad
+          corporativa registrada distinta que lo respalde. El punto de contacto oficial para cualquier
+          asunto relacionado con esta política es
+          <a href="mailto:contact@momentumcv.com" className="underline"> contact@momentumcv.com</a>.
+          Esta sección se actualizará si Momentum se constituye formalmente como empresa en el futuro.
+        </p>
+      </Section>
     </LegalLayout>
   );
 }

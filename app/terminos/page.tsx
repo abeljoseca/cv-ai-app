@@ -1,4 +1,4 @@
-import LegalLayout, { Section, PlaceholderSection } from '@/components/LegalLayout';
+import LegalLayout, { Section } from '@/components/LegalLayout';
 
 export default function TerminosPage() {
   return (
@@ -100,7 +100,16 @@ export default function TerminosPage() {
         </p>
       </Section>
 
-      <PlaceholderSection heading="11. Ley aplicable, jurisdicción y datos legales de la empresa" />
+      <Section heading="11. Ley aplicable y sobre quién opera Momentum">
+        <p>
+          Momentum CV es un proyecto operado de forma independiente; actualmente no existe una entidad
+          corporativa registrada distinta que lo respalde. Mientras esto no cambie, no se fija una
+          jurisdicción ni ley aplicable específica para estos términos — esta sección se actualizará
+          cuando Momentum se constituya formalmente como empresa. Para cualquier disputa o consulta,
+          el punto de contacto es
+          <a href="mailto:contact@momentumcv.com" className="underline"> contact@momentumcv.com</a>.
+        </p>
+      </Section>
     </LegalLayout>
   );
 }
