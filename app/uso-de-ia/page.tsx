@@ -2,24 +2,24 @@ import LegalLayout, { Section } from '@/components/LegalLayout';
 
 export default function UsoDeIAPage() {
   return (
-    <LegalLayout title="Uso Responsable de Inteligencia Artificial" lastUpdated="22 de septiembre de 2026">
+    <LegalLayout title="Uso Responsable de Inteligencia Artificial" lastUpdated="24 de septiembre de 2026">
       <Section heading="1. Cómo usa Momentum la inteligencia artificial">
         <p>
-          Momentum usa un modelo de lenguaje de IA para ayudarte a construir tu perfil profesional
-          (mediante una conversación tipo chat), redactar y estructurar el contenido de tus CVs, adaptar
-          un CV a una vacante específica, y organizar información que subas (por ejemplo, un CV anterior
-          en PDF o una exportación de LinkedIn).
+          Momentum usa tecnología de inteligencia artificial para ayudarte a construir tu perfil
+          profesional (mediante una conversación tipo chat), redactar y estructurar el contenido de tus
+          CVs, adaptar un CV a una vacante específica, y organizar información que subas (por ejemplo, un
+          CV anterior en PDF).
         </p>
       </Section>
 
-      <Section heading="2. Qué información procesa la IA y con qué proveedor">
+      <Section heading="2. Qué información procesa la IA">
         <p>
-          Usamos la API de <strong>Claude, de Anthropic</strong>, como proveedor de inteligencia
-          artificial. Le enviamos únicamente la información necesaria para la tarea en curso: los datos
-          de tu perfil (experiencia, educación, habilidades, etc.), el texto que escribes en el chat, el
-          contenido de documentos que subes, y la descripción de la vacante cuando generas un CV adaptado
-          a una oferta. Anthropic procesa esta información como proveedor de servicio, conforme a su
-          propia política de tratamiento de datos para clientes de API.
+          Trabajamos con un proveedor externo especializado en inteligencia artificial. Le enviamos
+          únicamente la información necesaria para la tarea en curso: los datos de tu perfil (experiencia,
+          educación, habilidades, etc.), el texto que escribes en el chat, el contenido de documentos que
+          subes, y la descripción de la vacante cuando generas un CV adaptado a una oferta. Este proveedor
+          procesa la información exclusivamente como encargado de tratamiento, bajo instrucciones nuestras
+          y obligaciones de confidencialidad, y no la utiliza para sus propios fines.
         </p>
       </Section>
 

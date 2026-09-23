@@ -2,7 +2,7 @@ import LegalLayout, { Section } from '@/components/LegalLayout';
 
 export default function TerminosPage() {
   return (
-    <LegalLayout title="Términos y Condiciones" lastUpdated="22 de septiembre de 2026">
+    <LegalLayout title="Términos y Condiciones" lastUpdated="24 de septiembre de 2026">
       <Section heading="1. Aceptación de los términos">
         <p>
           Al crear una cuenta o usar Momentum CV ("Momentum", "el servicio"), aceptas estos Términos y
@@ -44,14 +44,14 @@ export default function TerminosPage() {
 
       <Section heading="5. Planes y pagos">
         <p><strong>Plan Inicio:</strong> crear un CV es gratuito. Descargarlo tiene un costo fijo por CV
-          (mostrado en la app antes de pagar), procesado en criptomonedas (USDT) a través de NOWPayments.
-          Mientras tengas un CV sin pagar, no podrás generar uno nuevo — debes descargar (pagar) el
-          anterior o eliminarlo primero.
+          (mostrado en la app antes de pagar), que puedes pagar en criptomonedas (USDT) a través de una
+          pasarela de pago externa. Mientras tengas un CV sin pagar, no podrás generar uno nuevo — debes
+          descargar (pagar) el anterior o eliminarlo primero.
         </p>
         <p><strong>Plan Pro:</strong> suscripción mensual o anual que elimina ese límite y agrega
-          beneficios adicionales (ver la página de planes), procesada a través de PayPal Subscriptions.
-          Puedes cancelar tu suscripción en cualquier momento desde tu cuenta; la cancelación aplica de
-          inmediato y no se prorratea el tiempo restante ya pagado.
+          beneficios adicionales (ver la página de planes), procesada a través de una pasarela de pago
+          externa. Puedes cancelar tu suscripción en cualquier momento desde tu cuenta; la cancelación
+          aplica de inmediato y no se prorratea el tiempo restante ya pagado.
         </p>
         <p>
           Los precios pueden cambiar; te avisaremos con anticipación razonable si afecta una suscripción activa.

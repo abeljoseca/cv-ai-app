@@ -2,7 +2,7 @@ import LegalLayout, { Section } from '@/components/LegalLayout';
 
 export default function CookiesPage() {
   return (
-    <LegalLayout title="Política de Cookies" lastUpdated="22 de septiembre de 2026">
+    <LegalLayout title="Política de Cookies" lastUpdated="24 de septiembre de 2026">
       <Section heading="1. Qué son las cookies">
         <p>
           Las cookies son pequeños archivos que un sitio web guarda en tu navegador para recordar
@@ -13,7 +13,7 @@ export default function CookiesPage() {
       <Section heading="2. Cookies que utilizamos">
         <ul className="list-disc pl-5 space-y-1">
           <li>
-            <strong>Cookies de sesión de autenticación</strong> (gestionadas por Supabase) — te mantienen
+            <strong>Cookies de sesión de autenticación</strong> — te mantienen
             conectado a tu cuenta mientras navegas Momentum. Son estrictamente necesarias: sin ellas no
             podrías iniciar sesión.
           </li>
@@ -29,9 +29,10 @@ export default function CookiesPage() {
 
       <Section heading="3. Cookies de terceros">
         <p>
-          Cloudflare Turnstile (nuestro verificador anti-bots en los formularios de acceso) y, si inicias
+          Nuestro verificador automatizado anti-bots en los formularios de acceso y, si inicias
           sesión con Google o LinkedIn, esos proveedores pueden establecer sus propias cookies conforme a
-          sus propias políticas durante el proceso de autenticación. Momentum no controla esas cookies.
+          sus propias políticas durante el proceso de verificación o autenticación. Momentum no controla
+          esas cookies.
         </p>
       </Section>
 
