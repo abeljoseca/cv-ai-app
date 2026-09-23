@@ -1,4 +1,4 @@
-import LegalLayout, { Section, PlaceholderSection } from '@/components/LegalLayout';
+import LegalLayout, { Section } from '@/components/LegalLayout';
 
 export default function CookiesPage() {
   return (
@@ -49,7 +49,12 @@ export default function CookiesPage() {
         </p>
       </Section>
 
-      <PlaceholderSection heading="6. Contacto" />
+      <Section heading="6. Contacto">
+        <p>
+          Si tienes preguntas sobre esta política de cookies, escríbenos a
+          <a href="mailto:contact@momentumcv.com" className="underline"> contact@momentumcv.com</a>.
+        </p>
+      </Section>
     </LegalLayout>
   );
 }

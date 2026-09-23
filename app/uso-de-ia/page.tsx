@@ -1,4 +1,4 @@
-import LegalLayout, { Section, PlaceholderSection } from '@/components/LegalLayout';
+import LegalLayout, { Section } from '@/components/LegalLayout';
 
 export default function UsoDeIAPage() {
   return (
@@ -58,7 +58,12 @@ export default function UsoDeIAPage() {
         </p>
       </Section>
 
-      <PlaceholderSection heading="7. Contacto" />
+      <Section heading="7. Contacto">
+        <p>
+          Si tienes preguntas sobre cómo usamos la IA, escríbenos a
+          <a href="mailto:contact@momentumcv.com" className="underline"> contact@momentumcv.com</a>.
+        </p>
+      </Section>
     </LegalLayout>
   );
 }

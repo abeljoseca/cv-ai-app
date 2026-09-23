@@ -697,10 +697,16 @@ function Footer() {
     { label: 'Iniciar sesión', href: '/login' },
     { label: 'Crear cuenta', href: '/register' },
   ];
+  const legal = [
+    { label: 'Privacidad', href: '/privacidad' },
+    { label: 'Términos y condiciones', href: '/terminos' },
+    { label: 'Cookies', href: '/cookies' },
+    { label: 'Uso de IA', href: '/uso-de-ia' },
+  ];
   return (
     <footer className="mt-8" style={{ borderTop: '1px solid var(--line)', background: 'var(--surface)' }}>
       <Section className="py-14">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10 mb-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           <div className="lg:col-span-1">
             <img src="/momentum-logo.svg" alt="Momentum" style={{ height: 24, marginBottom: 14 }} />
             <p className="text-sm leading-relaxed max-w-xs" style={{ color: 'var(--mute)' }}>
@@ -709,6 +715,7 @@ function Footer() {
           </div>
           <FooterCol title="Producto" links={producto} />
           <FooterCol title="Cuenta" links={empresa} />
+          <FooterCol title="Legal" links={legal} />
         </div>
         <div className="pt-6 text-xs" style={{ borderTop: '1px solid var(--line-soft)', color: 'var(--mute)' }}>
           © {new Date().getFullYear()} Momentum CV. Todos los derechos reservados.

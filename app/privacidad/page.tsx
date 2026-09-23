@@ -79,9 +79,9 @@ export default function PrivacidadPage() {
         <p>
           Conservamos tu información mientras tu cuenta esté activa. Puedes solicitar la eliminación de
           tu cuenta y de tu información personal en cualquier momento escribiendo a
-          [PENDIENTE — correo de contacto de privacidad]. Algunos registros (por ejemplo, historial de
-          pagos) pueden conservarse por el tiempo que exija la ley aplicable, incluso después de eliminar
-          tu cuenta.
+          <a href="mailto:contact@momentumcv.com" className="underline">contact@momentumcv.com</a>.
+          Algunos registros (por ejemplo, historial de pagos) pueden conservarse por el tiempo que exija
+          la ley aplicable, incluso después de eliminar tu cuenta.
         </p>
       </Section>
 
@@ -93,7 +93,7 @@ export default function PrivacidadPage() {
           <li>Solicitar la eliminación de tu cuenta e información.</li>
           <li>Solicitar una copia de tu información en un formato portátil.</li>
         </ul>
-        <p>Para ejercer cualquiera de estos derechos, escríbenos a [PENDIENTE — correo de contacto de privacidad].</p>
+        <p>Para ejercer cualquiera de estos derechos, escríbenos a <a href="mailto:contact@momentumcv.com" className="underline">contact@momentumcv.com</a>.</p>
       </Section>
 
       <Section heading="8. Cookies y tecnologías similares">
@@ -116,8 +116,11 @@ export default function PrivacidadPage() {
 
       <Section heading="10. Menores de edad">
         <p>
-          Momentum no está dirigido a menores de [PENDIENTE — edad mínima según jurisdicción, típicamente
-          13 o 16 años]. No recopilamos intencionalmente información de menores por debajo de esa edad.
+          Momentum no está dirigido a menores de 18 años y no está diseñado para su uso por parte de
+          ellos. No recopilamos intencionalmente información de menores de 18 años; si tienes motivos
+          para creer que un menor nos ha proporcionado información personal, contáctanos a
+          <a href="mailto:contact@momentumcv.com" className="underline"> contact@momentumcv.com</a> para
+          que la eliminemos.
         </p>
       </Section>
 
@@ -128,7 +131,14 @@ export default function PrivacidadPage() {
         </p>
       </Section>
 
-      <PlaceholderSection heading="12. Contacto y datos legales de la empresa" />
+      <Section heading="12. Contacto">
+        <p>
+          Para cualquier pregunta sobre esta política o sobre tu información, escríbenos a
+          <a href="mailto:contact@momentumcv.com" className="underline"> contact@momentumcv.com</a>.
+        </p>
+      </Section>
+
+      <PlaceholderSection heading="13. Datos legales de la empresa (razón social, dirección, jurisdicción)" />
     </LegalLayout>
   );
 }
