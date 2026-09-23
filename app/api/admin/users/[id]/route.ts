@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PATCH(
@@ -44,14 +45,16 @@ export async function PATCH(
       }
     }
 
+    const admin = createAdminClient();
+
     // Capturar estado actual para el log de auditoría
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await admin
       .from('profiles')
       .select('plan, is_admin, is_editor')
       .eq('id', id)
       .single();
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from('profiles')
       .update(updates)
       .eq('id', id)
