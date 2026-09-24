@@ -1,20 +1,24 @@
 import type { Metadata } from 'next';
-import { Inter_Tight } from 'next/font/google';
+import { Plus_Jakarta_Sans, Source_Serif_4 } from 'next/font/google';
 import LandingBeta from './LandingBeta';
 import './landing-beta.css';
 
-/* Display face for headlines only — same family DNA as Inter (the brand
-   text face), but drawn for large sizes, so headings get tighter, more
-   editorial shapes without leaving the Momentum identity. */
-const display = Inter_Tight({
+const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['500', '600', '700', '800'],
-  variable: '--lb-font-display',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--lb-font-sans',
+  display: 'swap',
+});
+
+const serif = Source_Serif_4({
+  subsets: ['latin'],
+  weight: ['600'],
+  variable: '--lb-font-serif',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Momentum — Crea tu CV con IA',
+  title: 'Momentum CV — Tu carrera evoluciona. Tu CV también.',
   description: 'Crea un CV profesional en minutos con la ayuda de inteligencia artificial',
   // Preview route for the landing redesign: keep it out of search results so
   // it never competes with the real home page.
@@ -23,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function LandingBetaPage() {
   return (
-    <div className={display.variable}>
+    <div className={`${sans.variable} ${serif.variable}`}>
       <LandingBeta />
     </div>
   );
