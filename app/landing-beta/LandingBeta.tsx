@@ -65,9 +65,9 @@ export default function LandingBeta() {
       {/* NAV */}
       <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #EDF1F7' }}>
         <div className="lb-wrap" style={{ height: 76, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <a href="#top" aria-label="Momentum CV, inicio" style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#00123A' }}>
-            <svg width="32" height="32" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#4A67FF" /><path d="M7 17.5 L11.2 13.2 L14.2 15.6 L19 9" fill="none" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em' }}>Momentum CV</span>
+          <a href="#top" aria-label="Momentum CV, inicio" style={{ display: 'flex', alignItems: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/momentum-logo.svg" alt="Momentum CV" style={{ height: 26 }} />
           </a>
           <nav className="lb-hide-m" aria-label="Principal" style={{ display: 'flex', alignItems: 'center', gap: 34 }}>
             <a className="lb-navlink" href="#como-funciona">Cómo funciona</a>
@@ -843,9 +843,10 @@ export default function LandingBeta() {
         <div className="lb-wrap">
           <div className="lb-g-foot" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) repeat(4, minmax(0, 1fr))', gap: 40 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 320 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <svg width="30" height="30" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#FFFFFF" /><path d="M7 17.5 L11.2 13.2 L14.2 15.6 L19 9" fill="none" stroke="#00123A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                <span style={{ fontSize: 19, fontWeight: 800, color: '#FFFFFF' }}>Momentum CV</span>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                {/* No hay una variante clara del logo oficial — se invierte a blanco con filtro CSS para el fondo oscuro del footer. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/momentum-logo.svg" alt="Momentum CV" style={{ height: 22, filter: 'brightness(0) invert(1)' }} />
               </div>
               <p style={{ fontSize: 15, lineHeight: 1.65, color: '#94A3B8' }}>Momentum CV te ayuda a transformar tu experiencia real en CVs claros, profesionales y listos para nuevas oportunidades.</p>
             </div>
