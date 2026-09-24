@@ -87,7 +87,6 @@ export default function LandingBeta() {
         <div className="lb-wrap">
           <div className="lb-g-2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.05fr)', gap: 56, alignItems: 'center' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-              <span className="lb-badge" style={{ alignSelf: 'flex-start' }}>Tu carrera evoluciona. Tu CV también.</span>
               <h1 className="lb-h1">Tu experiencia cambia. <span style={{ color: '#4A67FF' }}>Tu CV también debería hacerlo.</span></h1>
               <p className="lb-lead" style={{ maxWidth: 540 }}>Crea CVs profesionales, adaptados a cada vacante y basados únicamente en tu experiencia real. Guarda tu información una sola vez y deja que Momentum la transforme en el CV que necesitas, cuando lo necesites.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -628,7 +627,7 @@ export default function LandingBeta() {
                   <td style={{ padding: '18px 16px 18px 0', fontWeight: 700, color: '#0B1B36' }}>CV Studio</td>
                   <td style={{ padding: '18px 16px' }}>Roles visuales, creativos o flexibles</td>
                   <td style={{ padding: '18px 16px' }}>Diseño, personalidad visual y presentación premium</td>
-                  <td style={{ padding: '18px 0 18px 16px' }}><span className="lb-chip" style={{ background: '#FFF4DE', color: '#B45309' }}>Variable según la plantilla</span></td>
+                  <td style={{ padding: '18px 0 18px 16px' }}><span className="lb-chip" style={{ background: '#FFF4DE', color: '#B45309' }}>Variable</span></td>
                 </tr>
               </tbody>
             </table>
@@ -647,11 +646,9 @@ export default function LandingBeta() {
 
           <div className="lb-g-2" style={{ marginTop: 52, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 56, alignItems: 'center', maxWidth: 1040, marginLeft: 'auto', marginRight: 'auto' }}>
             <p style={{ fontSize: 17, lineHeight: 1.75, color: '#A9B4CF' }}>Muchas empresas utilizan sistemas de seguimiento de candidatos, conocidos como ATS, para organizar y revisar aplicaciones. Estos sistemas suelen analizar la estructura del documento, los encabezados, el contenido y la relación entre el CV y los requisitos del cargo.</p>
-            <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
-              <span style={{ width: 48, height: 48, borderRadius: 12, background: '#4A67FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true"><path d="M5 18 L10.5 12.5 L14.2 15.4 L21 8" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </span>
-              <p style={{ fontSize: 22, lineHeight: 1.45, letterSpacing: '-0.015em', fontWeight: 600, color: '#FFFFFF' }}>En Momentum creemos que la inteligencia artificial debe ayudarte a comunicar mejor tu trayectoria, no a inventar una que no existe.</p>
+            <div style={{ display: 'flex', gap: 22, alignItems: 'stretch' }}>
+              <span style={{ width: 3, borderRadius: 2, background: '#4A67FF', flexShrink: 0 }} />
+              <p style={{ fontSize: 22, lineHeight: 1.45, letterSpacing: '-0.015em', fontWeight: 600, color: '#FFFFFF', fontStyle: 'italic' }}>En Momentum creemos que la inteligencia artificial debe ayudarte a comunicar mejor tu trayectoria, no a inventar una que no existe.</p>
             </div>
           </div>
 
