@@ -29,6 +29,26 @@ export default function InspiracioGalleryPage() {
     setIsCreating(true)
     setCreateError(null)
     try {
+      // Chequeo previo para no depender del texto crudo del error de RLS —
+      // CV Studio inserta directo desde el cliente, así que estas reglas se
+      // aplican también a nivel de política, pero acá damos el mensaje
+      // correcto en vez de dejar pasar "new row violates row-level security policy".
+      const supabaseCheck = createClient()
+      const [{ data: tieneCvSinPagar }, { data: sinCreditos }] = await Promise.all([
+        supabaseCheck.rpc('user_has_unpaid_cv', { p_user_id: userId }),
+        supabaseCheck.rpc('user_free_generations_exhausted', { p_user_id: userId }),
+      ])
+      if (tieneCvSinPagar) {
+        setCreateError('Ya tienes un CV sin pagar. Complétalo para poder crear uno nuevo.')
+        setIsCreating(false)
+        return
+      }
+      if (sinCreditos) {
+        setCreateError('Ya alcanzaste el límite de CVs gratis. Hazte Pro para continuar creando CVs y encuentra ese trabajo deseado.')
+        setIsCreating(false)
+        return
+      }
+
       let initialState: CanvasState
 
       // Try TypeScript templates first (legacy), then Supabase

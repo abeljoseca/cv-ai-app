@@ -45,8 +45,9 @@ export default function TerminosPage() {
       <Section heading="5. Planes y pagos">
         <p><strong>Plan Inicio:</strong> crear un CV es gratuito. Descargarlo tiene un costo fijo por CV
           (mostrado en la app antes de pagar), que puedes pagar en criptomonedas (USDT) a través de una
-          pasarela de pago externa. Mientras tengas un CV sin pagar, no podrás generar uno nuevo — debes
-          descargar (pagar) el anterior o eliminarlo primero.
+          pasarela de pago externa. El Plan Inicio tiene un número limitado de CVs que puedes generar sin
+          pagar; una vez alcanzado ese límite, debes descargar (pagar) tus CVs pendientes o mejorar a Plan
+          Pro para seguir creando.
         </p>
         <p><strong>Plan Pro:</strong> suscripción mensual o anual que elimina ese límite y agrega
           beneficios adicionales (ver la página de planes), procesada a través de una pasarela de pago

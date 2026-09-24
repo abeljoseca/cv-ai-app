@@ -32,6 +32,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Límite de generaciones gratis de por vida para quien nunca ha pagado —
+    // se deriva de un log de solo-inserción que no se reduce al borrar un CV,
+    // así que no se puede evadir borrando y regenerando. Ver
+    // scripts/migration-limite-generaciones-gratis.sql y handoff.md.
+    const { data: sinCreditos } = await supabase.rpc('user_free_generations_exhausted', { p_user_id: user.id })
+    if (sinCreditos) {
+      return NextResponse.json(
+        { error: 'Ya alcanzaste el límite de CVs gratis. Hazte Pro para continuar creando CVs y encuentra ese trabajo deseado.' },
+        { status: 403 }
+      )
+    }
+
     const { mode, estilo, descripcion_vacante } = await request.json()
 
     if (!mode || !estilo) {

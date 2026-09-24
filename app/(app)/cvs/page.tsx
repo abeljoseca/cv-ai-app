@@ -89,7 +89,16 @@ export default function MisCVsPage() {
     if (!confirm('¿Eliminar este CV? Esta acción no se puede deshacer.')) return;
     setDeletingId(cvId);
     try {
-      await supabase.from('cvs').delete().eq('id', cvId);
+      // .select() es necesario para saber si el borrado realmente afectó una
+      // fila — si la política RLS lo bloquea (límite de generaciones gratis
+      // agotado), Postgrest no devuelve error, solo 0 filas, y sin esto la UI
+      // mentiría mostrando el CV como eliminado aunque siga en la base.
+      const { data, error } = await supabase.from('cvs').delete().eq('id', cvId).select('id');
+      if (error) { alert('No se pudo eliminar el CV. Intenta de nuevo.'); return; }
+      if (!data || data.length === 0) {
+        alert('Ya alcanzaste el límite de CVs gratis. Hazte Pro para continuar creando CVs y encuentra ese trabajo deseado, o paga este CV para descargarlo.');
+        return;
+      }
       setCvs(prev => prev.filter(c => c.id !== cvId));
     } finally { setDeletingId(null); }
   }
@@ -98,7 +107,12 @@ export default function MisCVsPage() {
     if (!confirm('¿Eliminar este CV canvas? Esta acción no se puede deshacer.')) return;
     setDeletingCanvasId(id);
     try {
-      await supabase.from('cvs_inspiracion').delete().eq('id', id);
+      const { data, error } = await supabase.from('cvs_inspiracion').delete().eq('id', id).select('id');
+      if (error) { alert('No se pudo eliminar el CV. Intenta de nuevo.'); return; }
+      if (!data || data.length === 0) {
+        alert('Ya alcanzaste el límite de CVs gratis. Hazte Pro para continuar creando CVs y encuentra ese trabajo deseado, o paga este CV para descargarlo.');
+        return;
+      }
       setCanvasCvs(prev => prev.filter(c => c.id !== id));
     } finally { setDeletingCanvasId(null); }
   }
