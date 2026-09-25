@@ -32,9 +32,13 @@ export function sourcesLanguage(sources: EuropassAISources): string {
   ].filter(Boolean).join(' '))
 }
 
-export async function requestEuropassWriting(anthropic: Anthropic, sources: EuropassAISources): Promise<EuropassRawWriting> {
+export async function requestEuropassWriting(
+  anthropic: Anthropic,
+  sources: EuropassAISources,
+  model: string = EUROPASS_WRITER_MODEL,
+): Promise<EuropassRawWriting & { usage: Anthropic.Usage }> {
   const response = await anthropic.messages.parse({
-    model: EUROPASS_WRITER_MODEL,
+    model,
     max_tokens: 16000,
     system: [{ type: 'text', text: EUROPASS_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: buildEuropassUserMessage(sources, sourcesLanguage(sources)) }],
@@ -44,7 +48,7 @@ export async function requestEuropassWriting(anthropic: Anthropic, sources: Euro
   if (response.stop_reason !== 'end_turn' || !response.parsed_output) {
     throw new EuropassWritingError(`Europass writing failed (stop_reason: ${response.stop_reason})`)
   }
-  return response.parsed_output as EuropassRawWriting
+  return { ...(response.parsed_output as EuropassRawWriting), usage: response.usage }
 }
 
 // Structural guarantees on the model output — pure, tested:

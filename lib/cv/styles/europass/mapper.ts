@@ -94,20 +94,32 @@ function jobPeriod(e: Experiencia): string | null {
   return start || end ? `${start ?? '—'} – ${end ?? '—'}` : null
 }
 
-// Whole years between the earliest start and the latest end (today for current jobs).
-// Computed by code so the AI quotes a number instead of calculating one.
+// Years of experience = the months actually worked, summed (overlapping jobs counted once).
+// NOT the span from the first job to today: career gaps would inflate the figure.
+// Jobs without a start, without an end (and not current), or with an end before the start
+// are left out rather than guessed. Computed by code so the AI quotes a number instead of
+// calculating one.
 function yearsOfExperienceFact(exps: Experiencia[], now = new Date()): EuropassAISources['hechos'] {
   const toMonths = (v: string | null) => {
     const m = v?.match(/^(\d{4})(?:-(\d{2}))?$/)
     return m ? +m[1] * 12 + (m[2] ? +m[2] - 1 : 0) : null
   }
-  const starts = exps.map(e => toMonths(e.fecha_inicio)).filter((x): x is number => x !== null)
   const nowMonths = now.getFullYear() * 12 + now.getMonth()
-  const ends = exps.map(e => (e.activo ? nowMonths : toMonths(e.fecha_fin))).filter((x): x is number => x !== null)
-  if (starts.length === 0 || ends.length === 0) return []
-  const years = Math.floor((Math.max(...ends) - Math.min(...starts)) / 12)
+  const ranges = exps.flatMap(e => {
+    const a = toMonths(e.fecha_inicio)
+    const b = e.activo ? nowMonths : toMonths(e.fecha_fin)
+    return a !== null && b !== null && b >= a ? [[a, b] as [number, number]] : []
+  }).sort((x, y) => x[0] - y[0])
+  let months = 0
+  let cur: [number, number] | null = null
+  for (const r of ranges) {
+    if (cur && r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1])
+    else { if (cur) months += cur[1] - cur[0]; cur = [r[0], r[1]] }
+  }
+  if (cur) months += cur[1] - cur[0]
+  const years = Math.floor(months / 12)
   return years >= 1
-    ? [{ ref: 'calc:anios_experiencia', texto: `Años de experiencia profesional (calculado de las fechas del perfil): ${years}` }]
+    ? [{ ref: 'calc:anios_experiencia', texto: `Años de experiencia profesional (suma de los periodos trabajados según el perfil): ${years}` }]
     : []
 }
 

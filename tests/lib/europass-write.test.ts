@@ -90,17 +90,28 @@ describe('Europass prompt', () => {
 })
 
 describe('computed facts for the AI', () => {
-  it('computes whole years of experience and formatted job periods', () => {
-    const { aiSources } = mapEuropassObjective({
-      profile: { id: 'u', nombre: 'Ana', apellido: 'Ruiz' } as unknown as Profile,
-      experiencias: [
-        { id: 'e1', user_id: 'u', created_at: '', empresa: 'Acme', cargo: 'Analista', fecha_inicio: '2015-03', fecha_fin: '2020-06', activo: false, descripcion: null },
-        { id: 'e2', user_id: 'u', created_at: '', empresa: 'Globex', cargo: 'Jefa', fecha_inicio: '2020-07', fecha_fin: null, activo: true, descripcion: null },
-      ],
-      educaciones: [], idiomas: [], logros: [], habilidades: [], certificaciones: [],
-    })
-    const years = Math.floor(((new Date().getFullYear() * 12 + new Date().getMonth()) - (2015 * 12 + 2)) / 12)
-    expect(aiSources.hechos).toEqual([{ ref: 'calc:anios_experiencia', texto: `Años de experiencia profesional (calculado de las fechas del perfil): ${years}` }])
-    expect(aiSources.experiencias.find(e => e.ref === 'exp:e2')!.periodo).toBe('07/2020 – actualidad')
+  const src = (experiencias: object[]) => mapEuropassObjective({
+    profile: { id: 'u', nombre: 'Ana', apellido: 'Ruiz' } as unknown as Profile,
+    experiencias: experiencias.map((e, i) => ({ id: 'e' + i, user_id: 'u', created_at: '', empresa: 'X' + i, cargo: 'C', descripcion: null, activo: false, fecha_fin: null, ...e })) as never,
+    educaciones: [], idiomas: [], logros: [], habilidades: [], certificaciones: [],
+  }).aiSources
+
+  it('sums the months actually worked — career gaps do not count', () => {
+    // 5 + 26 + 59 months = 90 months = 7 years (the span 2009→2020 would say 11)
+    const a = src([
+      { fecha_inicio: '2009-08', fecha_fin: '2010-01' },
+      { fecha_inicio: '2013-03', fecha_fin: '2015-05' },
+      { fecha_inicio: '2016-01', fecha_fin: '2020-12' },
+      { fecha_inicio: '2019-01', fecha_fin: '2020-06' }, // overlapping: counted once
+      { fecha_inicio: '2024-03', fecha_fin: '2015-05' }, // impossible: ignored
+      { fecha_inicio: '2021-01', fecha_fin: null },      // no end, not current: ignored
+    ])
+    expect(a.hechos).toEqual([{ ref: 'calc:anios_experiencia', texto: 'Años de experiencia profesional (suma de los periodos trabajados según el perfil): 7' }])
+  })
+
+  it('gives no figure under one year and formats job periods', () => {
+    const a = src([{ fecha_inicio: '2020-07', fecha_fin: '2021-02' }])
+    expect(a.hechos).toEqual([])
+    expect(a.experiencias[0].periodo).toBe('07/2020 – 02/2021')
   })
 })
