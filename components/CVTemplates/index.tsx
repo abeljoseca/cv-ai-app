@@ -6,6 +6,7 @@ import TechCV from './TechCV'
 import MinimalistCV from './MinimalistCV'
 import EuropassCV from './EuropassCV'
 import ExecutiveCV from './ExecutiveCV'
+import { cvFontVariables } from './fonts'
 
 export type { CVContent }
 
@@ -30,7 +31,12 @@ export const styleAccentColors: Record<string, string[]> = {
   'executive':     ['#1F3A5F', '#8B0000', '#1A1A1A'],
 }
 
-export default function CVRenderer({ estilo, data, isEditMode, onFieldChange, accentColor }: CVRendererProps) {
+export default function CVRenderer(props: CVRendererProps) {
+  // Font CSS variables must wrap every template (see ./fonts.ts)
+  return <div className={cvFontVariables}><StyleTemplate {...props} /></div>
+}
+
+function StyleTemplate({ estilo, data, isEditMode, onFieldChange, accentColor }: CVRendererProps) {
   const editProps: CVEditProps = { isEditMode, onFieldChange, accentColor }
 
   switch (estilo) {

@@ -3,6 +3,7 @@ import { CVEditProps, CVContent } from './index'
 import { formatPhone } from '@/lib/format-phone'
 import { shouldShowArea } from '@/lib/format-education'
 import SkillsBlock from './SkillsBlock'
+import { CV_FONT } from './fonts'
 
 interface HarvardCVProps extends CVEditProps {
   data: CVContent
@@ -25,7 +26,7 @@ export default function HarvardCV({ data, isEditMode = false, onFieldChange, acc
   return (
     <div
       className="max-w-4xl mx-auto bg-white text-gray-900"
-      style={{ fontFamily: 'Georgia, "Times New Roman", serif', padding: '48px 56px', fontSize: '11pt', lineHeight: 1.5 }}
+      style={{ fontFamily: CV_FONT.gelasio, padding: '48px 56px', fontSize: '11pt', lineHeight: 1.5 }}
     >
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: `1.5px solid ${accent}`, paddingBottom: '16px' }}>

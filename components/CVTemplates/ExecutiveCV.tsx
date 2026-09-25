@@ -1,6 +1,7 @@
 import EditableField from './EditableField'
 import { CVEditProps, CVContent } from './index'
 import { formatPhone } from '@/lib/format-phone'
+import { CV_FONT } from './fonts'
 
 interface ExecutiveCVProps extends CVEditProps {
   data: CVContent
@@ -22,7 +23,7 @@ export default function ExecutiveCV({ data, isEditMode = false, onFieldChange, a
   )
 
   return (
-    <div className="max-w-5xl mx-auto bg-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+    <div className="max-w-5xl mx-auto bg-white" style={{ fontFamily: CV_FONT.gelasio }}>
       <div style={{ display: 'flex' }}>
 
         {/* Sidebar */}

@@ -2,6 +2,7 @@ import EditableField from './EditableField'
 import { CVEditProps, CVContent } from './index'
 import { formatPhone } from '@/lib/format-phone'
 import { shouldShowArea } from '@/lib/format-education'
+import { CV_FONT } from './fonts'
 
 interface TechCVProps extends CVEditProps {
   data: CVContent
@@ -30,7 +31,7 @@ export default function TechCV({ data, isEditMode = false, onFieldChange, accent
   return (
     <div
       className="max-w-4xl mx-auto bg-white"
-      style={{ fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif', padding: '40px 48px', fontSize: '10.5pt', lineHeight: 1.55, color: '#111827' }}
+      style={{ fontFamily: CV_FONT.inter, padding: '40px 48px', fontSize: '10.5pt', lineHeight: 1.55, color: '#111827' }}
     >
       {/* Header */}
       <div style={{ borderBottom: `2px solid ${accent}`, paddingBottom: '16px', marginBottom: '22px' }}>

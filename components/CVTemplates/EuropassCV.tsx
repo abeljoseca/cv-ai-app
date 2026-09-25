@@ -3,6 +3,7 @@ import { CVEditProps, CVContent } from './index'
 import { formatPhone } from '@/lib/format-phone'
 import { shouldShowArea } from '@/lib/format-education'
 import SkillsBlock from './SkillsBlock'
+import { CV_FONT } from './fonts'
 
 interface EuropassCVProps extends CVEditProps {
   data: CVContent
@@ -34,7 +35,7 @@ export default function EuropassCV({ data, isEditMode = false, onFieldChange, ac
   return (
     <div
       className="max-w-4xl mx-auto bg-white"
-      style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif', fontSize: '10.5pt', lineHeight: 1.5, color: '#1A1A1A' }}
+      style={{ fontFamily: CV_FONT.carlito, fontSize: '10.5pt', lineHeight: 1.5, color: '#1A1A1A' }}
     >
       {/* EU Header Banner */}
       <div style={{ backgroundColor: accent, padding: '16px 24px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

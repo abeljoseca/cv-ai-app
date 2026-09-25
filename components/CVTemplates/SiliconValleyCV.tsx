@@ -2,6 +2,7 @@ import EditableField from './EditableField'
 import { CVEditProps, CVContent } from './index'
 import { formatPhone } from '@/lib/format-phone'
 import { shouldShowArea } from '@/lib/format-education'
+import { CV_FONT } from './fonts'
 
 interface SiliconValleyCVProps extends CVEditProps {
   data: CVContent
@@ -29,7 +30,7 @@ export default function SiliconValleyCV({ data, isEditMode = false, onFieldChang
   return (
     <div
       className="max-w-4xl mx-auto bg-white"
-      style={{ fontFamily: 'Inter, "Helvetica Neue", sans-serif', padding: '44px 52px', fontSize: '10.5pt', lineHeight: 1.55, color: '#0A0A0A' }}
+      style={{ fontFamily: CV_FONT.inter, padding: '44px 52px', fontSize: '10.5pt', lineHeight: 1.55, color: '#0A0A0A' }}
     >
       {/* Header */}
       <div style={{ marginBottom: '22px' }}>

@@ -2,6 +2,7 @@ import EditableField from './EditableField'
 import { CVEditProps, CVContent } from './index'
 import { formatPhone } from '@/lib/format-phone'
 import SkillsBlock from './SkillsBlock'
+import { CV_FONT } from './fonts'
 
 interface MinimalistCVProps extends CVEditProps {
   data: CVContent
@@ -30,7 +31,7 @@ export default function MinimalistCV({ data, isEditMode = false, onFieldChange, 
   return (
     <div
       className="max-w-3xl mx-auto bg-white"
-      style={{ fontFamily: '"Helvetica Neue", "Arial", sans-serif', padding: '60px 64px', fontSize: '10.5pt', lineHeight: 1.65, color: '#1A1A1A' }}
+      style={{ fontFamily: CV_FONT.arimo, padding: '60px 64px', fontSize: '10.5pt', lineHeight: 1.65, color: '#1A1A1A' }}
     >
       {/* Header — large, light-weight name */}
       <div style={{ marginBottom: '32px' }}>
