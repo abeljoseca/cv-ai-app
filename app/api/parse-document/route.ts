@@ -142,68 +142,87 @@ export async function POST(request: NextRequest) {
     // Save to database using admin client (bypasses RLS)
     const admin = createAdminClient();
 
+    // Re-uploading a document must not duplicate entries already in the profile.
+    const norm = (v: unknown) => (typeof v === 'string' ? v.toLowerCase().trim() : '');
+    const [{ data: exExp }, { data: exEdu }, { data: exHab }, { data: exIdi }, { data: exLog }] = await Promise.all([
+      admin.from('experiencia').select('empresa, cargo').eq('user_id', user.id),
+      admin.from('educacion').select('institucion, titulo').eq('user_id', user.id),
+      admin.from('habilidades').select('nombre').eq('user_id', user.id),
+      admin.from('idiomas').select('nombre').eq('user_id', user.id),
+      admin.from('logros').select('descripcion').eq('user_id', user.id),
+    ]);
+    const expKeys = new Set((exExp ?? []).map(e => `${norm(e.empresa)}|${norm(e.cargo)}`));
+    const eduKeys = new Set((exEdu ?? []).map(e => `${norm(e.institucion)}|${norm(e.titulo)}`));
+    const habKeys = new Set((exHab ?? []).map(h => norm(h.nombre)));
+    const idiKeys = new Set((exIdi ?? []).map(i => norm(i.nombre)));
+    const logKeys = new Set((exLog ?? []).map(l => norm(l.descripcion)));
+
     if (parsedData.experiencia?.length > 0) {
       for (const exp of parsedData.experiencia) {
-        if (exp.empresa && exp.cargo) {
-          await admin.from('experiencia').insert({
-            user_id: user.id,
-            empresa: exp.empresa,
-            cargo: exp.cargo,
-            fecha_inicio: normalizeProfileDate(exp.fecha_inicio),
-            fecha_fin: isPresentMarker(exp.fecha_fin) ? null : normalizeProfileDate(exp.fecha_fin),
-            activo: isPresentMarker(exp.fecha_fin),
-            descripcion: exp.descripcion || null,
-          });
-        }
+        if (!exp.empresa || !exp.cargo) continue;
+        const key = `${norm(exp.empresa)}|${norm(exp.cargo)}`;
+        if (expKeys.has(key)) continue;
+        expKeys.add(key);
+        await admin.from('experiencia').insert({
+          user_id: user.id,
+          empresa: exp.empresa,
+          cargo: exp.cargo,
+          fecha_inicio: normalizeProfileDate(exp.fecha_inicio),
+          fecha_fin: isPresentMarker(exp.fecha_fin) ? null : normalizeProfileDate(exp.fecha_fin),
+          activo: isPresentMarker(exp.fecha_fin),
+          descripcion: exp.descripcion || null,
+        });
       }
     }
 
     if (parsedData.educacion?.length > 0) {
       for (const edu of parsedData.educacion) {
-        if (edu.institucion && edu.titulo) {
-          await admin.from('educacion').insert({
-            user_id: user.id,
-            institucion: edu.institucion,
-            titulo: edu.titulo,
-            area: edu.area || null,
-            fecha_inicio: normalizeProfileDate(edu.fecha_inicio),
-            fecha_fin: normalizeProfileDate(edu.fecha_fin),
-          });
-        }
+        if (!edu.institucion || !edu.titulo) continue;
+        const key = `${norm(edu.institucion)}|${norm(edu.titulo)}`;
+        if (eduKeys.has(key)) continue;
+        eduKeys.add(key);
+        await admin.from('educacion').insert({
+          user_id: user.id,
+          institucion: edu.institucion,
+          titulo: edu.titulo,
+          area: edu.area || null,
+          fecha_inicio: normalizeProfileDate(edu.fecha_inicio),
+          fecha_fin: normalizeProfileDate(edu.fecha_fin),
+        });
       }
     }
 
     if (parsedData.habilidades?.length > 0) {
       for (const hab of parsedData.habilidades) {
-        if (hab.nombre) {
-          const tipo = hab.tipo === 'tecnica' || hab.tipo === 'blanda' ? hab.tipo : null
-          await admin.from('habilidades').insert({ user_id: user.id, nombre: hab.nombre, tipo })
-        }
+        if (!hab.nombre || habKeys.has(norm(hab.nombre))) continue;
+        habKeys.add(norm(hab.nombre));
+        const tipo = hab.tipo === 'tecnica' || hab.tipo === 'blanda' ? hab.tipo : null
+        await admin.from('habilidades').insert({ user_id: user.id, nombre: hab.nombre, tipo })
       }
     }
 
     if (parsedData.idiomas?.length > 0) {
       for (const idioma of parsedData.idiomas) {
-        if (idioma.nombre) {
-          await admin.from('idiomas').insert({
-            user_id: user.id,
-            nombre: idioma.nombre,
-            nivel: idioma.nivel || null,
-          });
-        }
+        if (!idioma.nombre || idiKeys.has(norm(idioma.nombre))) continue;
+        idiKeys.add(norm(idioma.nombre));
+        await admin.from('idiomas').insert({
+          user_id: user.id,
+          nombre: idioma.nombre,
+          nivel: idioma.nivel || null,
+        });
       }
     }
 
     if (parsedData.logros?.length > 0) {
       const { data: expsForLink } = await admin.from('experiencia').select('id, empresa').eq('user_id', user.id);
       for (const logro of parsedData.logros) {
-        if (logro.descripcion) {
-          await admin.from('logros').insert({
-            user_id: user.id,
-            descripcion: logro.descripcion,
-            experiencia_id: findExperienciaIdByEmpresa(expsForLink ?? [], logro.empresa),
-          });
-        }
+        if (!logro.descripcion || logKeys.has(norm(logro.descripcion))) continue;
+        logKeys.add(norm(logro.descripcion));
+        await admin.from('logros').insert({
+          user_id: user.id,
+          descripcion: logro.descripcion,
+          experiencia_id: findExperienciaIdByEmpresa(expsForLink ?? [], logro.empresa),
+        });
       }
     }
 
