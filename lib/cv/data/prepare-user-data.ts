@@ -1,9 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { CVUserData, CVExperiencia, CVEducacion, CVIdioma } from '../types/user-data'
+import { formatProfileDate } from '@/lib/profile-date'
 
 function normalizeDateEnd(fechaFin: string | null, activo: boolean): string {
   if (activo || !fechaFin || fechaFin.trim() === '') return 'Presente'
-  return fechaFin
+  return formatProfileDate(fechaFin)
 }
 
 export async function prepareUserData(
@@ -30,7 +31,7 @@ export async function prepareUserData(
       .eq('user_id', userId)
       .order('fecha_inicio', { ascending: false }),
     supabase.from('habilidades').select('nombre, tipo').eq('user_id', userId),
-    supabase.from('idiomas').select('nombre, nivel').eq('user_id', userId),
+    supabase.from('idiomas').select('nombre, nivel, nivel_cefr').eq('user_id', userId),
     supabase.from('logros').select('descripcion').eq('user_id', userId),
   ])
 
@@ -43,7 +44,8 @@ export async function prepareUserData(
   const experiencias: CVExperiencia[] = (rawExperiencias || []).map(e => ({
     empresa: e.empresa,
     cargo: e.cargo,
-    fecha_inicio: e.fecha_inicio || '',
+    // Dates reach the AI already in display form (MM/AAAA, or AAAA when the month is unknown)
+    fecha_inicio: formatProfileDate(e.fecha_inicio),
     fecha_fin: normalizeDateEnd(e.fecha_fin, e.activo),
     descripcion: e.descripcion || null,
   }))
@@ -52,13 +54,14 @@ export async function prepareUserData(
     institucion: e.institucion,
     titulo: e.titulo,
     area: e.area || null,
-    fecha_inicio: e.fecha_inicio || null,
-    fecha_fin: e.fecha_fin || null,
+    fecha_inicio: formatProfileDate(e.fecha_inicio) || null,
+    fecha_fin: formatProfileDate(e.fecha_fin) || null,
   }))
 
   const idiomas: CVIdioma[] = (rawIdiomas || []).map(i => ({
     nombre: i.nombre,
-    nivel: i.nivel || null,
+    // CEFR level (confirmed by the user or explicit in the source) wins over the legacy label
+    nivel: i.nivel_cefr || i.nivel || null,
   }))
 
   const habilidades: string[] = (rawHabilidades || []).map(h => h.nombre)

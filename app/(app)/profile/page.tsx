@@ -7,11 +7,23 @@ import { Profile, Experiencia, Educacion, Habilidad, Logro, Idioma, Certificacio
 import { Select } from '@/components/Select';
 import { calcularPuntajeCompletitud } from '@/lib/completitud';
 import { isLikelySoft } from '@/lib/skill-classification';
+import MonthYearField from '@/components/profile/MonthYearField';
+import { formatProfileDate, normalizeProfileDate } from '@/lib/profile-date';
+import { CEFR_HINTS, CEFR_LABELS, CEFR_LEVELS, CefrLevel, normalizeCefr } from '@/lib/cefr';
 
 interface ChatMessage { role: 'ai' | 'user'; text: string; }
 interface ExpForm { empresa: string; cargo: string; fecha_inicio: string; fecha_fin: string; activo: boolean; descripcion: string; }
-interface EduForm { institucion: string; titulo: string; area: string; fecha_fin: string; }
-interface IdiomaForm { nombre: string; nivel: string; }
+interface EduForm { institucion: string; titulo: string; area: string; fecha_inicio: string; fecha_fin: string; }
+interface IdiomaForm { nombre: string; nivel_cefr: string; }
+
+const CEFR_OPTIONS = CEFR_LEVELS.map(l => ({ value: l, label: CEFR_LABELS[l] }));
+
+function dateRange(inicio: string | null, fin: string | null, activo = false): string {
+  const a = formatProfileDate(inicio);
+  const b = activo ? 'Actualidad' : formatProfileDate(fin);
+  if (!a && !b) return '';
+  return `${a || '—'} · ${b || '—'}`;
+}
 interface CertForm { titulo: string; institucion: string; anio_egreso: string; }
 
 export default function PerfilPage() {
@@ -45,12 +57,12 @@ export default function PerfilPage() {
 
   // Section add forms
   const emptyExp: ExpForm = { empresa: '', cargo: '', fecha_inicio: '', fecha_fin: '', activo: false, descripcion: '' };
-  const emptyEdu: EduForm = { institucion: '', titulo: '', area: '', fecha_fin: '' };
+  const emptyEdu: EduForm = { institucion: '', titulo: '', area: '', fecha_inicio: '', fecha_fin: '' };
   const emptyCert: CertForm = { titulo: '', institucion: '', anio_egreso: '' };
   const [newExp, setNewExp] = useState<ExpForm>(emptyExp);
   const [newEdu, setNewEdu] = useState<EduForm>(emptyEdu);
   const [newCert, setNewCert] = useState<CertForm>(emptyCert);
-  const [newIdioma, setNewIdioma] = useState<IdiomaForm>({ nombre: '', nivel: 'Básico' });
+  const [newIdioma, setNewIdioma] = useState<IdiomaForm>({ nombre: '', nivel_cefr: '' });
   const [newLogro, setNewLogro] = useState('');
 
   // Pending deletes per section
@@ -68,7 +80,7 @@ export default function PerfilPage() {
   const [editingCertId, setEditingCertId] = useState<string | null>(null);
   const [editCertForm, setEditCertForm] = useState<CertForm>(emptyCert);
   const [editingIdiomaId, setEditingIdiomaId] = useState<string | null>(null);
-  const [editIdiomaForm, setEditIdiomaForm] = useState<IdiomaForm>({ nombre: '', nivel: 'Básico' });
+  const [editIdiomaForm, setEditIdiomaForm] = useState<IdiomaForm>({ nombre: '', nivel_cefr: '' });
   const [editingLogroId, setEditingLogroId] = useState<string | null>(null);
   const [editLogroText, setEditLogroText] = useState('');
 
@@ -236,8 +248,8 @@ export default function PerfilPage() {
       if (newExp.empresa && newExp.cargo) {
         await supabase.from('experiencia').insert({
           user_id: user.id, empresa: newExp.empresa, cargo: newExp.cargo,
-          fecha_inicio: newExp.fecha_inicio || null,
-          fecha_fin: newExp.activo ? null : (newExp.fecha_fin || null),
+          fecha_inicio: normalizeProfileDate(newExp.fecha_inicio),
+          fecha_fin: newExp.activo ? null : normalizeProfileDate(newExp.fecha_fin),
           activo: newExp.activo, descripcion: newExp.descripcion || null,
         });
         setNewExp(emptyExp);
@@ -252,8 +264,8 @@ export default function PerfilPage() {
     try {
       await supabase.from('experiencia').update({
         empresa: editExpForm.empresa, cargo: editExpForm.cargo,
-        fecha_inicio: editExpForm.fecha_inicio || null,
-        fecha_fin: editExpForm.activo ? null : (editExpForm.fecha_fin || null),
+        fecha_inicio: normalizeProfileDate(editExpForm.fecha_inicio),
+        fecha_fin: editExpForm.activo ? null : normalizeProfileDate(editExpForm.fecha_fin),
         activo: editExpForm.activo, descripcion: editExpForm.descripcion || null,
       }).eq('id', id);
       setEditingExpId(null);
@@ -274,7 +286,9 @@ export default function PerfilPage() {
       if (newEdu.institucion && newEdu.titulo) {
         await supabase.from('educacion').insert({
           user_id: user.id, institucion: newEdu.institucion, titulo: newEdu.titulo,
-          area: newEdu.area || null, fecha_fin: newEdu.fecha_fin || null,
+          area: newEdu.area || null,
+          fecha_inicio: normalizeProfileDate(newEdu.fecha_inicio),
+          fecha_fin: normalizeProfileDate(newEdu.fecha_fin),
         });
         setNewEdu(emptyEdu);
       }
@@ -288,7 +302,9 @@ export default function PerfilPage() {
     try {
       await supabase.from('educacion').update({
         institucion: editEduForm.institucion, titulo: editEduForm.titulo,
-        area: editEduForm.area || null, fecha_fin: editEduForm.fecha_fin || null,
+        area: editEduForm.area || null,
+        fecha_inicio: normalizeProfileDate(editEduForm.fecha_inicio),
+        fecha_fin: normalizeProfileDate(editEduForm.fecha_fin),
       }).eq('id', id);
       setEditingEduId(null);
       await loadProfileData();
@@ -306,8 +322,10 @@ export default function PerfilPage() {
         setPendingIdiomaDeleteIds([]);
       }
       if (newIdioma.nombre) {
-        await supabase.from('idiomas').insert({ user_id: user.id, nombre: newIdioma.nombre, nivel: newIdioma.nivel });
-        setNewIdioma({ nombre: '', nivel: 'Básico' });
+        const nivelCefr = normalizeCefr(newIdioma.nivel_cefr);
+        // The legacy `nivel` label is kept in sync so older readers show the same level.
+        await supabase.from('idiomas').insert({ user_id: user.id, nombre: newIdioma.nombre, nivel_cefr: nivelCefr, nivel: nivelCefr });
+        setNewIdioma({ nombre: '', nivel_cefr: '' });
       }
       await loadProfileData();
     } catch (err) { console.error(err); }
@@ -317,7 +335,13 @@ export default function PerfilPage() {
   async function updateIdioma(id: string) {
     setEditSaving(true);
     try {
-      await supabase.from('idiomas').update({ nombre: editIdiomaForm.nombre, nivel: editIdiomaForm.nivel }).eq('id', id);
+      const nivelCefr = normalizeCefr(editIdiomaForm.nivel_cefr);
+      // Without a chosen level, the legacy label is left untouched (never overwritten with null).
+      await supabase.from('idiomas').update({
+        nombre: editIdiomaForm.nombre,
+        nivel_cefr: nivelCefr,
+        ...(nivelCefr ? { nivel: nivelCefr } : {}),
+      }).eq('id', id);
       setEditingIdiomaId(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
@@ -632,8 +656,8 @@ export default function PerfilPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <EField label="Empresa *" value={editExpForm.empresa} onChange={v => setEditExpForm(p => ({ ...p, empresa: v }))} placeholder="Ej. Google" />
                       <EField label="Cargo *" value={editExpForm.cargo} onChange={v => setEditExpForm(p => ({ ...p, cargo: v }))} placeholder="Ej. Desarrollador Senior" />
-                      <EField label="Fecha inicio" value={editExpForm.fecha_inicio} onChange={v => setEditExpForm(p => ({ ...p, fecha_inicio: v }))} placeholder="Ej. 2021-03" />
-                      <EField label="Fecha fin" value={editExpForm.fecha_fin} onChange={v => setEditExpForm(p => ({ ...p, fecha_fin: v }))} placeholder="Ej. 2023-12" disabled={editExpForm.activo} />
+                      <MonthYearField label="Fecha inicio" value={editExpForm.fecha_inicio} onChange={v => setEditExpForm(p => ({ ...p, fecha_inicio: v }))} />
+                      <MonthYearField label="Fecha fin" value={editExpForm.activo ? '' : editExpForm.fecha_fin} onChange={v => setEditExpForm(p => ({ ...p, fecha_fin: v }))} disabled={editExpForm.activo} />
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
                       <input type="checkbox" checked={editExpForm.activo} onChange={e => setEditExpForm(p => ({ ...p, activo: e.target.checked }))} /> Trabajo actual
@@ -660,7 +684,7 @@ export default function PerfilPage() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                           {(exp.fecha_inicio || exp.fecha_fin) && (
-                            <div style={{ fontSize: 12.5, color: 'var(--mute)' }}>{exp.fecha_inicio || '—'} · {exp.activo ? 'Actualidad' : exp.fecha_fin || '—'}</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--mute)' }}>{dateRange(exp.fecha_inicio, exp.fecha_fin, exp.activo)}</div>
                           )}
                           {editSection === 'experiencia' && (
                             <>
@@ -692,8 +716,8 @@ export default function PerfilPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <EField label="Empresa *" value={newExp.empresa} onChange={v => setNewExp(p => ({ ...p, empresa: v }))} placeholder="Ej. Google" />
                 <EField label="Cargo *" value={newExp.cargo} onChange={v => setNewExp(p => ({ ...p, cargo: v }))} placeholder="Ej. Desarrollador Senior" />
-                <EField label="Fecha inicio" value={newExp.fecha_inicio} onChange={v => setNewExp(p => ({ ...p, fecha_inicio: v }))} placeholder="Ej. 2021-03" />
-                <EField label="Fecha fin" value={newExp.fecha_fin} onChange={v => setNewExp(p => ({ ...p, fecha_fin: v }))} placeholder="Ej. 2023-12" disabled={newExp.activo} />
+                <MonthYearField label="Fecha inicio" value={newExp.fecha_inicio} onChange={v => setNewExp(p => ({ ...p, fecha_inicio: v }))} />
+                <MonthYearField label="Fecha fin" value={newExp.activo ? '' : newExp.fecha_fin} onChange={v => setNewExp(p => ({ ...p, fecha_fin: v }))} disabled={newExp.activo} />
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={newExp.activo} onChange={e => setNewExp(p => ({ ...p, activo: e.target.checked }))} /> Trabajo actual
@@ -720,7 +744,7 @@ export default function PerfilPage() {
                     <EField label="Institución *" value={editEduForm.institucion} onChange={v => setEditEduForm(p => ({ ...p, institucion: v }))} placeholder="Universidad de..." />
                     <EField label="Título *" value={editEduForm.titulo} onChange={v => setEditEduForm(p => ({ ...p, titulo: v }))} placeholder="Ingeniería en..." />
                     <EField label="Área" value={editEduForm.area} onChange={v => setEditEduForm(p => ({ ...p, area: v }))} placeholder="Informática, Administración..." />
-                    <EField label="Año graduación" value={editEduForm.fecha_fin} onChange={v => setEditEduForm(p => ({ ...p, fecha_fin: v }))} placeholder="2020" />
+                    <MonthYearField label="Fecha de graduación" value={editEduForm.fecha_fin} onChange={v => setEditEduForm(p => ({ ...p, fecha_fin: v }))} futureYears={6} />
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateEducacion(edu.id)} disabled={editSaving || !editEduForm.institucion || !editEduForm.titulo}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -734,12 +758,12 @@ export default function PerfilPage() {
                     <div>
                       <div style={{ fontWeight: 600, color: 'var(--deep)', fontSize: 14, textDecoration: marked ? 'line-through' : 'none' }}>{edu.titulo}</div>
                       <div style={{ fontSize: 13, color: 'var(--mute)' }}>{edu.institucion}</div>
-                      {edu.fecha_fin && <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>{edu.fecha_fin}</div>}
+                      {edu.fecha_fin && <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>{formatProfileDate(edu.fecha_fin)}</div>}
                     </div>
                     {editSection === 'educacion' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (
-                          <button onClick={() => { setEditingEduId(edu.id); setEditEduForm({ institucion: edu.institucion || '', titulo: edu.titulo || '', area: edu.area || '', fecha_fin: edu.fecha_fin || '' }); }}
+                          <button onClick={() => { setEditingEduId(edu.id); setEditEduForm({ institucion: edu.institucion || '', titulo: edu.titulo || '', area: edu.area || '', fecha_inicio: edu.fecha_inicio || '', fecha_fin: edu.fecha_fin || '' }); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                             <EditIcon size={13} />
                           </button>
@@ -762,7 +786,7 @@ export default function PerfilPage() {
               <EField label="Institución *" value={newEdu.institucion} onChange={v => setNewEdu(p => ({ ...p, institucion: v }))} placeholder="Universidad de..." />
               <EField label="Título *" value={newEdu.titulo} onChange={v => setNewEdu(p => ({ ...p, titulo: v }))} placeholder="Ingeniería en..." />
               <EField label="Área" value={newEdu.area} onChange={v => setNewEdu(p => ({ ...p, area: v }))} placeholder="Informática, Administración..." />
-              <EField label="Año graduación" value={newEdu.fecha_fin} onChange={v => setNewEdu(p => ({ ...p, fecha_fin: v }))} placeholder="2020" />
+              <MonthYearField label="Fecha de graduación" value={newEdu.fecha_fin} onChange={v => setNewEdu(p => ({ ...p, fecha_fin: v }))} futureYears={6} />
             </div>
           )}
           {educaciones.length === 0 && editSection !== 'educacion' && (
@@ -837,6 +861,11 @@ export default function PerfilPage() {
           isEditing={editSection === 'idiomas'} onEdit={() => toggleEdit('idiomas')}
           onSave={saveIdioma} saving={editSaving}
           saveDisabled={!newIdioma.nombre && pendingIdiomaDeleteIds.length === 0}>
+          {idiomas.some(i => !i.nivel_cefr) && (
+            <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#B45309', lineHeight: 1.45 }}>
+              Actualiza el nivel de tus idiomas a la escala europea (A1–C2): así tus CVs muestran tu nivel real.
+            </p>
+          )}
           {idiomas.map((idioma, i) => {
             const marked = pendingIdiomaDeleteIds.includes(idioma.id);
             return (
@@ -847,12 +876,16 @@ export default function PerfilPage() {
                     <div>
                       <div style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500, marginBottom: 6 }}>Nivel</div>
                       <Select
-                        value={editIdiomaForm.nivel}
-                        onChange={v => setEditIdiomaForm(p => ({ ...p, nivel: v }))}
-                        options={['Básico', 'Intermedio', 'Avanzado', 'Nativo'].map(n => ({ value: n, label: n }))}
+                        value={editIdiomaForm.nivel_cefr}
+                        onChange={v => setEditIdiomaForm(p => ({ ...p, nivel_cefr: v }))}
+                        options={CEFR_OPTIONS}
+                        placeholder="Elige tu nivel"
                         style={{ width: '100%' }}
                         triggerStyle={{ fontSize: 13, borderRadius: 8, border: '1.5px solid var(--line)' }}
                       />
+                      {editIdiomaForm.nivel_cefr && (
+                        <div style={{ fontSize: 11.5, color: 'var(--mute)', marginTop: 4 }}>{CEFR_HINTS[editIdiomaForm.nivel_cefr as CefrLevel]}</div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateIdioma(idioma.id)} disabled={editSaving || !editIdiomaForm.nombre}
@@ -866,12 +899,17 @@ export default function PerfilPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 14, color: 'var(--deep)', fontWeight: 500, textDecoration: marked ? 'line-through' : 'none' }}>{idioma.nombre}</span>
-                      {idioma.nivel && !marked && <span style={{ background: 'var(--hover)', color: 'var(--mute)', fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 6 }}>{idioma.nivel}</span>}
+                      {idioma.nivel_cefr && !marked && <span style={{ background: 'var(--hover)', color: 'var(--mute)', fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 6 }}>{CEFR_LABELS[idioma.nivel_cefr]}</span>}
+                      {!idioma.nivel_cefr && !marked && (
+                        <span title="Elige tu nivel en la escala europea (A1–C2)" style={{ background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A', fontSize: 12, fontWeight: 500, padding: '2px 9px', borderRadius: 6 }}>
+                          {idioma.nivel ? `${idioma.nivel} · confirma tu nivel` : 'Confirma tu nivel'}
+                        </span>
+                      )}
                     </div>
                     {editSection === 'idiomas' && (
                       <div style={{ display: 'flex', gap: 4 }}>
                         {!marked && (
-                          <button onClick={() => { setEditingIdiomaId(idioma.id); setEditIdiomaForm({ nombre: idioma.nombre || '', nivel: idioma.nivel || 'Básico' }); }}
+                          <button onClick={() => { setEditingIdiomaId(idioma.id); setEditIdiomaForm({ nombre: idioma.nombre || '', nivel_cefr: idioma.nivel_cefr || '' }); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                             <EditIcon size={13} />
                           </button>
@@ -895,12 +933,16 @@ export default function PerfilPage() {
               <div>
                 <div style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500, marginBottom: 6 }}>Nivel</div>
                 <Select
-                  value={newIdioma.nivel}
-                  onChange={v => setNewIdioma(p => ({ ...p, nivel: v }))}
-                  options={['Básico', 'Intermedio', 'Avanzado', 'Nativo'].map(n => ({ value: n, label: n }))}
-                  style={{ width: '100%' }}
-                  triggerStyle={{ fontSize: 13, borderRadius: 8, border: '1.5px solid var(--line)' }}
-                />
+                        value={newIdioma.nivel_cefr}
+                        onChange={v => setNewIdioma(p => ({ ...p, nivel_cefr: v }))}
+                        options={CEFR_OPTIONS}
+                        placeholder="Elige tu nivel"
+                        style={{ width: '100%' }}
+                        triggerStyle={{ fontSize: 13, borderRadius: 8, border: '1.5px solid var(--line)' }}
+                      />
+                      {newIdioma.nivel_cefr && (
+                        <div style={{ fontSize: 11.5, color: 'var(--mute)', marginTop: 4 }}>{CEFR_HINTS[newIdioma.nivel_cefr as CefrLevel]}</div>
+                      )}
               </div>
             </div>
           )}

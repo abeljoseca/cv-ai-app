@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAnthropicClient } from '@/lib/anthropic';
 import { rateLimit } from '@/lib/rate-limit';
+import { normalizeProfileDate } from '@/lib/profile-date';
+import { isPresentMarker, PROFILE_DATE_RULES } from '@/lib/profile-import';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface ChatMessage {
@@ -119,6 +121,9 @@ REGLAS PARA "extracted":
 - Solo extrae lo que el usuario mencionó explícitamente en este mensaje.
 - experiencias: [{empresa, cargo, fecha_inicio, fecha_fin, activo, descripcion}]
 - educacion: [{institucion, titulo, area, fecha_inicio, fecha_fin}]
+
+${PROFILE_DATE_RULES}
+
 - habilidades: [{nombre, tipo}] — tipo DEBE ser exactamente "tecnica" o "blanda". Técnicas: herramientas, software, lenguajes, metodologías, plataformas, habilidades medibles de un campo (Python, Excel, SCRUM, AutoCAD, SQL, Photoshop). Blandas: interpersonales, actitud, comportamiento (Liderazgo, Comunicación, Trabajo en equipo, Adaptabilidad, Empatía). Nunca dejes tipo vacío ni null.
 - idiomas: [{nombre, nivel}] — nivel puede ser "Básico", "Intermedio", "Avanzado" o "Nativo"
 - logros: [{descripcion}] — CURA el logro con la fórmula Verbo + Resultado + Métrica + Cómo antes de guardar. Si no hay suficiente información para completar la fórmula, guarda lo que dijo pero mejorado gramaticalmente.
@@ -262,9 +267,9 @@ export async function POST(request: NextRequest) {
             user_id: user.id,
             empresa: exp.empresa,
             cargo: exp.cargo,
-            fecha_inicio: exp.fecha_inicio || null,
-            fecha_fin: exp.fecha_fin || null,
-            activo: exp.activo || false,
+            fecha_inicio: normalizeProfileDate(exp.fecha_inicio),
+            fecha_fin: isPresentMarker(exp.fecha_fin) ? null : normalizeProfileDate(exp.fecha_fin),
+            activo: exp.activo || isPresentMarker(exp.fecha_fin),
             descripcion: exp.descripcion || null,
           });
         }
@@ -281,8 +286,8 @@ export async function POST(request: NextRequest) {
             institucion: edu.institucion,
             titulo: edu.titulo,
             area: edu.area || null,
-            fecha_inicio: edu.fecha_inicio || null,
-            fecha_fin: edu.fecha_fin || null,
+            fecha_inicio: normalizeProfileDate(edu.fecha_inicio),
+            fecha_fin: normalizeProfileDate(edu.fecha_fin),
           });
         }
       }

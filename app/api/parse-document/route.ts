@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAnthropicClient } from '@/lib/anthropic';
 import { rateLimit } from '@/lib/rate-limit';
+import { normalizeProfileDate } from '@/lib/profile-date';
+import { isPresentMarker, PROFILE_DATE_RULES } from '@/lib/profile-import';
 import mammoth from 'mammoth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -22,6 +24,8 @@ Devuelve SOLO un JSON válido con esta estructura:
 CLASIFICACIÓN DE HABILIDADES:
 - tipo "tecnica": herramientas, tecnologías, lenguajes, frameworks, software, metodologías, plataformas, habilidades medibles de un campo específico. Ejemplos: Python, Excel, AutoCAD, SQL, SCRUM, Power BI, Photoshop, Contabilidad, Programación.
 - tipo "blanda": habilidades interpersonales, de comunicación, actitud y comportamiento. Ejemplos: Liderazgo, Comunicación efectiva, Trabajo en equipo, Resolución de conflictos, Adaptabilidad, Creatividad, Empatía.
+
+${PROFILE_DATE_RULES}
 
 IMPORTANTE: Nunca inventar datos. Solo extraer lo que existe en el documento. Si no hay información de una sección, deja el array vacío.`;
 
@@ -142,8 +146,9 @@ export async function POST(request: NextRequest) {
             user_id: user.id,
             empresa: exp.empresa,
             cargo: exp.cargo,
-            fecha_inicio: exp.fecha_inicio || null,
-            fecha_fin: exp.fecha_fin || null,
+            fecha_inicio: normalizeProfileDate(exp.fecha_inicio),
+            fecha_fin: isPresentMarker(exp.fecha_fin) ? null : normalizeProfileDate(exp.fecha_fin),
+            activo: isPresentMarker(exp.fecha_fin),
             descripcion: exp.descripcion || null,
           });
         }
@@ -158,8 +163,8 @@ export async function POST(request: NextRequest) {
             institucion: edu.institucion,
             titulo: edu.titulo,
             area: edu.area || null,
-            fecha_inicio: edu.fecha_inicio || null,
-            fecha_fin: edu.fecha_fin || null,
+            fecha_inicio: normalizeProfileDate(edu.fecha_inicio),
+            fecha_fin: normalizeProfileDate(edu.fecha_fin),
           });
         }
       }

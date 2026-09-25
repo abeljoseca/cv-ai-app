@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createAnthropicClient } from '@/lib/anthropic';
 import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizeProfileDate } from '@/lib/profile-date';
 
 const PROVIDER_URL =
   'https://api.apify.com/v2/acts/harvestapi~linkedin-profile-scraper/run-sync-get-dataset-items';
@@ -72,7 +73,12 @@ interface ExtProfile {
   [key: string]: unknown;
 }
 
+// Bump when the structuring prompt changes: cached curated_data from an older version is
+// re-structured instead of reused (v2: dates keep the month).
+const STRUCTURED_VERSION = 2;
+
 interface StructuredData {
+  _v?:         number;
   experiencia: Array<{ empresa: string; cargo: string; fecha_inicio: string | null; fecha_fin: string | null; descripcion: string | null }>;
   educacion:   Array<{ institucion: string; titulo: string; area: string | null; fecha_inicio: string | null; fecha_fin: string | null }>;
   habilidades: Array<{ nombre: string; tipo: 'tecnica' | 'blanda' }>;
@@ -147,14 +153,15 @@ Devuelve SOLAMENTE un objeto JSON válido con esta estructura (sin texto antes n
 EXPERIENCIA
 - Fuente: experience[]. Null/vacío → [].
 - companyName → empresa. position → cargo.
-- fecha_inicio: startDate.year como string "YYYY". Sin año → null.
-- fecha_fin: si endDate.text === "Present" → null. Si no → endDate.year como string "YYYY". Sin año → null.
+- fecha_inicio: "AAAA-MM" con startDate.year y el número de mes de startDate.month (ej. "Jul" → "2021-07").
+  Si no hay month → solo "AAAA". Sin año → null. NUNCA inventes el mes.
+- fecha_fin: si endDate.text === "Present" → null. Si no → mismo formato con endDate. Sin año → null.
 - descripcion: usa description si aporta valor real; si no → null.
 
 EDUCACIÓN
 - Fuente: education[]. Null/vacío → [].
 - schoolName → institucion. degree → titulo (si falta → "Estudios universitarios"). fieldOfStudy → area.
-- fecha_inicio: startDate.year. fecha_fin: endDate.year. Si texto es "Present" → null.
+- fecha_inicio / fecha_fin: mismo formato que en experiencia ("AAAA-MM", o "AAAA" si no hay mes). Si texto es "Present" → null.
 
 HABILIDADES
 - Fuente: el campo skills_list (array de strings inyectado en el prompt).
@@ -232,6 +239,7 @@ async function structureWithAI(profile: ExtProfile): Promise<StructuredData | nu
     if (!match) return null;
 
     const parsed = JSON.parse(match[0]) as StructuredData;
+    parsed._v = STRUCTURED_VERSION;
     parsed.experiencia = Array.isArray(parsed.experiencia) ? parsed.experiencia : [];
     parsed.educacion   = Array.isArray(parsed.educacion)   ? parsed.educacion   : [];
     parsed.habilidades = Array.isArray(parsed.habilidades) ? parsed.habilidades : [];
@@ -309,7 +317,8 @@ async function processProfile(
     const ageDays = (Date.now() - new Date(cached.scraped_at).getTime()) / 86_400_000;
     if (ageDays <= CACHE_TTL_DAYS) {
       rawProfile = cached.raw_data as ExtProfile;
-      if (cached.curated_data) structured = cached.curated_data as StructuredData;
+      const curated = cached.curated_data as StructuredData | null;
+      if (curated?._v === STRUCTURED_VERSION) structured = curated;
     }
   }
 
@@ -370,8 +379,8 @@ async function processProfile(
       user_id:      userId,
       empresa:      exp.empresa.trim(),
       cargo:        exp.cargo.trim(),
-      fecha_inicio: exp.fecha_inicio || null,
-      fecha_fin:    exp.fecha_fin    || null,
+      fecha_inicio: normalizeProfileDate(exp.fecha_inicio),
+      fecha_fin:    normalizeProfileDate(exp.fecha_fin),
       descripcion:  exp.descripcion?.trim() || null,
     });
     expSet.add(key);
@@ -388,8 +397,8 @@ async function processProfile(
       institucion:  edu.institucion.trim(),
       titulo:       edu.titulo.trim(),
       area:         edu.area?.trim()    || null,
-      fecha_inicio: edu.fecha_inicio    || null,
-      fecha_fin:    edu.fecha_fin       || null,
+      fecha_inicio: normalizeProfileDate(edu.fecha_inicio),
+      fecha_fin:    normalizeProfileDate(edu.fecha_fin),
     });
     eduSet.add(key);
     eduInserted++;

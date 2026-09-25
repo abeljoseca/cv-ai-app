@@ -25,6 +25,20 @@ export interface Profile {
   cvs_mirror_este_mes: number;
   cv_pendiente_pago_id: string | null;
   descarga_gratis_inspiracion_usada: boolean;
+  // Europass / standardized styles (migrations/step3a-profile-fields.sql)
+  fecha_nacimiento?: string | null;
+  nacionalidad?: string | null;
+  direccion?: string | null;
+  orcid_url?: string | null;
+  researchgate_url?: string | null;
+  permiso_conducir?: string[];
+  digcomp?: Record<string, string> | null;
+  publicaciones?: string[];
+  ponencias?: string[];
+  voluntariado?: string[];
+  premios_becas?: string[];
+  afiliaciones?: string[];
+  anexos?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +81,9 @@ export interface Experiencia {
   fecha_fin: string | null;
   descripcion: string | null;
   activo: boolean;
+  ciudad?: string | null;
+  pais?: string | null;
+  sector_nace?: string | null;
   created_at: string;
 }
 
@@ -78,6 +95,10 @@ export interface Educacion {
   area: string | null;
   fecha_inicio: string | null;
   fecha_fin: string | null;
+  ciudad?: string | null;
+  pais?: string | null;
+  nivel_isced?: number | null;
+  materias?: string | null;
   created_at: string;
 }
 
@@ -93,6 +114,8 @@ export interface Logro {
   id: string;
   user_id: string;
   descripcion: string;
+  // Job where it was achieved (optional)
+  experiencia_id?: string | null;
   created_at: string;
 }
 
@@ -100,7 +123,11 @@ export interface Idioma {
   id: string;
   user_id: string;
   nombre: string;
-  nivel: 'Básico' | 'Intermedio' | 'Avanzado' | 'Nativo' | null;
+  // Legacy free-text label; never auto-converted. CVs use nivel_cefr (lib/cefr.ts).
+  nivel: string | null;
+  nivel_cefr?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'Nativo' | null;
+  niveles_cefr?: Record<string, string> | null;
+  certificacion?: string | null;
   created_at: string;
 }
 
