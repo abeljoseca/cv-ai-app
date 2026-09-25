@@ -27,6 +27,8 @@
 | 13 | Calibri | **Carlito** autoalojada (métricas idénticas a Calibri) | Calibri no existe fuera de Windows: el PDF cambiaba de fuente y paginación según el dispositivo |
 | 14 | Otras competencias como frases con "(evidencia: …)" | **Chips** con los nombres de habilidades blandas, sin IA | Redactar la evidencia obligaba a inventarla |
 | 15 | Títulos de sección en peso 600 | **700** | Carlito y Calibri solo tienen 400 y 700; el 600 ya se renderizaba como 700 |
+| 16 | Fechas siempre `MM/AAAA` | `MM/AAAA`, o **solo `AAAA`** cuando el mes no se conoce (decisión CEO 2026-09-25) | Los datos existentes solo tienen año; nunca se inventa el mes |
+| 17 | Idioma sin confirmar: nivel en texto en una fila combinada | **Sin nivel** hasta que el usuario lo confirme (decisión CEO 2026-09-25: el CV solo muestra códigos MCER). La presentación exacta de esa fila se define en la plantilla (4d) | Ningún texto como "Avanzado" llega al CV |
 
 ---
 
@@ -284,13 +286,13 @@ Esquema **propio del estilo**. No reutiliza el `CVContent` compartido; la IA no 
 | `idiomas` | `niveles_cefr` (5 habilidades), `certificacion` | jsonb / text |
 | `logros` | `experiencia_id` (opcional: "¿en qué empleo lo lograste?") | fk nullable |
 
-**Migración de idiomas:** los valores actuales `Básico/Intermedio/Avanzado` **no se convierten en silencio** ("Avanzado" puede ser B2 o C1). Se conservan hasta que el usuario confirme su nivel mediante un aviso único de "Actualiza el nivel de tus idiomas". Mientras no confirme, en Europass el idioma se muestra con su nivel en texto en una sola fila de la tabla (celdas combinadas), sin inventar letras CEFR.
+**Migración de idiomas:** los valores actuales `Básico/Intermedio/Avanzado` **no se convierten en silencio** ("Avanzado" puede ser B2 o C1). Se conservan hasta que el usuario confirme su nivel mediante un aviso único de "Actualiza el nivel de tus idiomas". Mientras no confirme, el idioma aparece en el CV **sin nivel** (el CV solo muestra códigos MCER; decisión CEO 2026-09-25). Cómo se ve esa fila en la tabla se define en la plantilla (4d).
 
 ---
 
 ## 6. Formato de fechas y números
 
-- **Fechas:** siempre **`MM/AAAA`** (p. ej. `03/2021`). Puesto actual: `03/2021 – actualidad`. Nunca "Mar 2021" ni "2021-03".
+- **Fechas:** **`MM/AAAA`** (p. ej. `03/2021`), o **solo `AAAA`** cuando el perfil no tiene el mes (nunca se inventa). Puesto actual: `03/2021 – actualidad`. Nunca "Mar 2021" ni "2021-03".
 - **Entrada:** selector de **mes y año** en el perfil y en el editor. Las fechas existentes en texto libre ("2021-03") se normalizan al guardar; si no se pueden interpretar, se marcan para que el usuario las corrija. Nunca se adivinan.
 - **Fecha de nacimiento:** `DD/MM/AAAA` (único campo con día, introducido con un calendario completo).
 - **Decimales:** coma (`3,5%`). **Miles:** punto (`1.250.000`).
