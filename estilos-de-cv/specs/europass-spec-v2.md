@@ -28,10 +28,12 @@
 | 14 | Otras competencias como frases con "(evidencia: …)" | **Chips** con los nombres de habilidades blandas, sin IA | Redactar la evidencia obligaba a inventarla |
 | 15 | Títulos de sección en peso 600 | **700** | Carlito y Calibri solo tienen 400 y 700; el 600 ya se renderizaba como 700 |
 | 16 | Fechas siempre `MM/AAAA` | `MM/AAAA`, o **solo `AAAA`** cuando el mes no se conoce (decisión CEO 2026-09-25) | Los datos existentes solo tienen año; nunca se inventa el mes |
-| 17 | Idioma sin confirmar: nivel en texto en una fila combinada | **Sin nivel** hasta que el usuario lo confirme (decisión CEO 2026-09-25: el CV solo muestra códigos MCER). La presentación exacta de esa fila se define en la plantilla (4d) | Ningún texto como "Avanzado" llega al CV |
+| 17 | Idioma sin confirmar: nivel en texto en una fila combinada | **Sin nivel** hasta que el usuario lo confirme (decisión CEO 2026-09-25: el CV solo muestra códigos MCER). Va **fuera de la tabla**, en una línea bajo ella con el estilo de "Lengua materna": **«Otras lenguas: Italiano»** (decisión CEO 2026-09-25) | Ningún texto como "Avanzado" llega al CV |
 | 18 | Sin lugar para "Cursos y Certificaciones" del perfil | Se listan **como elementos de "Educación y formación"** (título, institución, año), ordenados junto con los estudios (decisión CEO 2026-09-25) | Como hace el Europass oficial; ningún dato del perfil se pierde |
 | 19 | Sin "Área" en educación | **Área** (campo de estudio) como línea gris bajo el título del estudio (decisión CEO 2026-09-25) | Es útil y ya existe en el perfil |
 | 20 | — | Fecha de fin anterior a la de inicio: el perfil no permite guardarla; si llega por importación se guarda tal cual y el perfil marca "Revisa las fechas" (decisión CEO 2026-09-25) | No se adivina cuál de las dos fechas está mal |
+| 21 | — | **Modo Vacante:** además del título, la oferta (cargo y requisitos) se pasa al redactor **solo para priorizar y enfocar** los hechos del usuario. No es una fuente: no se cita, y los controles exacto y de sentido se aplican igual (decisión CEO 2026-09-25) | El modo vacante debe aportar valor sin abrir la puerta a inventar requisitos |
+| 22 | Edición libre de todo el CV en la vista previa + corrección ortográfica con IA de todo el CV | Hasta el panel del paso 5: en la vista previa solo se editan **"Sobre mí" y los bullets**; los datos objetivos se cambian en el perfil. **"Guardar"** guarda lo escrito tal cual, **sin IA**, y cada frase editada pasa a `_origen: "usuario"` (decisión CEO 2026-09-25) | La IA de ortografía reescribía el CV sin los controles anti-invención |
 
 ---
 
@@ -291,7 +293,7 @@ Esquema **propio del estilo**. No reutiliza el `CVContent` compartido; la IA no 
 | `idiomas` | `niveles_cefr` (5 habilidades), `certificacion` | jsonb / text |
 | `logros` | `experiencia_id` (opcional: "¿en qué empleo lo lograste?") | fk nullable |
 
-**Migración de idiomas:** los valores actuales `Básico/Intermedio/Avanzado` **no se convierten en silencio** ("Avanzado" puede ser B2 o C1). Se conservan hasta que el usuario confirme su nivel mediante un aviso único de "Actualiza el nivel de tus idiomas". Mientras no confirme, el idioma aparece en el CV **sin nivel** (el CV solo muestra códigos MCER; decisión CEO 2026-09-25). Cómo se ve esa fila en la tabla se define en la plantilla (4d).
+**Migración de idiomas:** los valores actuales `Básico/Intermedio/Avanzado` **no se convierten en silencio** ("Avanzado" puede ser B2 o C1). Se conservan hasta que el usuario confirme su nivel mediante un aviso único de "Actualiza el nivel de tus idiomas". Mientras no confirme, el idioma aparece en el CV **sin nivel** (el CV solo muestra códigos MCER; decisión CEO 2026-09-25). No va en la tabla: se lista en una línea bajo ella, «Otras lenguas: Italiano» (ver cambio 17).
 
 ---
 

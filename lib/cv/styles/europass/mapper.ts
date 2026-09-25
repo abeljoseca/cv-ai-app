@@ -87,6 +87,21 @@ function mapDigComp(raw: unknown): EuropassContent['competencias_digitales']['di
   return { activo: DIGCOMP_AREAS.every(a => areas[a] !== null), ...areas }
 }
 
+const fold = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// Whole-phrase mention (so "Ana" never matches "Analista"); very short names are ignored
+// because they match by accident.
+function mentions(text: string, name: string | null | undefined): boolean {
+  const n = fold(name ?? '').trim()
+  if (n.length < 3) return false
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(n)}($|[^\\p{L}\\p{N}])`, 'u').test(fold(text))
+}
+
+function namesJob(text: string, e: Experiencia): boolean {
+  return mentions(text, e.empresa) || mentions(text, e.cargo)
+}
+
 // "03/2021 – actualidad" (or null when the profile has no dates for the job).
 function jobPeriod(e: Experiencia): string | null {
   const start = formatEuropassDate(e.fecha_inicio)
@@ -137,8 +152,18 @@ export function mapEuropassObjective(
   ].sort((a, b) => dateDesc(a.key, b.key))
 
   const expIds = new Set(experiencias.map(e => e.id))
-  const linkedLogros = (expId: string) => src.logros.filter(l => l.experiencia_id === expId && clean(l.descripcion))
-  const unlinkedLogros = src.logros.filter(l => (!l.experiencia_id || !expIds.has(l.experiencia_id)) && clean(l.descripcion))
+  // Spec §8.4: an achievement with no job link goes to the job its text names (company or
+  // title) — only when exactly one job matches; otherwise to "Logros destacados".
+  const logroJob = new Map<string, string>()
+  const unlinkedLogros: Logro[] = []
+  for (const l of src.logros) {
+    if (!clean(l.descripcion)) continue
+    if (l.experiencia_id && expIds.has(l.experiencia_id)) { logroJob.set(l.id, l.experiencia_id); continue }
+    const named = experiencias.filter(e => namesJob(l.descripcion, e))
+    if (named.length === 1) logroJob.set(l.id, named[0].id)
+    else unlinkedLogros.push(l)
+  }
+  const linkedLogros = (expId: string) => src.logros.filter(l => logroJob.get(l.id) === expId)
 
   const tipos: Record<string, SkillTipo> = {}
   for (const h of src.habilidades) if (h.tipo === 'tecnica' || h.tipo === 'blanda') tipos[h.nombre.toLowerCase().trim()] = h.tipo

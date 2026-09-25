@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
 import { parseVisualConfig, VisualConfig } from '@/lib/cv/visual-config';
+import { isEuropassV2, withoutInternalFields } from '@/lib/cv/content';
+import { applyEuropassTextEdit } from '@/lib/cv/styles/europass/edit';
 
 interface CVParams {
   mode: 'general' | 'job';
@@ -73,6 +75,9 @@ export default function PreviewPage() {
   // land after a later one and leave a stale color in the DB.
   const visualSaveChain = useRef<Promise<boolean>>(Promise.resolve(true));
   const visualSaveSeq = useRef(0);
+  // Other visual_config keys (Europass density / photo size) are kept on every color save.
+  const [visualPresets, setVisualPresets] = useState<Omit<VisualConfig, 'accent_color'>>({});
+  const visualPresetsRef = useRef<Omit<VisualConfig, 'accent_color'>>({});
 
   async function loadExistingCV(id: string, p: CVParams) {
     setLoading(true);
@@ -85,7 +90,10 @@ export default function PreviewPage() {
       }
       setCvData(data.contenido_json);
       setCvId(id);
-      setAccentColor(parseVisualConfig(data.visual_config).accent_color ?? null);
+      const { accent_color, ...presets } = parseVisualConfig(data.visual_config);
+      setAccentColor(accent_color ?? null);
+      visualPresetsRef.current = presets;
+      setVisualPresets(presets);
       if (p.mode === 'job' && typeof data.match_porcentaje === 'number') {
         setMatchData({ match_porcentaje: data.match_porcentaje });
         if (data.contenido_json && p.descripcion_vacante) {
@@ -152,7 +160,7 @@ export default function PreviewPage() {
       const res = await fetch('/api/match-vacante', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cv, vacante, match_porcentaje }),
+        body: JSON.stringify({ cv: isEuropassV2(cv) ? withoutInternalFields(cv) : cv, vacante, match_porcentaje }),
       });
       const data = await res.json();
       // The number is always the deterministic one already shown — this call only
@@ -167,6 +175,18 @@ export default function PreviewPage() {
     if (!cvData) return;
     setSaving(true);
     setCorrectionApplied(false);
+    // Europass: saved exactly as the user typed it. The AI proofreading pass rewrites the
+    // whole CV without the anti-invention controls, so it never runs on this style.
+    if (isEuropassV2(cvData)) {
+      try {
+        if (cvId) await supabase.from('cvs').update({ contenido_json: cvData }).eq('id', cvId);
+        setGuardMode('saved');
+      } catch { /* best-effort, same as below */ } finally {
+        setSaving(false);
+        setEditing(false);
+      }
+      return;
+    }
     try {
       const res = await fetch('/api/review-cv', {
         method: 'POST',
@@ -197,7 +217,7 @@ export default function PreviewPage() {
   }
 
   function persistVisualConfig(id: string, color: string | null): Promise<boolean> {
-    const config: VisualConfig = color ? { accent_color: color } : {};
+    const config: VisualConfig = color ? { ...visualPresetsRef.current, accent_color: color } : { ...visualPresetsRef.current };
     const run = visualSaveChain.current.then(async () => {
       // RLS denials don't raise an error, they just update 0 rows — require the row back.
       const { data, error } = await supabase.from('cvs').update({ visual_config: config }).eq('id', id).select('id');
@@ -227,7 +247,11 @@ export default function PreviewPage() {
   }
 
   function updateCvField(path: string, value: string) {
-    setCvData((prev: any) => prev ? setNestedValue(prev, path, value) : prev);
+    setCvData((prev: any) => {
+      if (!prev) return prev;
+      if (isEuropassV2(prev)) return applyEuropassTextEdit(prev, path, value);
+      return setNestedValue(prev, path, value);
+    });
   }
 
   async function handleCreateCV() {
@@ -297,6 +321,7 @@ export default function PreviewPage() {
   /* ── Main ─────────────────────────────────────────────────────────── */
   const matchMeta = matchData ? getMatchMeta(matchData.match_porcentaje) : null;
   const palette = styleAccentColors[params?.estilo ?? ''] ?? styleAccentColors['harvard'];
+  const europassV2 = isEuropassV2(cvData);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', animation: 'fadeUp .25s var(--ease) both', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px)' }}>
@@ -327,7 +352,9 @@ export default function PreviewPage() {
                 padding: '8px 20px', fontSize: 13, fontWeight: 500,
                 color: '#185FA5', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
               }}>
-                ✏ Modo edición — haz clic sobre cualquier texto para modificarlo
+                {europassV2
+                  ? '✏ Modo edición — haz clic en «Sobre mí» o en un punto de la experiencia para modificarlo'
+                  : '✏ Modo edición — haz clic sobre cualquier texto para modificarlo'}
               </div>
             )}
             {cvData && (
@@ -338,6 +365,8 @@ export default function PreviewPage() {
                   isEditMode={editing}
                   onFieldChange={updateCvField}
                   accentColor={accentColor ?? undefined}
+                  densidad={visualPresets.densidad}
+                  fotoTam={visualPresets.foto_tam}
                 />
               </div>
             )}
@@ -493,7 +522,7 @@ export default function PreviewPage() {
                   style={{ width: '100%', padding: '10px 16px', borderRadius: 10, background: 'var(--blue)', color: '#fff', border: 'none', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving ? 0.7 : 1, transition: 'opacity .15s' }}
                 >
                   {saving && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />}
-                  {saving ? 'Revisando...' : 'Guardar y revisar'}
+                  {europassV2 ? (saving ? 'Guardando...' : 'Guardar') : (saving ? 'Revisando...' : 'Guardar y revisar')}
                 </button>
                 <button
                   onClick={() => { setEditing(false); setGuardMode('saved'); }}

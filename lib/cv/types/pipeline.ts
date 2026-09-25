@@ -1,4 +1,8 @@
 import { CVContent } from './cv-content'
+import type { EuropassContent } from '../styles/europass/schema'
+
+// Styles with their own backend store their own schema (Europass: 'europass@2').
+export type StoredCVContent = CVContent | EuropassContent
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Vacancy analysis — output of the Haiku analysis step
@@ -39,7 +43,7 @@ export interface GeneratedCVRecord {
   titulo: string | null
   intencion: 'general' | 'job'
   estilo: string
-  contenido_json: CVContent
+  contenido_json: StoredCVContent
   descripcion_vacante: string | null
   match_porcentaje: number | null
   created_at: string
@@ -48,5 +52,5 @@ export interface GeneratedCVRecord {
 export interface GenerateCVResult {
   success: true
   cv: GeneratedCVRecord
-  content: CVContent
+  content: StoredCVContent
 }

@@ -1,11 +1,11 @@
 // Europass generation pipeline: profile → objective data (no AI) → AI writing with
-// citations → anti-invention controls → final content. Wiring into the API route and
-// the new template is step 4d.
+// citations → anti-invention controls → final content. Persisted by pipeline.ts.
 
 import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { anthropicSenseJudge, type SenseJudge } from '@/lib/cv/verify/sense'
-import { loadEuropassSource, mapEuropassObjective } from './mapper'
+import { loadEuropassSource, mapEuropassObjective, type EuropassProfileSource } from './mapper'
+import type { EuropassVacancyFocus } from './prompt'
 import { applyEuropassWriting, requestEuropassWriting, sanitizeEuropassWriting, type EuropassWriting } from './write'
 import { userTextWriting, verifyEuropassWriting, type VerificationReport } from './verify'
 import type { EuropassAISources, EuropassContent } from './schema'
@@ -44,13 +44,16 @@ export async function generateEuropassContent(params: {
   supabase: SupabaseClient
   anthropic: Anthropic
   userId: string
-  // Vacancy mode: the exact job title of the posting.
-  tituloProfesional?: string | null
-}): Promise<EuropassGenerationResult> {
-  const src = await loadEuropassSource(params.supabase, params.userId)
-  const { content, aiSources } = mapEuropassObjective(src, { tituloProfesional: params.tituloProfesional })
-  return writeAndVerifyEuropass(content, aiSources, {
-    write: async feedback => sanitizeEuropassWriting(await requestEuropassWriting(params.anthropic, aiSources, undefined, feedback), aiSources),
+  // Vacancy mode: the title becomes the posting's exact job title, and the posting steers
+  // which facts the writer puts first (never what the facts are).
+  vacancy?: EuropassVacancyFocus | null
+}): Promise<EuropassGenerationResult & { source: EuropassProfileSource }> {
+  const source = await loadEuropassSource(params.supabase, params.userId)
+  const focus = params.vacancy ?? undefined
+  const { content, aiSources } = mapEuropassObjective(source, { tituloProfesional: focus?.cargo })
+  const result = await writeAndVerifyEuropass(content, aiSources, {
+    write: async feedback => sanitizeEuropassWriting(await requestEuropassWriting(params.anthropic, aiSources, undefined, feedback, focus), aiSources),
     judge: anthropicSenseJudge(params.anthropic),
   })
+  return { ...result, source }
 }

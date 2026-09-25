@@ -29,6 +29,10 @@ FACTS — ABSOLUTE RULES
 - Do not upgrade the candidate's role: if a source says "participé", do not write "lideré"; if it says "apoyo", do not write "responsable".
 - An achievement ("logro") belongs to the job it is listed under; integrate it as one of that job's bullets.
 
+TARGET JOB (only when the user message includes "puesto_objetivo")
+- Use it only to decide which of the candidate's facts come first and which to emphasise. It is not a source: never cite it.
+- Never state or imply that the candidate has a requirement of the target job unless a cited source says so. Do not borrow its wording for skills, tools or duties the sources don't mention.
+
 CITATIONS
 - For "Sobre mí" and for every bullet, list in "fuentes" the refs of every source the sentence relies on. Only use refs that appear in the SOURCES.
 - A bullet may only cite sources of its own job. "Sobre mí" may cite any source.
@@ -83,9 +87,17 @@ export const EUROPASS_OUTPUT_SCHEMA = {
 
 const LANGUAGE_NAMES: Record<string, string> = { es: 'Spanish', en: 'English', pt: 'Portuguese', fr: 'French' }
 
-export function buildEuropassUserMessage(sources: EuropassAISources, lang: string, feedback?: string): string {
+// Vacancy mode (CEO decision 2026-09-25): the posting only steers priority and emphasis.
+// The same exact and sense checks apply, so nothing from it can reach the CV as a fact.
+export interface EuropassVacancyFocus {
+  cargo: string
+  requisitos: string[]
+}
+
+export function buildEuropassUserMessage(sources: EuropassAISources, lang: string, feedback?: string, focus?: EuropassVacancyFocus): string {
   const payload = {
     idioma_de_salida: LANGUAGE_NAMES[lang] ?? 'Spanish',
+    ...(focus ? { puesto_objetivo: { cargo: focus.cargo, requisitos: focus.requisitos } } : {}),
     fuentes_generales: [
       ...(sources.resumen ? [sources.resumen] : []),
       ...sources.hechos,

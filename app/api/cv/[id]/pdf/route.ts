@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { canDownloadCV } from '@/lib/cv/entitlement'
 import { launchBrowser } from '@/lib/pdf/browser'
+import { cvContentName } from '@/lib/cv/content'
 import { rateLimit } from '@/lib/rate-limit'
 
 // Server-side PDF: headless Chromium loads the print page (/cv/[id]/imprimir) as the
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       displayHeaderFooter: false,
     })
 
-    const name = pdfFileName((cv.contenido_json as { nombre?: unknown } | null)?.nombre)
+    const name = pdfFileName(cvContentName(cv.contenido_json))
     return new NextResponse(Buffer.from(pdf), {
       status: 200,
       headers: {

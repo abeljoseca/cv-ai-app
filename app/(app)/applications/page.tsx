@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Aplicacion, CV } from '@/types';
 import { Select } from '@/components/Select';
+import { cvContentTitle } from '@/lib/cv/content';
 
 const ESTADOS = [
   { value: 'pending',      label: 'En espera' },
@@ -202,7 +203,7 @@ export default function AplicacionesPage() {
                   <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--deep)' }}>{app.empresa || '—'}</td>
                   <td style={{ padding: '14px 16px', color: 'var(--ink)' }}>{app.cargo || '—'}</td>
                   <td style={{ padding: '14px 16px', color: 'var(--mute)', fontSize: 13 }}>
-                    {app.cv ? ((app.cv.contenido_json as any)?.titulo || app.cv.intencion) : '—'}
+                    {app.cv ? (cvContentTitle(app.cv.contenido_json) || app.cv.intencion) : '—'}
                   </td>
                   <td style={{ padding: '14px 16px', color: 'var(--mute)', fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
                     {app.fecha ? new Date(app.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
@@ -268,7 +269,7 @@ export default function AplicacionesPage() {
                     { value: '', label: 'Seleccionar CV (opcional)' },
                     ...cvs.map(cv => ({
                       value: cv.id,
-                      label: `${cv.titulo || (cv.contenido_json as any)?.titulo || cv.intencion} — ${new Date(cv.created_at).toLocaleDateString('es-ES')}`,
+                      label: `${cv.titulo || cvContentTitle(cv.contenido_json) || cv.intencion} — ${new Date(cv.created_at).toLocaleDateString('es-ES')}`,
                     })),
                   ]}
                   style={{ width: '100%' }}

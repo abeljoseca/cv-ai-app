@@ -5,8 +5,12 @@ import SiliconValleyCV from './SiliconValleyCV'
 import TechCV from './TechCV'
 import MinimalistCV from './MinimalistCV'
 import EuropassCV from './EuropassCV'
+import EuropassV2CV from './EuropassV2CV'
 import ExecutiveCV from './ExecutiveCV'
 import { cvFontVariables } from './fonts'
+import { isEuropassV2 } from '@/lib/cv/content'
+import { EUROPASS_ACCENTS, type EuropassDensity, type EuropassPhotoSize } from '@/lib/cv/styles/europass/contract'
+import type { StoredCVContent } from '@/lib/cv/types/pipeline'
 
 export type { CVContent }
 
@@ -18,7 +22,11 @@ export interface CVEditProps {
 
 export interface CVRendererProps extends CVEditProps {
   estilo: 'harvard' | 'stanford' | 'silicon-valley' | 'tech' | 'minimalist' | 'europass' | 'executive'
-  data: CVContent
+  // Legacy CVContent, or a standardized style's own schema (dispatched on data.schema).
+  data: StoredCVContent
+  // Europass v2 presets (visual_config); ignored by the other templates.
+  densidad?: EuropassDensity
+  fotoTam?: EuropassPhotoSize
 }
 
 export const styleAccentColors: Record<string, string[]> = {
@@ -27,7 +35,7 @@ export const styleAccentColors: Record<string, string[]> = {
   'silicon-valley':['#2563EB', '#0A0A0A', '#16A34A', '#7C3AED'],
   'tech':          ['#1F3A5F', '#0F766E', '#2563EB'],
   'minimalist':    ['#000000', '#1A1A1A', '#4A4A4A', '#C8B97A'],
-  'europass':      ['#003399', '#1A2B4C', '#006EBF'],
+  'europass':      [...EUROPASS_ACCENTS],
   'executive':     ['#1F3A5F', '#8B0000', '#1A1A1A'],
 }
 
@@ -36,8 +44,15 @@ export default function CVRenderer(props: CVRendererProps) {
   return <div className={cvFontVariables}><StyleTemplate {...props} /></div>
 }
 
-function StyleTemplate({ estilo, data, isEditMode, onFieldChange, accentColor }: CVRendererProps) {
+function StyleTemplate({ estilo, data: stored, isEditMode, onFieldChange, accentColor, densidad, fotoTam }: CVRendererProps) {
   const editProps: CVEditProps = { isEditMode, onFieldChange, accentColor }
+
+  // Standardized styles render from their own schema; older CVs of the same style keep
+  // their original template.
+  if (isEuropassV2(stored)) {
+    return <EuropassV2CV data={stored} densidad={densidad} fotoTam={fotoTam} {...editProps} />
+  }
+  const data = stored as CVContent
 
   switch (estilo) {
     case 'stanford':

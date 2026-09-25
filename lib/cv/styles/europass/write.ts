@@ -6,7 +6,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema'
 import { detectLanguageFromText } from '@/lib/cv/data/detect-language'
 import { EUROPASS_AI_LIMITS } from './contract'
-import { EUROPASS_OUTPUT_SCHEMA, EUROPASS_SYSTEM_PROMPT, buildEuropassUserMessage } from './prompt'
+import { EUROPASS_OUTPUT_SCHEMA, EUROPASS_SYSTEM_PROMPT, buildEuropassUserMessage, type EuropassVacancyFocus } from './prompt'
 import type { EuropassAISources, EuropassBullet, EuropassContent } from './schema'
 
 // CEO decision 2026-09-25 after a live side-by-side test: Sonnet 5 matched Opus 5 on factual
@@ -38,12 +38,13 @@ export async function requestEuropassWriting(
   sources: EuropassAISources,
   model: string = EUROPASS_WRITER_MODEL,
   feedback?: string,
+  focus?: EuropassVacancyFocus,
 ): Promise<EuropassRawWriting & { usage: Anthropic.Usage }> {
   const response = await anthropic.messages.parse({
     model,
     max_tokens: 16000,
     system: [{ type: 'text', text: EUROPASS_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: buildEuropassUserMessage(sources, sourcesLanguage(sources), feedback) }],
+    messages: [{ role: 'user', content: buildEuropassUserMessage(sources, sourcesLanguage(sources), feedback, focus) }],
     output_config: { format: jsonSchemaOutputFormat(EUROPASS_OUTPUT_SCHEMA) },
   })
   // A refusal or a truncated answer is a failure, never a partial CV.

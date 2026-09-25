@@ -9,6 +9,7 @@ import { parseAndValidate } from '../validation/structure'
 import { runAntiHallucinationCheck } from '../validation/anti-hallucination'
 import { splitSkills } from '../../skill-classification'
 import { enforceIdiomaLevels } from '../enforce-idiomas'
+import { runEuropassPipeline } from '../styles/europass/pipeline'
 
 const MAX_TOKENS = 4000
 const MAX_RETRIES = 1
@@ -24,6 +25,9 @@ export async function runGeneralPipeline(
   if (!isValidStyleId(styleId)) {
     throw new Error(`Invalid style ID: "${styleId}"`)
   }
+
+  // Europass has its own backend (lib/cv/styles/europass): own schema, writer and controls.
+  if (styleId === 'europass') return runEuropassPipeline({ userId, supabase, anthropic })
 
   // ── 2. Fetch and clean user data ─────────────────────────────────────────
   const userData = await prepareUserData(userId, supabase)

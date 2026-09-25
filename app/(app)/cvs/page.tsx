@@ -10,6 +10,7 @@ import { parseVisualConfig } from '@/lib/cv/visual-config';
 import { downloadCvPdf } from '@/lib/cv/download-pdf';
 import type { CVInspirationRecord } from '@/src/features/cv-inspiracion/types/editor.types';
 import PaymentModal from '@/components/PaymentModal';
+import { cvContentTitle } from '@/lib/cv/content';
 
 const ESTILO_NOMBRES: Record<string, string> = {
   harvard: 'Harvard',
@@ -132,7 +133,7 @@ export default function MisCVsPage() {
   function openApplyForm(cv: CV) {
     const content = cv.contenido_json as Record<string, any>;
     setForm({
-      cargo: content?.titulo || '',
+      cargo: cvContentTitle(content) || '',
       empresa: content?.empresa_vacante || '',
       fecha: new Date().toISOString().split('T')[0],
       estado: 'pending',
@@ -348,7 +349,7 @@ export default function MisCVsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {cvs.map(cv => {
             const hasApp = aplicaciones.some(a => a.cv_id === cv.id);
-            const title = cv.titulo || (cv.contenido_json as any)?.titulo || 'CV sin título';
+            const title = cv.titulo || cvContentTitle(cv.contenido_json) || 'CV sin título';
             const empresa = (cv.contenido_json as any)?.empresa_vacante;
             const estilo = ESTILO_NOMBRES[cv.estilo] || cv.estilo;
             const fecha = new Date(cv.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -590,6 +591,7 @@ function CvThumbnail({ cv }: { cv: CV }) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = cv.contenido_json as any;
+  const visual = parseVisualConfig(cv.visual_config);
   const thumbStyle = {
     aspectRatio: '794 / 1123' as const, background: '#fff', borderRadius: 6,
     overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.04)', position: 'relative' as const,
@@ -605,7 +607,9 @@ function CvThumbnail({ cv }: { cv: CV }) {
         <CVRenderer
           estilo={cv.estilo as 'harvard' | 'stanford' | 'silicon-valley' | 'tech' | 'minimalist' | 'europass' | 'executive'}
           data={data}
-          accentColor={parseVisualConfig(cv.visual_config).accent_color ?? undefined}
+          accentColor={visual.accent_color ?? undefined}
+          densidad={visual.densidad}
+          fotoTam={visual.foto_tam}
         />
       </div>
     </div>

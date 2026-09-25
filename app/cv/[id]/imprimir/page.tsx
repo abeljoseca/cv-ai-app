@@ -1,11 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
 import CVRenderer from '@/components/CVTemplates';
-import { CV_PRINT_CSS } from '@/components/CVTemplates/print';
+import { CV_PRINT_CSS, EUROPASS_PRINT_CSS } from '@/components/CVTemplates/print';
 import { createClient } from '@/lib/supabase/server';
 import { canDownloadCV } from '@/lib/cv/entitlement';
 import { parseVisualConfig } from '@/lib/cv/visual-config';
 import type { CV } from '@/types';
-import type { CVContent } from '@/lib/cv/types/cv-content';
+import { isEuropassV2 } from '@/lib/cv/content';
+import type { StoredCVContent } from '@/lib/cv/types/pipeline';
 
 // Print-ready render of a CV. It is also the page headless Chromium loads to produce the
 // server-side PDF (/api/cv/[id]/pdf), so what the user sees here is exactly what the PDF
@@ -50,11 +51,13 @@ export default async function ImprimirPage({
 
   const isPdfRender = modo === 'pdf';
   const visual = parseVisualConfig(cv.visual_config);
+  const content = cv.contenido_json as unknown as StoredCVContent;
+  const printCss = isEuropassV2(content) ? EUROPASS_PRINT_CSS : CV_PRINT_CSS;
 
   return (
     <>
       <style>{`
-        ${CV_PRINT_CSS}
+        ${printCss}
         @media screen {
           body { background: #e5e7eb; margin: 0; }
           .cv-container { max-width: 794px; margin: 0 auto; background: white; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
@@ -74,8 +77,10 @@ export default async function ImprimirPage({
       <div className="cv-container" data-cv-ready="true">
         <CVRenderer
           estilo={cv.estilo as Exclude<CV['estilo'], 'mirror'>}
-          data={cv.contenido_json as unknown as CVContent}
+          data={content}
           accentColor={visual.accent_color ?? undefined}
+          densidad={visual.densidad}
+          fotoTam={visual.foto_tam}
         />
       </div>
     </>

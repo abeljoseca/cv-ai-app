@@ -141,7 +141,7 @@ describe('europass formats', () => {
   it('formats birth date, ISCED and licence labels', () => {
     expect(formatBirthDate('1994-03-14')).toBe('14/03/1994')
     expect(formatBirthDate(null)).toBeNull()
-    expect(iscedLabel(7)).toBe('7 (Máster o nivel equivalente)')
+    expect(iscedLabel(7)).toBe('7 (Máster)')
     expect(iscedLabel(null)).toBeNull()
     expect(drivingLicenceLabel('B')).toBe('Categoría B')
   })
