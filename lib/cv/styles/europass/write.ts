@@ -9,8 +9,9 @@ import { EUROPASS_AI_LIMITS } from './contract'
 import { EUROPASS_OUTPUT_SCHEMA, EUROPASS_SYSTEM_PROMPT, buildEuropassUserMessage } from './prompt'
 import type { EuropassAISources, EuropassBullet, EuropassContent } from './schema'
 
-// Model choice is pending CEO confirmation (cost vs quality) — one constant to change.
-export const EUROPASS_WRITER_MODEL = 'claude-opus-5'
+// CEO decision 2026-09-25 after a live side-by-side test: Sonnet 5 matched Opus 5 on factual
+// accuracy (0 unsupported figures, 0 invalid citations), did not pad bullets, at ~45% of the cost.
+export const EUROPASS_WRITER_MODEL = 'claude-sonnet-5'
 
 export interface EuropassRawWriting {
   sobre_mi: { texto: string; fuentes: string[] }
