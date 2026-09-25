@@ -23,14 +23,16 @@ export interface EuropassProfileSource {
 }
 
 export async function loadEuropassSource(supabase: SupabaseClient, userId: string): Promise<EuropassProfileSource> {
+  // Explicit order so the same profile always yields the same CV (chips, language rows,
+  // achievements); Postgres storage order changes when rows are updated.
   const [p, exp, edu, idi, log, hab, cert] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
-    supabase.from('experiencia').select('*').eq('user_id', userId),
-    supabase.from('educacion').select('*').eq('user_id', userId),
-    supabase.from('idiomas').select('*').eq('user_id', userId),
-    supabase.from('logros').select('*').eq('user_id', userId),
-    supabase.from('habilidades').select('*').eq('user_id', userId),
-    supabase.from('certificaciones').select('*').eq('user_id', userId),
+    supabase.from('experiencia').select('*').eq('user_id', userId).order('created_at').order('id'),
+    supabase.from('educacion').select('*').eq('user_id', userId).order('created_at').order('id'),
+    supabase.from('idiomas').select('*').eq('user_id', userId).order('created_at').order('id'),
+    supabase.from('logros').select('*').eq('user_id', userId).order('created_at').order('id'),
+    supabase.from('habilidades').select('*').eq('user_id', userId).order('created_at').order('id'),
+    supabase.from('certificaciones').select('*').eq('user_id', userId).order('created_at').order('id'),
   ])
   if (!p.data) throw new Error('Profile not found for user: ' + userId)
   return {

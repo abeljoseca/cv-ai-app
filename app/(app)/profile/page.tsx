@@ -166,12 +166,14 @@ export default function PerfilPage() {
         { data: habData }, { data: logroData }, { data: idiomaData }, { data: certData },
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('experiencia').select('*').eq('user_id', user.id),
-        supabase.from('educacion').select('*').eq('user_id', user.id),
-        supabase.from('habilidades').select('*').eq('user_id', user.id),
-        supabase.from('logros').select('*').eq('user_id', user.id),
-        supabase.from('idiomas').select('*').eq('user_id', user.id),
-        supabase.from('certificaciones').select('*').eq('user_id', user.id).order('anio_egreso', { ascending: false }),
+        // Explicit order: without it Postgres returns rows in storage order, which changes
+        // when a row is updated (an edited item jumped to the end of its card).
+        supabase.from('experiencia').select('*').eq('user_id', user.id).order('created_at').order('id'),
+        supabase.from('educacion').select('*').eq('user_id', user.id).order('created_at').order('id'),
+        supabase.from('habilidades').select('*').eq('user_id', user.id).order('created_at').order('id'),
+        supabase.from('logros').select('*').eq('user_id', user.id).order('created_at').order('id'),
+        supabase.from('idiomas').select('*').eq('user_id', user.id).order('created_at').order('id'),
+        supabase.from('certificaciones').select('*').eq('user_id', user.id).order('anio_egreso', { ascending: false }).order('created_at').order('id'),
       ]);
       if (profileData) setProfile(profileData as Profile);
       if (expData) {
