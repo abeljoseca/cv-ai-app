@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CV Europass v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<!--
+  Referencia visual v2 del estilo `europass`.
+  Fuente de verdad de VALORES: europass-spec-v2.md. Este archivo es la fuente de verdad de CÓMO SE VEN aplicados.
+  La barra superior (.toolbar) es solo para revisión: no forma parte del CV y nunca se exporta.
+  Atributos:
+    data-slot="activable"  → elemento activable (oculto en la vista "Muestra" salvo data-muestra)
+    data-muestra           → activable que SÍ aparece en la imagen de muestra (foto, nacionalidad, permiso)
+-->
+<style>
+  :root{
+    --acento: #003399;
+    --negro: #000000;
+    --gris: #595959;
+    --gris-claro: #e8ecf5;
+    --blanco: #ffffff;
+
+    /* Densidad: Estándar (por defecto) */
+    --lh: 1.2;
+    --entre-secciones: 14pt;
+    --bajo-titulo: 8pt;
+    --entre-items: 6pt;
+  }
+  .page[data-densidad="compacto"]{ --lh:1.1;  --entre-secciones:10.5pt; --bajo-titulo:6pt;  --entre-items:4.5pt; }
+  .page[data-densidad="amplio"]  { --lh:1.35; --entre-secciones:17pt;   --bajo-titulo:10pt; --entre-items:7pt; }
+
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background:#cfd6e4;
+    font-family: Carlito, Calibri, "Segoe UI", Arial, sans-serif;
+    color: var(--negro);
+    padding: 24px 12px 60px;
+  }
+
+  /* ---------- BARRA DE REVISIÓN (solo pantalla) ---------- */
+  .toolbar{
+    max-width: 210mm; margin: 0 auto 16px; padding: 12px 16px;
+    background: var(--blanco); border-radius: 8px;
+    font: 13px/1.4 system-ui, sans-serif; color: #444;
+    display:flex; flex-wrap:wrap; gap: 10px 22px; align-items:center;
+  }
+  .toolbar .grupo{ display:flex; align-items:center; gap:6px; }
+  .toolbar .etq{ font-weight:600; color:#222; margin-right:2px; }
+  .toolbar button{
+    font: inherit; padding: 4px 10px; border-radius: 6px; cursor:pointer;
+    border: 1px solid #c9cfdb; background:#fff; color:#333;
+  }
+  .toolbar button[aria-pressed="true"]{ background:#1f2937; color:#fff; border-color:#1f2937; }
+  .toolbar .sw{ width:22px; height:22px; padding:0; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px #c9cfdb; }
+  .toolbar .sw[aria-pressed="true"]{ box-shadow:0 0 0 2px #1f2937; }
+
+  /* ---------- PÁGINA A4 ---------- */
+  .page{
+    width: 210mm; max-width: 100%;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: var(--blanco);
+    padding: 22mm;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    line-height: var(--lh);
+  }
+
+  /* ---------- CABECERA ---------- */
+  .header{
+    display:flex; justify-content: space-between; align-items: flex-start; gap: 20px;
+    border-bottom: 2.5px solid var(--acento);
+    padding-bottom: 14px; margin-bottom: 18px;
+  }
+  .id-block{ flex:1; min-width:0; }
+  .nombre{ font-weight:700; font-size:20pt; margin:0; letter-spacing:.2px; }
+  .titulo-profesional{ font-size:11.5pt; color: var(--gris); margin: 2px 0 8px; }
+  .datos-personales{
+    /* 2 columnas llenadas por filas: los campos visibles se reparten solos (3 y 3).
+       Columnas al ancho de su contenido y repartidas hasta los bordes (space-between):
+       con foto se comporta como la v1; sin foto, .id-block ocupa todo el ancho y la columna derecha
+       se desplaza a la derecha sin dejar espacio libre. */
+    font-size:10.5pt; display:grid; grid-template-columns: auto auto; justify-content: space-between; gap: 2px 18px;
+  }
+  .datos-personales .label{ color: var(--gris); font-style: italic; font-size:10pt; }
+  .foto{
+    /* Tamaño de foto: 3 opciones fijas, siempre proporción 3:4 vertical. Mediana = por defecto */
+    width: var(--foto-w, 30mm); height: var(--foto-h, 40mm); flex-shrink:0; overflow:hidden;
+    background: var(--gris-claro);
+  }
+  .foto svg{ width:100%; height:100%; display:block; }
+
+  /* ---------- SECCIONES ---------- */
+  section{ margin-bottom: var(--entre-secciones); }
+  h2.section-title{
+    font-weight:700; font-size:13pt; color: var(--acento);
+    text-transform: uppercase; letter-spacing:.4px;
+    margin: 0 0 var(--bajo-titulo) 0; padding-bottom:3px;
+    border-bottom: 1px solid var(--gris-claro);
+    break-after: avoid;
+  }
+  .sobre-mi p{ font-size:10.5pt; margin:0; }
+
+  .item{ margin-bottom: var(--entre-items); break-inside: avoid; }
+  .item:last-child{ margin-bottom:0; }
+  .item-row{ display:flex; justify-content: space-between; align-items: baseline; gap:10px; }
+  .item-titulo{ font-weight:700; font-size:11.5pt; }
+  .item-fecha{ font-style: italic; font-size:10pt; color: var(--gris); white-space: nowrap; }
+  .item-sub{ font-size:10.5pt; margin:1px 0 3px 0; }
+  .item-sub .lugar{ color: var(--gris); font-style: italic; }
+  ul.bullets{ margin:0; padding-left:18px; font-size:10.5pt; }
+  ul.bullets li{ margin-bottom:1.5pt; }
+  .item-meta{ font-size:9.5pt; color: var(--gris); margin-top:2px; }
+
+  /* ---------- IDIOMAS ---------- */
+  .lengua-materna{ font-size:10.5pt; margin:0 0 8px 0; }
+  table.cefr{ width:100%; border-collapse: collapse; font-size:9.5pt; break-inside: avoid; }
+  table.cefr th, table.cefr td{ border:1px solid var(--gris-claro); padding:5px 6px; text-align:center; }
+  table.cefr th{ background: var(--gris-claro); color: var(--acento); font-weight:700; font-size:9pt; }
+  table.cefr td:first-child, table.cefr th:first-child{ text-align:left; font-weight:700; }
+  .cefr-nota{ font-size:9.5pt; color: var(--gris); margin-top:4px; font-style: italic; }
+
+  /* ---------- CHIPS ---------- */
+  .chip-list{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ font-size:9.5pt; background: var(--gris-claro); padding:3px 9px; border-radius:3px; }
+
+  /* ---------- DIGCOMP ---------- */
+  .digcomp-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; font-size:10pt; margin-top: 8pt;
+  }
+  .digcomp-item{ display:flex; justify-content: space-between; gap:8px; border-bottom:1px dotted var(--gris-claro); padding-bottom:3px; }
+  .digcomp-nivel{ font-weight:700; color: var(--acento); font-size:9.5pt; white-space:nowrap; }
+
+  /* ---------- INFORMACIÓN ADICIONAL ---------- */
+  .subgrupo{ margin-bottom: var(--entre-items); break-inside: avoid; }
+  .subgrupo:last-child{ margin-bottom:0; }
+  .subgrupo-titulo{ font-size:10pt; font-style: italic; font-weight:700; color: var(--gris); margin:0 0 2px; }
+
+  /* ---------- ANEXOS ---------- */
+  .anexos-list{ font-size:10.5pt; }
+  .anexos-list div{ margin-bottom:3px; }
+  .anexos-list .num{ color: var(--acento); font-weight:700; margin-right:6px; }
+
+  /* ---------- VISTA MUESTRA ---------- */
+  body.vista-muestra [data-slot="activable"]:not([data-muestra]){ display:none !important; }
+  body.sin-foto .foto{ display:none; }
+  .page[data-foto-tam="pequena"]{ --foto-w:24mm; --foto-h:32mm; }
+  .page[data-foto-tam="grande"] { --foto-w:33mm; --foto-h:44mm; }
+
+  /* ---------- MÓVIL (solo revisión en pantalla) ---------- */
+  @media (max-width: 640px){
+    .page{ padding: 16px; min-height:auto; }
+    .datos-personales{ grid-template-columns: 1fr; }
+    .digcomp-grid{ grid-template-columns: 1fr; }
+    table.cefr{ font-size:8pt; }
+    table.cefr th, table.cefr td{ padding:4px 3px; }
+  }
+
+  /* ---------- IMPRESIÓN ---------- */
+  /* El margen de 22 mm lo pone @page para que se repita en TODAS las páginas (no el padding de .page) */
+  @page{ size: A4 portrait; margin: 22mm; }
+  @media print{
+    body{ background:none; padding:0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .toolbar{ display:none; }
+    .page{ box-shadow:none; margin:0; padding:0; width:auto; max-width:none; min-height:auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar" role="toolbar" aria-label="Controles de revisión">
+  <div class="grupo"><span class="etq">Vista</span>
+    <button data-vista="completa" aria-pressed="true">Completa</button>
+    <button data-vista="muestra" aria-pressed="false">Muestra (núcleo + 3)</button>
+  </div>
+  <div class="grupo"><span class="etq">Densidad</span>
+    <button data-densidad="compacto" aria-pressed="false">Compacto</button>
+    <button data-densidad="estandar" aria-pressed="true">Estándar</button>
+    <button data-densidad="amplio" aria-pressed="false">Amplio</button>
+  </div>
+  <div class="grupo"><span class="etq">Color</span>
+    <button class="sw" data-color="#003399" aria-pressed="true"  style="background:#003399" aria-label="#003399"></button>
+    <button class="sw" data-color="#1A2B4C" aria-pressed="false" style="background:#1A2B4C" aria-label="#1A2B4C"></button>
+    <button class="sw" data-color="#006EBF" aria-pressed="false" style="background:#006EBF" aria-label="#006EBF"></button>
+    <button class="sw" data-color="#1A1A1A" aria-pressed="false" style="background:#1A1A1A" aria-label="#1A1A1A"></button>
+  </div>
+  <div class="grupo"><span class="etq">Foto</span>
+    <button data-foto="on" aria-pressed="true">Activada</button>
+    <button data-foto="off" aria-pressed="false">Desactivada</button>
+  </div>
+  <div class="grupo"><span class="etq">Tamaño foto</span>
+    <button data-foto-tam="pequena" aria-pressed="false">Pequeña</button>
+    <button data-foto-tam="mediana" aria-pressed="true">Mediana</button>
+    <button data-foto-tam="grande" aria-pressed="false">Grande</button>
+  </div>
+</div>
+
+<div class="page" data-densidad="estandar">
+
+  <!-- 1. INFORMACIÓN PERSONAL -->
+  <header class="header">
+    <div class="id-block">
+      <p class="nombre">Laura Fernández Ibáñez</p>
+      <p class="titulo-profesional">Coordinadora de Comunicación Institucional</p>
+      <div class="datos-personales">
+        <div data-slot="activable"><span class="label">Fecha de nacimiento:</span> 14/03/1994</div>
+        <div data-slot="activable" data-muestra><span class="label">Nacionalidad:</span> Española</div>
+        <div data-slot="activable" class="direccion"><span class="label">Dirección:</span> Calle Alcalá 142, 28009 Madrid, España</div>
+        <div class="ciudad-pais"><span class="label">Ciudad:</span> Madrid, España</div>
+        <div><span class="label">Teléfono:</span> +34 611 223 344</div>
+        <div><span class="label">Email:</span> laura.fernandez@email.com</div>
+        <div data-slot="activable"><span class="label">LinkedIn:</span> linkedin.com/in/laurafernandezib</div>
+      </div>
+    </div>
+    <div class="foto" data-slot="activable" data-muestra aria-label="Foto de perfil (30 × 40 mm)">
+      <svg viewBox="0 0 30 40" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <rect width="30" height="40" fill="#d5dbe8"/>
+        <circle cx="15" cy="15" r="6.5" fill="#a9b4ca"/>
+        <path d="M2 40 C2 29 8 24.5 15 24.5 C22 24.5 28 29 28 40 Z" fill="#a9b4ca"/>
+      </svg>
+    </div>
+  </header>
+
+  <!-- 2. SOBRE MÍ -->
+  <section class="sobre-mi">
+    <h2 class="section-title">Sobre mí</h2>
+    <p>Profesional de la comunicación institucional con cinco años de experiencia en el sector público y en organismos europeos. Especialización en coordinación de equipos de comunicación, gestión de proyectos con financiación europea y comunicación multilingüe en español, francés e inglés.</p>
+  </section>
+
+  <!-- 3. EXPERIENCIA LABORAL -->
+  <section>
+    <h2 class="section-title">Experiencia laboral</h2>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Coordinadora de Comunicación Institucional</span>
+        <span class="item-fecha">09/2022 – actualidad</span>
+      </div>
+      <div class="item-sub">Representación Permanente de España ante la Unión Europea<span data-slot="activable"> — <span class="lugar">Bruselas, Bélgica</span></span></div>
+      <ul class="bullets">
+        <li>Coordinación del equipo de comunicación (12 personas) y de la estrategia de difusión multilingüe de la Representación.</li>
+        <li>Enlace con la Comisión Europea y el Parlamento Europeo en materia de comunicación institucional.</li>
+        <li>Gestión del presupuesto anual de comunicación (1.250.000€).</li>
+        <li>Supervisión de tres campañas informativas de alcance paneuropeo.</li>
+      </ul>
+      <div class="item-meta" data-slot="activable">Sector de actividad (NACE): O84 — Administración pública y defensa</div>
+    </div>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Técnica de Proyectos Europeos</span>
+        <span class="item-fecha">02/2020 – 08/2022</span>
+      </div>
+      <div class="item-sub">Ayuntamiento de Madrid, Área de Relaciones Internacionales<span data-slot="activable"> — <span class="lugar">Madrid, España</span></span></div>
+      <ul class="bullets">
+        <li>Gestión de proyectos financiados por fondos europeos (Horizonte Europa, Interreg).</li>
+        <li>Redacción y presentación de propuestas de financiación ante la Comisión Europea.</li>
+        <li>Seguimiento presupuestario y justificación técnica de los proyectos adjudicados.</li>
+        <li>Coordinación con socios institucionales en Francia, Italia y Portugal.</li>
+      </ul>
+      <div class="item-meta" data-slot="activable">Sector de actividad (NACE): O84 — Administración pública y defensa</div>
+    </div>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Becaria de Comunicación</span>
+        <span class="item-fecha">07/2019 – 01/2020</span>
+      </div>
+      <div class="item-sub">Comité Económico y Social Europeo<span data-slot="activable"> — <span class="lugar">Bruselas, Bélgica</span></span></div>
+      <ul class="bullets">
+        <li>Producción de contenidos para las redes sociales institucionales.</li>
+        <li>Apoyo en la organización logística de sesiones plenarias.</li>
+        <li>Traducción y revisión de documentos internos en español, francés e inglés.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4. EDUCACIÓN Y FORMACIÓN -->
+  <section>
+    <h2 class="section-title">Educación y formación</h2>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Máster en Administración Pública Europea</span>
+        <span class="item-fecha">09/2017 – 06/2019</span>
+      </div>
+      <div class="item-sub">Université Libre de Bruxelles<span data-slot="activable"> — <span class="lugar">Bruselas, Bélgica</span></span></div>
+      <div class="item-meta" data-slot="activable">Nivel CINE/ISCED: 7 (Máster) · Materias principales: Derecho institucional de la UE, Comunicación pública, Políticas comparadas</div>
+    </div>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Grado en Periodismo</span>
+        <span class="item-fecha">09/2012 – 06/2016</span>
+      </div>
+      <div class="item-sub">Universidad Complutense de Madrid<span data-slot="activable"> — <span class="lugar">Madrid, España</span></span></div>
+      <div class="item-meta" data-slot="activable">Nivel CINE/ISCED: 6 (Grado) · Materias principales: Comunicación institucional, Redacción periodística, Relaciones internacionales</div>
+    </div>
+  </section>
+
+  <!-- 5. COMPETENCIAS LINGÜÍSTICAS -->
+  <section>
+    <h2 class="section-title">Competencias lingüísticas</h2>
+    <p class="lengua-materna"><b>Lengua materna:</b> Español</p>
+    <table class="cefr">
+      <thead>
+        <tr>
+          <th scope="col">Idioma</th>
+          <th scope="col">Comprensión<br>auditiva</th>
+          <th scope="col">Comprensión<br>lectora</th>
+          <th scope="col">Interacción<br>oral</th>
+          <th scope="col">Expresión<br>oral</th>
+          <th scope="col">Expresión<br>escrita</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Francés</td><td>C1</td><td>C1</td><td>C1</td><td>C1</td><td>B2</td></tr>
+        <tr><td>Inglés</td><td>C1</td><td>C1</td><td>B2</td><td>B2</td><td>B2</td></tr>
+        <tr><td>Italiano</td><td>B1</td><td>B2</td><td>B1</td><td>B1</td><td>A2</td></tr>
+      </tbody>
+    </table>
+    <p class="cefr-nota" data-slot="activable">Certificaciones oficiales: DELF C1 (francés, 2018) · Cambridge C1 Advanced (inglés, 2019)</p>
+  </section>
+
+  <!-- 6. COMPETENCIAS DIGITALES -->
+  <section>
+    <h2 class="section-title">Competencias digitales</h2>
+    <div class="chip-list">
+      <span class="chip">Microsoft Office</span>
+      <span class="chip">Canva</span>
+      <span class="chip">Hootsuite</span>
+      <span class="chip">WordPress</span>
+      <span class="chip">Google Analytics</span>
+    </div>
+    <div class="digcomp-grid" data-slot="activable">
+      <div class="digcomp-item"><span>Información y datos</span><span class="digcomp-nivel">Avanzado</span></div>
+      <div class="digcomp-item"><span>Comunicación y colaboración</span><span class="digcomp-nivel">Avanzado</span></div>
+      <div class="digcomp-item"><span>Creación de contenido digital</span><span class="digcomp-nivel">Intermedio</span></div>
+      <div class="digcomp-item"><span>Seguridad</span><span class="digcomp-nivel">Intermedio</span></div>
+      <div class="digcomp-item"><span>Resolución de problemas</span><span class="digcomp-nivel">Intermedio</span></div>
+    </div>
+  </section>
+
+  <!-- 7. OTRAS COMPETENCIAS -->
+  <section>
+    <h2 class="section-title">Otras competencias</h2>
+    <div class="chip-list">
+      <span class="chip">Coordinación de equipos</span>
+      <span class="chip">Oratoria institucional</span>
+      <span class="chip">Negociación</span>
+      <span class="chip">Trabajo en entornos multiculturales</span>
+    </div>
+  </section>
+
+  <!-- 8. PERMISO DE CONDUCIR -->
+  <section data-slot="activable" data-muestra>
+    <h2 class="section-title">Permiso de conducir</h2>
+    <div class="chip-list"><span class="chip">Categoría B</span></div>
+  </section>
+
+  <!-- 9. INFORMACIÓN ADICIONAL -->
+  <section data-slot="activable">
+    <h2 class="section-title">Información adicional</h2>
+    <div class="subgrupo">
+      <p class="subgrupo-titulo">Ponencias</p>
+      <ul class="bullets"><li>Jornada de Comunicación Pública Europea, Bruselas, 2023 — "Comunicar la UE a públicos jóvenes".</li></ul>
+    </div>
+    <div class="subgrupo">
+      <p class="subgrupo-titulo">Premios y becas</p>
+      <ul class="bullets"><li>Beca de excelencia académica, Universidad Complutense de Madrid, 2015.</li></ul>
+    </div>
+    <div class="subgrupo">
+      <p class="subgrupo-titulo">Afiliaciones</p>
+      <ul class="bullets"><li>Miembro de la Asociación Española de Comunicación Institucional (AECI) desde 2021.</li></ul>
+    </div>
+  </section>
+
+  <!-- 10. ANEXOS -->
+  <section data-slot="activable">
+    <h2 class="section-title">Anexos</h2>
+    <div class="anexos-list">
+      <div><span class="num">1.</span> Título oficial del Máster en Administración Pública Europea (ULB)</div>
+      <div><span class="num">2.</span> Certificado DELF C1</div>
+      <div><span class="num">3.</span> Certificado Cambridge C1 Advanced</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  (function(){
+    const body = document.body;
+    const page = document.querySelector('.page');
+    const direccion = document.querySelector('.direccion');
+    const ciudad = document.querySelector('.ciudad-pais');
+
+    // Dirección completa (activable) sustituye a "Ciudad, país" (núcleo): nunca se muestran ambas.
+    function syncDireccion(){
+      const dirVisible = !body.classList.contains('vista-muestra');
+      ciudad.style.display = dirVisible ? 'none' : '';
+    }
+
+    function press(group, btn){
+      document.querySelectorAll('.toolbar [' + group + ']').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+    }
+
+    document.querySelectorAll('.toolbar [data-vista]').forEach(b => b.addEventListener('click', () => {
+      body.classList.toggle('vista-muestra', b.dataset.vista === 'muestra');
+      press('data-vista', b); syncDireccion();
+    }));
+    document.querySelectorAll('.toolbar [data-densidad]').forEach(b => b.addEventListener('click', () => {
+      page.dataset.densidad = b.dataset.densidad; press('data-densidad', b);
+    }));
+    document.querySelectorAll('.toolbar [data-color]').forEach(b => b.addEventListener('click', () => {
+      document.documentElement.style.setProperty('--acento', b.dataset.color); press('data-color', b);
+    }));
+    document.querySelectorAll('.toolbar [data-foto]').forEach(b => b.addEventListener('click', () => {
+      body.classList.toggle('sin-foto', b.dataset.foto === 'off'); press('data-foto', b);
+    }));
+
+    document.querySelectorAll('.toolbar [data-foto-tam]').forEach(b => b.addEventListener('click', () => {
+      page.dataset.fotoTam = b.dataset.fotoTam; press('data-foto-tam', b);
+    }));
+
+    syncDireccion();
+  })();
+</script>
+</body>
+</html>

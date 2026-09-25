@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CV Europass — Ejemplo</title>
+<style>
+  :root{
+    --azul: #003399;
+    --negro: #000000;
+    --gris: #595959;
+    --gris-claro: #e8ecf5;
+    --blanco: #ffffff;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background:#cfd6e4;
+    font-family: Calibri, "Segoe UI", Arial, sans-serif;
+    color: var(--negro);
+    padding: 24px 0 60px;
+  }
+  .toolbar{
+    max-width: 210mm;
+    margin: 0 auto 16px;
+    padding: 10px 16px;
+    background: var(--blanco);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--gris);
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
+  }
+  .toolbar b{ color: var(--azul); }
+  .page{
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto 20px;
+    background: var(--blanco);
+    padding: 22mm 22mm 22mm 22mm; /* margen fijo 2.2cm */
+    box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    line-height: 1.2;
+  }
+
+  /* ---------- CABECERA ---------- */
+  .header{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2.5px solid var(--azul);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  .id-block{ flex:1; padding-right: 20px; }
+  .nombre{
+    font-weight: 700;
+    font-size: 20pt;
+    color: var(--negro);
+    margin: 0 0 6px 0;
+    letter-spacing: 0.2px;
+  }
+  .datos-personales{
+    font-size: 10.5pt;
+    color: var(--negro);
+    display:grid;
+    grid-template-columns: auto auto;
+    gap: 2px 18px;
+  }
+  .datos-personales div span.label{
+    color: var(--gris);
+    font-style: italic;
+    font-size: 10pt;
+  }
+  .foto{
+    width: 40mm;
+    height: 30mm;
+    background: var(--gris-claro);
+    border: 1px solid #b9c3d9;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
+    font-size: 9pt;
+    color: var(--gris);
+    flex-shrink:0;
+  }
+
+  /* ---------- SECCIONES ---------- */
+  section{ margin-bottom: 14pt; }
+  h2.section-title{
+    font-family: Calibri, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 13pt;
+    color: var(--azul);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 0 0 8pt 0;
+    padding-bottom: 3px;
+    border-bottom: 1px solid var(--gris-claro);
+  }
+  .sobre-mi p{
+    font-size: 10.5pt;
+    margin: 0;
+    color: var(--negro);
+  }
+
+  .item{ margin-bottom: 6pt; }
+  .item-row{
+    display:flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .item-titulo{
+    font-weight: 700;
+    font-size: 11.5pt;
+    color: var(--negro);
+  }
+  .item-fecha{
+    font-style: italic;
+    font-size: 10pt;
+    color: var(--gris);
+    white-space: nowrap;
+  }
+  .item-sub{
+    font-size: 10.5pt;
+    color: var(--negro);
+    margin: 1px 0 3px 0;
+  }
+  .item-sub .lugar{ color: var(--gris); font-style: italic; }
+  .item-desc{
+    font-size: 10.5pt;
+    color: var(--negro);
+    margin: 0;
+    text-align: justify;
+  }
+  .item-meta{
+    font-size: 9.5pt;
+    color: var(--gris);
+    margin-top: 2px;
+  }
+
+  /* ---------- IDIOMAS (CEFR) ---------- */
+  table.cefr{
+    width:100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+  table.cefr th, table.cefr td{
+    border: 1px solid var(--gris-claro);
+    padding: 5px 6px;
+    text-align: center;
+  }
+  table.cefr th{
+    background: var(--gris-claro);
+    color: var(--azul);
+    font-weight: 600;
+    font-size: 9pt;
+  }
+  table.cefr td:first-child, table.cefr th:first-child{
+    text-align:left;
+    font-weight: 700;
+  }
+  .cefr-nota{
+    font-size: 9pt;
+    color: var(--gris);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* ---------- DIGCOMP ---------- */
+  .digcomp-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 20px;
+    font-size: 10pt;
+  }
+  .digcomp-item{
+    display:flex;
+    justify-content: space-between;
+    border-bottom: 1px dotted var(--gris-claro);
+    padding-bottom: 3px;
+  }
+  .digcomp-nivel{
+    font-weight: 700;
+    color: var(--azul);
+    font-size: 9.5pt;
+  }
+
+  .chip-list{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    font-size: 9.5pt;
+    background: var(--gris-claro);
+    color: var(--negro);
+    padding: 3px 9px;
+    border-radius: 3px;
+  }
+
+  ul.simple{ margin:0; padding-left: 18px; font-size: 10.5pt; }
+  ul.simple li{ margin-bottom: 2px; }
+
+  .anexos-list{ font-size: 10.5pt; }
+  .anexos-list div{ margin-bottom: 3px; }
+  .anexos-list span.num{ color: var(--azul); font-weight:700; margin-right:6px; }
+
+  @media print{
+    body{ background: none; padding:0; }
+    .toolbar{ display:none; }
+    .page{ box-shadow:none; margin:0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span>Vista previa — <b>Estilo Europeo / Europass · versión moderna 2020+</b> · A4, 1 columna</span>
+  <span>Perfil: Mid (5 años) · Modo estándar (con foto y color)</span>
+</div>
+
+<div class="page">
+
+  <!-- 1. INFORMACIÓN PERSONAL -->
+  <div class="header">
+    <div class="id-block">
+      <p class="nombre">Laura Fernández Ibáñez</p>
+      <div class="datos-personales">
+        <div><span class="label">Fecha de nacimiento:</span> 14/03/1994</div>
+        <div><span class="label">Nacionalidad:</span> Española</div>
+        <div><span class="label">Dirección:</span> Calle Alcalá 142, 28009 Madrid, España</div>
+        <div><span class="label">Teléfono:</span> +34 611 223 344</div>
+        <div><span class="label">Email:</span> laura.fernandez.ibanez@email.com</div>
+        <div><span class="label">LinkedIn:</span> linkedin.com/in/laurafernandezib</div>
+      </div>
+    </div>
+    <div class="foto">Foto profesional<br>40 × 30 mm</div>
+  </div>
+
+  <!-- 2. SOBRE MÍ -->
+  <section class="sobre-mi">
+    <h2 class="section-title">Sobre mí</h2>
+    <p>Especialista en gestión de proyectos de comunicación institucional con cinco años de experiencia en el sector público y organismos europeos. Responsable de la coordinación de equipos multidisciplinares de hasta 12 personas y de la implementación de estrategias de comunicación multilingüe. Formación complementaria en administración pública europea y competencia lingüística certificada en tres idiomas.</p>
+  </section>
+
+  <!-- 3. EXPERIENCIA LABORAL -->
+  <section>
+    <h2 class="section-title">Experiencia laboral</h2>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Coordinadora de Comunicación Institucional</span>
+        <span class="item-fecha">01/09/2022 – actualidad</span>
+      </div>
+      <div class="item-sub">Representación Permanente de España ante la Unión Europea — <span class="lugar">Bruselas, Bélgica</span></div>
+      <p class="item-desc">Responsable de la coordinación del equipo de comunicación (12 personas) y de la implementación de la estrategia de difusión multilingüe de la Representación. Función de enlace con la Comisión Europea y el Parlamento Europeo en materia de comunicación institucional. Gestión del presupuesto anual de comunicación (1.250.000€) y supervisión de tres campañas informativas de alcance paneuropeo.</p>
+      <div class="item-meta">Sector de actividad (NACE): O84 — Administración pública y defensa</div>
+    </div>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Técnica de Proyectos Europeos</span>
+        <span class="item-fecha">01/02/2020 – 31/08/2022</span>
+      </div>
+      <div class="item-sub">Ayuntamiento de Madrid, Área de Relaciones Internacionales — <span class="lugar">Madrid, España</span></div>
+      <p class="item-desc">Gestión de proyectos financiados por fondos europeos (Horizonte Europa, Interreg). Redacción y presentación de propuestas de financiación; seguimiento presupuestario y justificación técnica ante la Comisión Europea. Coordinación con socios institucionales en Francia, Italia y Portugal.</p>
+      <div class="item-meta">Sector de actividad (NACE): O84 — Administración pública y defensa</div>
+    </div>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Becaria de Comunicación</span>
+        <span class="item-fecha">01/07/2019 – 31/01/2020</span>
+      </div>
+      <div class="item-sub">Comité Económico y Social Europeo — <span class="lugar">Bruselas, Bélgica</span></div>
+      <p class="item-desc">Apoyo en la producción de contenidos para redes sociales institucionales y en la organización logística de sesiones plenarias. Traducción y revisión de documentos internos español-francés-inglés.</p>
+      <div class="item-meta">Programa: Beca Blue Book de la Comisión Europea</div>
+    </div>
+  </section>
+
+  <!-- 4. EDUCACIÓN Y FORMACIÓN -->
+  <section>
+    <h2 class="section-title">Educación y formación</h2>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Máster en Administración Pública Europea</span>
+        <span class="item-fecha">01/09/2017 – 30/06/2019</span>
+      </div>
+      <div class="item-sub">Université Libre de Bruxelles — <span class="lugar">Bruselas, Bélgica</span></div>
+      <p class="item-desc">Especialización en políticas de comunicación institucional y gobernanza multinivel europea. Trabajo fin de máster: "Estrategias de comunicación de la UE dirigidas a públicos euroescépticos".</p>
+      <div class="item-meta">Nivel CINE/ISCED: 7 (Máster) · Materias principales: Derecho institucional de la UE, Comunicación pública, Políticas comparadas</div>
+    </div>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Grado en Periodismo</span>
+        <span class="item-fecha">01/09/2012 – 30/06/2016</span>
+      </div>
+      <div class="item-sub">Universidad Complutense de Madrid — <span class="lugar">Madrid, España</span></div>
+      <p class="item-desc">Itinerario en periodismo institucional y de organizaciones. Programa de intercambio Erasmus en la Università degli Studi di Bologna (curso 2014/2015).</p>
+      <div class="item-meta">Nivel CINE/ISCED: 6 (Grado) · Materias principales: Comunicación institucional, Redacción periodística, Relaciones internacionales</div>
+    </div>
+
+    <div class="item">
+      <div class="item-row">
+        <span class="item-titulo">Bachillerato — Modalidad de Humanidades y Ciencias Sociales</span>
+        <span class="item-fecha">01/09/2008 – 30/06/2012</span>
+      </div>
+      <div class="item-sub">IES Cardenal Cisneros — <span class="lugar">Madrid, España</span></div>
+      <div class="item-meta">Nivel CINE/ISCED: 3 (Educación secundaria superior)</div>
+    </div>
+  </section>
+
+  <!-- 5. COMPETENCIAS LINGÜÍSTICAS -->
+  <section>
+    <h2 class="section-title">Competencias lingüísticas</h2>
+    <p style="font-size:10.5pt; margin:0 0 8px 0;"><b>Lengua materna:</b> Español</p>
+    <table class="cefr">
+      <tr>
+        <th>Idioma</th>
+        <th>Comprensión<br>auditiva</th>
+        <th>Comprensión<br>lectora</th>
+        <th>Interacción<br>oral</th>
+        <th>Expresión<br>oral</th>
+        <th>Expresión<br>escrita</th>
+      </tr>
+      <tr>
+        <td>Francés</td><td>C1</td><td>C1</td><td>C1</td><td>C1</td><td>B2</td>
+      </tr>
+      <tr>
+        <td>Inglés</td><td>C1</td><td>C1</td><td>B2</td><td>B2</td><td>B2</td>
+      </tr>
+      <tr>
+        <td>Italiano</td><td>B1</td><td>B2</td><td>B1</td><td>B1</td><td>A2</td>
+      </tr>
+    </table>
+    <p class="cefr-nota">Certificaciones oficiales: DELF C1 (francés, 2018) · Cambridge C1 Advanced (inglés, 2019)</p>
+  </section>
+
+  <!-- 6. COMPETENCIAS DIGITALES -->
+  <section>
+    <h2 class="section-title">Competencias digitales (marco DigComp)</h2>
+    <div class="digcomp-grid">
+      <div class="digcomp-item"><span>Alfabetización en información y datos</span><span class="digcomp-nivel">Avanzado</span></div>
+      <div class="digcomp-item"><span>Comunicación y colaboración</span><span class="digcomp-nivel">Avanzado</span></div>
+      <div class="digcomp-item"><span>Creación de contenido digital</span><span class="digcomp-nivel">Intermedio</span></div>
+      <div class="digcomp-item"><span>Seguridad</span><span class="digcomp-nivel">Intermedio</span></div>
+      <div class="digcomp-item"><span>Resolución de problemas</span><span class="digcomp-nivel">Intermedio</span></div>
+    </div>
+  </section>
+
+  <!-- 7. OTRAS COMPETENCIAS -->
+  <section>
+    <h2 class="section-title">Otras competencias</h2>
+    <ul class="simple">
+      <li>Competencias organizativas: coordinación de equipos de hasta 12 personas, gestión presupuestaria (evidencia: puesto actual en la Representación Permanente).</li>
+      <li>Competencias comunicativas: oratoria institucional, portavocía ante medios (evidencia: representación en ruedas de prensa del Ayuntamiento de Madrid, 2020-2022).</li>
+      <li>Competencias sociales: trabajo en entornos multiculturales e interinstitucionales europeos.</li>
+    </ul>
+  </section>
+
+  <!-- 8. PERMISO DE CONDUCIR -->
+  <section>
+    <h2 class="section-title">Permiso de conducir</h2>
+    <div class="chip-list"><span class="chip">Categoría B</span></div>
+  </section>
+
+  <!-- 9. INFORMACIÓN ADICIONAL -->
+  <section>
+    <h2 class="section-title">Información adicional</h2>
+    <ul class="simple">
+      <li>Ponente en la Jornada de Comunicación Pública Europea, Bruselas, 2023 — "Comunicar la UE a públicos jóvenes".</li>
+      <li>Miembro de la Asociación Española de Comunicación Institucional (AECI) desde 2021.</li>
+      <li>Beca de excelencia académica, Universidad Complutense de Madrid, 2015.</li>
+    </ul>
+  </section>
+
+  <!-- 10. ANEXOS -->
+  <section>
+    <h2 class="section-title">Anexos</h2>
+    <div class="anexos-list">
+      <div><span class="num">1.</span> Título oficial del Máster en Administración Pública Europea (ULB)</div>
+      <div><span class="num">2.</span> Certificado DELF C1</div>
+      <div><span class="num">3.</span> Certificado Cambridge C1 Advanced</div>
+      <div><span class="num">4.</span> Carta de recomendación — Representación Permanente de España ante la UE</div>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>
