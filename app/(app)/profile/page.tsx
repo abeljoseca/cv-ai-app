@@ -66,6 +66,10 @@ export default function PerfilPage() {
   const [newLogro, setNewLogro] = useState('');
   const [newLogroExpId, setNewLogroExpId] = useState('');
 
+  // True once something was added or edited (and saved) in the card being edited;
+  // turns its header "Cancelar" into "Listo". Only one card is in edit mode at a time.
+  const [cardChanged, setCardChanged] = useState(false);
+
   // Which section's "Añadir …" accordion is open (only one at a time)
   const [addOpen, setAddOpen] = useState<string | null>(null);
 
@@ -189,6 +193,7 @@ export default function PerfilPage() {
   }
 
   function toggleEdit(section: string) {
+    setCardChanged(false);
     if (editSection === section) {
       setEditSection(null);
       setEditingExpId(null); setEditingEduId(null); setEditingIdiomaId(null); setEditingLogroId(null); setEditingCertId(null);
@@ -258,13 +263,14 @@ export default function PerfilPage() {
 
   // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveExperiencia() {
-    if (pendingExpDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
+    if (pendingExpDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); setCardChanged(false); return; }
     setEditSaving(true);
     try {
       await supabase.from('experiencia').delete().in('id', pendingExpDeleteIds);
       setPendingExpDeleteIds([]);
       setAddOpen(null);
       setEditSection(null);
+      setCardChanged(false);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -286,6 +292,7 @@ export default function PerfilPage() {
         });
         setNewExp(emptyExp);
       setAddOpen(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -301,6 +308,7 @@ export default function PerfilPage() {
         activo: editExpForm.activo, descripcion: editExpForm.descripcion || null,
       }).eq('id', id);
       setEditingExpId(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -308,13 +316,14 @@ export default function PerfilPage() {
 
   // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveEducacion() {
-    if (pendingEduDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
+    if (pendingEduDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); setCardChanged(false); return; }
     setEditSaving(true);
     try {
       await supabase.from('educacion').delete().in('id', pendingEduDeleteIds);
       setPendingEduDeleteIds([]);
       setAddOpen(null);
       setEditSection(null);
+      setCardChanged(false);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -336,6 +345,7 @@ export default function PerfilPage() {
         });
         setNewEdu(emptyEdu);
       setAddOpen(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -351,6 +361,7 @@ export default function PerfilPage() {
         fecha_fin: normalizeProfileDate(editEduForm.fecha_fin),
       }).eq('id', id);
       setEditingEduId(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -358,13 +369,14 @@ export default function PerfilPage() {
 
   // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveIdioma() {
-    if (pendingIdiomaDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
+    if (pendingIdiomaDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); setCardChanged(false); return; }
     setEditSaving(true);
     try {
       await supabase.from('idiomas').delete().in('id', pendingIdiomaDeleteIds);
       setPendingIdiomaDeleteIds([]);
       setAddOpen(null);
       setEditSection(null);
+      setCardChanged(false);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -383,6 +395,7 @@ export default function PerfilPage() {
         await supabase.from('idiomas').insert({ user_id: user.id, nombre: newIdioma.nombre, nivel_cefr: nivelCefr, nivel: nivelCefr });
         setNewIdioma({ nombre: '', nivel_cefr: '' });
       setAddOpen(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -399,6 +412,7 @@ export default function PerfilPage() {
         ...(nivelCefr ? { nivel: nivelCefr } : {}),
       }).eq('id', id);
       setEditingIdiomaId(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -406,13 +420,14 @@ export default function PerfilPage() {
 
   // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveLogro() {
-    if (pendingLogroDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
+    if (pendingLogroDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); setCardChanged(false); return; }
     setEditSaving(true);
     try {
       await supabase.from('logros').delete().in('id', pendingLogroDeleteIds);
       setPendingLogroDeleteIds([]);
       setAddOpen(null);
       setEditSection(null);
+      setCardChanged(false);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -430,6 +445,7 @@ export default function PerfilPage() {
         setNewLogro('');
         setNewLogroExpId('');
       setAddOpen(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -441,6 +457,7 @@ export default function PerfilPage() {
     try {
       await supabase.from('logros').update({ descripcion: editLogroText.trim(), experiencia_id: editLogroExpId || null }).eq('id', id);
       setEditingLogroId(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -448,13 +465,14 @@ export default function PerfilPage() {
 
   // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveCertificacion() {
-    if (pendingCertDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
+    if (pendingCertDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); setCardChanged(false); return; }
     setEditSaving(true);
     try {
       await supabase.from('certificaciones').delete().in('id', pendingCertDeleteIds);
       setPendingCertDeleteIds([]);
       setAddOpen(null);
       setEditSection(null);
+      setCardChanged(false);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -476,6 +494,7 @@ export default function PerfilPage() {
         });
         setNewCert(emptyCert);
       setAddOpen(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -490,6 +509,7 @@ export default function PerfilPage() {
         anio_egreso: editCertForm.anio_egreso.trim() || null,
       }).eq('id', id);
       setEditingCertId(null);
+      setCardChanged(true);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -728,7 +748,7 @@ export default function PerfilPage() {
           lockHeader={editingExpId !== null}
           isEditing={editSection === 'experiencia'} onEdit={() => toggleEdit('experiencia')}
           onSave={saveExperiencia} saving={editSaving}
-          saveLabel="Listo" saveDisabled={false}>
+          singleAction dirty={cardChanged || pendingExpDeleteIds.length > 0}>
           {experiencias.map((exp, i) => {
             const marked = pendingExpDeleteIds.includes(exp.id);
             return (
@@ -818,7 +838,7 @@ export default function PerfilPage() {
           lockHeader={editingEduId !== null}
           isEditing={editSection === 'educacion'} onEdit={() => toggleEdit('educacion')}
           onSave={saveEducacion} saving={editSaving}
-          saveLabel="Listo" saveDisabled={false}>
+          singleAction dirty={cardChanged || pendingEduDeleteIds.length > 0}>
           {educaciones.map((edu, i) => {
             const marked = pendingEduDeleteIds.includes(edu.id);
             return (
@@ -886,7 +906,7 @@ export default function PerfilPage() {
           lockHeader={editingCertId !== null}
           isEditing={editSection === 'certificaciones'} onEdit={() => toggleEdit('certificaciones')}
           onSave={saveCertificacion} saving={editSaving}
-          saveLabel="Listo" saveDisabled={false}>
+          singleAction dirty={cardChanged || pendingCertDeleteIds.length > 0}>
           {certificaciones.map((cert, i) => {
             const marked = pendingCertDeleteIds.includes(cert.id);
             return (
@@ -952,7 +972,7 @@ export default function PerfilPage() {
           lockHeader={editingIdiomaId !== null}
           isEditing={editSection === 'idiomas'} onEdit={() => toggleEdit('idiomas')}
           onSave={saveIdioma} saving={editSaving}
-          saveLabel="Listo" saveDisabled={false}>
+          singleAction dirty={cardChanged || pendingIdiomaDeleteIds.length > 0}>
           {idiomas.some(i => !i.nivel_cefr) && (
             <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#B45309', lineHeight: 1.45 }}>
               Actualiza el nivel de tus idiomas a la escala europea (A1–C2): así tus CVs muestran tu nivel real.
@@ -1049,7 +1069,7 @@ export default function PerfilPage() {
           lockHeader={editingLogroId !== null}
           isEditing={editSection === 'logros'} onEdit={() => toggleEdit('logros')}
           onSave={saveLogro} saving={editSaving}
-          saveLabel="Listo" saveDisabled={false}>
+          singleAction dirty={cardChanged || pendingLogroDeleteIds.length > 0}>
           {logros.map((logro, i) => {
             const marked = pendingLogroDeleteIds.includes(logro.id);
             return (
@@ -1297,12 +1317,18 @@ function ProfileIntroMessage({ firstName }: { firstName: string }) {
 interface InfoCardProps {
   title: string; icon: React.ReactNode; children: React.ReactNode;
   isEditing?: boolean; onEdit?: () => void; editLabel?: string;
-  onSave?: () => void; saving?: boolean; saveDisabled?: boolean; saveLabel?: string;
+  onSave?: () => void; saving?: boolean; saveDisabled?: boolean;
+  // One header button while editing: "Cancelar" (closes) until the card is dirty,
+  // then "Listo" (primary; calls onSave, which applies pending deletions and closes).
+  singleAction?: boolean; dirty?: boolean;
   // True while one item of the section is being edited inline: that item has its own
   // Guardar/Cancelar, so the section-level ones are hidden to avoid two competing saves.
   lockHeader?: boolean;
 }
-function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Editar', onSave, saving, saveDisabled, lockHeader, saveLabel = 'Guardar Cambios' }: InfoCardProps) {
+function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Editar', onSave, saving, saveDisabled, lockHeader, singleAction, dirty }: InfoCardProps) {
+  // singleAction cards: "Cancelar" until something changed, then a primary "Listo".
+  const showListo = singleAction && isEditing && dirty && onSave;
+  const spinner = <span style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid #fff', borderTopColor: 'transparent', display: 'inline-block', animation: 'spin .8s linear infinite' }} />;
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: '20px 22px', boxShadow: 'var(--sh-1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
@@ -1311,31 +1337,41 @@ function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Edita
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--deep)' }}>{title}</h3>
         </div>
         {!lockHeader && <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {isEditing && onSave && (!saveDisabled || saving) && (
-            <button onClick={onSave} disabled={saving || saveDisabled} style={{
-              background: saving || saveDisabled ? 'var(--line)' : 'var(--blue)',
-              color: saving || saveDisabled ? 'var(--mute)' : '#fff',
-              border: 'none', padding: '5px 12px', borderRadius: 8,
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              fontSize: 12, fontWeight: 600, cursor: saving || saveDisabled ? 'not-allowed' : 'pointer',
-              transition: 'all .15s var(--ease)',
+          {showListo ? (
+            <button onClick={onSave} disabled={saving} style={{
+              background: 'var(--blue)', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: 8,
+              display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600,
+              cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, transition: 'all .15s var(--ease)',
             }}>
-              {saving
-                ? <><span style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid #fff', borderTopColor: 'transparent', display: 'inline-block', animation: 'spin .8s linear infinite' }} /> Guardando…</>
-                : <>{saveLabel === 'Listo' ? <CheckIcon size={12} /> : <SaveIcon size={12} />} {saveLabel}</>}
+              {saving ? <>{spinner} Guardando…</> : <><CheckIcon size={12} /> Listo</>}
             </button>
+          ) : (
+            <>
+              {isEditing && onSave && !singleAction && (!saveDisabled || saving) && (
+                <button onClick={onSave} disabled={saving || saveDisabled} style={{
+                  background: saving || saveDisabled ? 'var(--line)' : 'var(--blue)',
+                  color: saving || saveDisabled ? 'var(--mute)' : '#fff',
+                  border: 'none', padding: '5px 12px', borderRadius: 8,
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: 12, fontWeight: 600, cursor: saving || saveDisabled ? 'not-allowed' : 'pointer',
+                  transition: 'all .15s var(--ease)',
+                }}>
+                  {saving ? <>{spinner} Guardando…</> : <><SaveIcon size={12} /> Guardar Cambios</>}
+                </button>
+              )}
+              <button onClick={onEdit} style={{
+                background: isEditing ? 'var(--hover)' : 'transparent',
+                border: '1px solid var(--line)', color: isEditing ? 'var(--deep)' : 'var(--mute)',
+                padding: '5px 10px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 12, cursor: 'pointer', transition: 'all .15s var(--ease)',
+              }}
+                onMouseEnter={e => { if (!isEditing) { (e.currentTarget as HTMLElement).style.background = 'var(--hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--deep)'; } }}
+                onMouseLeave={e => { if (!isEditing) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--mute)'; } }}
+              >
+                {isEditing ? <><XIcon size={12} /> Cancelar</> : <><EditIcon size={12} /> {editLabel}</>}
+              </button>
+            </>
           )}
-          <button onClick={onEdit} style={{
-            background: isEditing ? 'var(--hover)' : 'transparent',
-            border: '1px solid var(--line)', color: isEditing ? 'var(--deep)' : 'var(--mute)',
-            padding: '5px 10px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 12, cursor: 'pointer', transition: 'all .15s var(--ease)',
-          }}
-            onMouseEnter={e => { if (!isEditing) { (e.currentTarget as HTMLElement).style.background = 'var(--hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--deep)'; } }}
-            onMouseLeave={e => { if (!isEditing) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--mute)'; } }}
-          >
-            {isEditing ? <><XIcon size={12} /> Cancelar</> : <><EditIcon size={12} /> {editLabel}</>}
-          </button>
         </div>}
       </div>
       {children}
