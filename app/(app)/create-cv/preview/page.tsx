@@ -6,6 +6,7 @@ import CVRenderer, { styleAccentColors } from '@/components/CVTemplates';
 import { createClient } from '@/lib/supabase/client';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
+import { parseVisualConfig, VisualConfig } from '@/lib/cv/visual-config';
 
 interface CVParams {
   mode: 'general' | 'job';
@@ -67,6 +68,11 @@ export default function PreviewPage() {
   const [accentColor, setAccentColor] = useState<string | null>(null);
   const [showHexInput, setShowHexInput] = useState(false);
   const [customHex, setCustomHex] = useState('');
+  const [colorSaveFailed, setColorSaveFailed] = useState(false);
+  // Visual-config writes run one after another so a slower earlier write can never
+  // land after a later one and leave a stale color in the DB.
+  const visualSaveChain = useRef<Promise<boolean>>(Promise.resolve(true));
+  const visualSaveSeq = useRef(0);
 
   async function loadExistingCV(id: string, p: CVParams) {
     setLoading(true);
@@ -79,6 +85,7 @@ export default function PreviewPage() {
       }
       setCvData(data.contenido_json);
       setCvId(id);
+      setAccentColor(parseVisualConfig(data.visual_config).accent_color ?? null);
       if (p.mode === 'job' && typeof data.match_porcentaje === 'number') {
         setMatchData({ match_porcentaje: data.match_porcentaje });
         if (data.contenido_json && p.descripcion_vacante) {
@@ -189,10 +196,31 @@ export default function PreviewPage() {
     }
   }
 
+  function persistVisualConfig(id: string, color: string | null): Promise<boolean> {
+    const config: VisualConfig = color ? { accent_color: color } : {};
+    const run = visualSaveChain.current.then(async () => {
+      // RLS denials don't raise an error, they just update 0 rows — require the row back.
+      const { data, error } = await supabase.from('cvs').update({ visual_config: config }).eq('id', id).select('id');
+      return !error && data?.length === 1;
+    });
+    visualSaveChain.current = run.catch(() => false);
+    return run.catch(() => false);
+  }
+
+  function changeAccentColor(color: string | null) {
+    setAccentColor(color);
+    if (!cvId) return;
+    const seq = ++visualSaveSeq.current;
+    persistVisualConfig(cvId, color).then(ok => {
+      // Only the latest change decides whether the warning is shown.
+      if (seq === visualSaveSeq.current) setColorSaveFailed(!ok);
+    });
+  }
+
   function applyCustomHex(raw: string) {
     const clean = raw.trim().replace(/^#/, '');
     if (/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(clean)) {
-      setAccentColor(`#${clean.toUpperCase()}`);
+      changeAccentColor(`#${clean.toUpperCase()}`);
       setShowHexInput(false);
       setCustomHex('');
     }
@@ -206,14 +234,18 @@ export default function PreviewPage() {
     if (!cvId) return;
     setCreatingCV(true);
 
+    // The color must be confirmed saved before leaving: the PDF is rendered from the DB.
+    const seq = ++visualSaveSeq.current;
+    const saved = await persistVisualConfig(cvId, accentColor);
+    if (!saved) {
+      if (seq === visualSaveSeq.current) setColorSaveFailed(true);
+      setCreatingCV(false);
+      return;
+    }
+    setColorSaveFailed(false);
+
     unregisterGuard();
     try {
-      if (accentColor) {
-        setCvData((prev: any) => ({
-          ...prev,
-          visual_config: { ...(prev?.visual_config || {}), accent_color: accentColor },
-        }));
-      }
       sessionStorage.setItem('cv_created_id', cvId);
       sessionStorage.removeItem('cv_params');
       sessionStorage.removeItem('cv_preview_id');
@@ -344,7 +376,7 @@ export default function PreviewPage() {
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Personalizar colores</span>
               {accentColor && (
                 <button
-                  onClick={() => { setAccentColor(null); setShowHexInput(false); setCustomHex(''); }}
+                  onClick={() => { changeAccentColor(null); setShowHexInput(false); setCustomHex(''); }}
                   style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--mute)', background: 'none', border: 'none', cursor: 'pointer', padding: '1px 5px', borderRadius: 4, transition: 'color .15s' }}
                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--mute)')}
@@ -357,7 +389,7 @@ export default function PreviewPage() {
               {palette.map((color) => (
                 <button
                   key={color}
-                  onClick={() => { setAccentColor(accentColor === color ? null : color); setShowHexInput(false); }}
+                  onClick={() => { changeAccentColor(accentColor === color ? null : color); setShowHexInput(false); }}
                   title={color}
                   style={{
                     width: 24, height: 24, borderRadius: '50%', backgroundColor: color,
@@ -374,7 +406,7 @@ export default function PreviewPage() {
                 </button>
               ))}
               <button
-                onClick={() => { if (!showHexInput) setAccentColor(null); setShowHexInput(v => !v); }}
+                onClick={() => { if (!showHexInput) changeAccentColor(null); setShowHexInput(v => !v); }}
                 title="Color personalizado"
                 style={{
                   width: 24, height: 24, borderRadius: '50%',
@@ -414,6 +446,11 @@ export default function PreviewPage() {
             {!showHexInput && (
               <div style={{ marginTop: 10, fontSize: 11, color: 'var(--mute)', lineHeight: 1.4 }}>
                 Paleta recomendada para este estilo
+              </div>
+            )}
+            {colorSaveFailed && (
+              <div role="alert" style={{ marginTop: 8, fontSize: 11.5, color: '#DC2626', lineHeight: 1.4 }}>
+                No se pudo guardar el color. Revisa tu conexión e inténtalo de nuevo.
               </div>
             )}
           </div>

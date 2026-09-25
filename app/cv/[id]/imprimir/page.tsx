@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import CVRenderer from '@/components/CVTemplates';
+import { parseVisualConfig } from '@/lib/cv/visual-config';
 
 export default function ImprimirPage() {
   const params = useParams();
@@ -73,7 +74,11 @@ export default function ImprimirPage() {
       </div>
 
       <div className="cv-container">
-        <CVRenderer estilo={cv.estilo} data={cv.contenido_json} />
+        <CVRenderer
+          estilo={cv.estilo}
+          data={cv.contenido_json}
+          accentColor={parseVisualConfig(cv.visual_config).accent_color ?? undefined}
+        />
       </div>
     </>
   );

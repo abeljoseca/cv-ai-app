@@ -117,6 +117,8 @@ export interface CV {
   imagen_referencia_url: string | null;
   diseno_mirror_json: Record<string, any> | null;
   foto_cv_url: string | null;
+  // Untrusted jsonb — always read through parseVisualConfig (lib/cv/visual-config.ts)
+  visual_config: Record<string, unknown>;
   created_at: string;
 }
 

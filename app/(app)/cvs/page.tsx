@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { CV, Aplicacion, Profile } from '@/types';
 import { Select } from '@/components/Select';
 import CVRenderer from '@/components/CVTemplates';
+import { parseVisualConfig } from '@/lib/cv/visual-config';
 import type { CVInspirationRecord } from '@/src/features/cv-inspiracion/types/editor.types';
 import PaymentModal from '@/components/PaymentModal';
 
@@ -561,7 +562,11 @@ function CvThumbnail({ cv }: { cv: CV }) {
   return (
     <div ref={containerRef} style={thumbStyle}>
       <div style={innerStyle}>
-        <CVRenderer estilo={cv.estilo as 'harvard' | 'stanford' | 'silicon-valley' | 'tech' | 'minimalist' | 'europass' | 'executive'} data={data} />
+        <CVRenderer
+          estilo={cv.estilo as 'harvard' | 'stanford' | 'silicon-valley' | 'tech' | 'minimalist' | 'europass' | 'executive'}
+          data={data}
+          accentColor={parseVisualConfig(cv.visual_config).accent_color ?? undefined}
+        />
       </div>
     </div>
   );
