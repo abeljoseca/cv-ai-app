@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createAnthropicClient } from '@/lib/anthropic';
 import { rateLimit } from '@/lib/rate-limit';
 import { normalizeProfileDate } from '@/lib/profile-date';
-import { isPresentMarker, PROFILE_DATE_RULES } from '@/lib/profile-import';
+import { findExperienciaIdByEmpresa, isPresentMarker, LOGRO_EMPRESA_RULE, PROFILE_DATE_RULES } from '@/lib/profile-import';
 import mammoth from 'mammoth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -17,7 +17,7 @@ Devuelve SOLO un JSON válido con esta estructura:
   "educacion": [{"institucion": "string", "titulo": "string", "area": "string o null", "fecha_inicio": "string o null", "fecha_fin": "string o null"}],
   "habilidades": [{"nombre": "string", "tipo": "tecnica" | "blanda"}],
   "idiomas": [{"nombre": "string", "nivel": "string o null"}],
-  "logros": [{"descripcion": "string"}],
+  "logros": [{"descripcion": "string", "empresa": "string o null"}],
   "resumen": "string o null"
 }
 
@@ -26,6 +26,9 @@ CLASIFICACIÓN DE HABILIDADES:
 - tipo "blanda": habilidades interpersonales, de comunicación, actitud y comportamiento. Ejemplos: Liderazgo, Comunicación efectiva, Trabajo en equipo, Resolución de conflictos, Adaptabilidad, Creatividad, Empatía.
 
 ${PROFILE_DATE_RULES}
+
+LOGROS — empresa:
+${LOGRO_EMPRESA_RULE}
 
 IMPORTANTE: Nunca inventar datos. Solo extraer lo que existe en el documento. Si no hay información de una sección, deja el array vacío.`;
 
@@ -192,9 +195,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (parsedData.logros?.length > 0) {
+      const { data: expsForLink } = await admin.from('experiencia').select('id, empresa').eq('user_id', user.id);
       for (const logro of parsedData.logros) {
         if (logro.descripcion) {
-          await admin.from('logros').insert({ user_id: user.id, descripcion: logro.descripcion });
+          await admin.from('logros').insert({
+            user_id: user.id,
+            descripcion: logro.descripcion,
+            experiencia_id: findExperienciaIdByEmpresa(expsForLink ?? [], logro.empresa),
+          });
         }
       }
     }

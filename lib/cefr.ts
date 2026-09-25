@@ -17,13 +17,14 @@ export const CEFR_SKILLS = [
 export type CefrSkill = typeof CEFR_SKILLS[number]
 export type CefrBreakdown = Record<CefrSkill, Exclude<CefrLevel, 'Nativo'>>
 
+// Qualitative scale paired with each CEFR level (CEO-defined wording).
 export const CEFR_LABELS: Record<CefrLevel, string> = {
-  A1: 'A1 · Principiante',
-  A2: 'A2 · Básico',
-  B1: 'B1 · Intermedio',
-  B2: 'B2 · Intermedio alto',
+  A1: 'A1 · Básico',
+  A2: 'A2 · Básico alto',
+  B1: 'B1 · Medio bajo',
+  B2: 'B2 · Medio alto',
   C1: 'C1 · Avanzado',
-  C2: 'C2 · Dominio',
+  C2: 'C2 · Avanzado alto',
   Nativo: 'Nativo',
 }
 

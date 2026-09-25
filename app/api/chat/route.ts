@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createAnthropicClient } from '@/lib/anthropic';
 import { rateLimit } from '@/lib/rate-limit';
 import { normalizeProfileDate } from '@/lib/profile-date';
-import { isPresentMarker, PROFILE_DATE_RULES } from '@/lib/profile-import';
+import { findExperienciaIdByEmpresa, isPresentMarker, LOGRO_EMPRESA_RULE, PROFILE_DATE_RULES } from '@/lib/profile-import';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface ChatMessage {
@@ -124,9 +124,12 @@ REGLAS PARA "extracted":
 
 ${PROFILE_DATE_RULES}
 
+LOGROS — empresa:
+${LOGRO_EMPRESA_RULE}
+
 - habilidades: [{nombre, tipo}] — tipo DEBE ser exactamente "tecnica" o "blanda". Técnicas: herramientas, software, lenguajes, metodologías, plataformas, habilidades medibles de un campo (Python, Excel, SCRUM, AutoCAD, SQL, Photoshop). Blandas: interpersonales, actitud, comportamiento (Liderazgo, Comunicación, Trabajo en equipo, Adaptabilidad, Empatía). Nunca dejes tipo vacío ni null.
 - idiomas: [{nombre, nivel}] — nivel puede ser "Básico", "Intermedio", "Avanzado" o "Nativo"
-- logros: [{descripcion}] — CURA el logro con la fórmula Verbo + Resultado + Métrica + Cómo antes de guardar. Si no hay suficiente información para completar la fórmula, guarda lo que dijo pero mejorado gramaticalmente.
+- logros: [{descripcion, empresa}] — CURA el logro con la fórmula Verbo + Resultado + Métrica + Cómo antes de guardar. Si no hay suficiente información para completar la fórmula, guarda lo que dijo pero mejorado gramaticalmente.
 - resumen: string con resumen profesional si el usuario lo mencionó o si ya tienes suficiente info para inferir uno de 2-3 oraciones, null si no.
 - Si no hay nada nuevo que extraer, deja todo vacío y null.
 - Nunca inventes datos.`;
@@ -318,12 +321,17 @@ export async function POST(request: NextRequest) {
       }
 
       if (extracted.logros?.length > 0) {
+        const { data: expsForLink } = await admin.from('experiencia').select('id, empresa').eq('user_id', user.id);
         for (const logro of extracted.logros) {
           if (!logro.descripcion) continue;
           const prefix = logro.descripcion.toLowerCase().substring(0, 40);
           if (existingLogroTexts.has(prefix)) continue;
           existingLogroTexts.add(prefix);
-          await admin.from('logros').insert({ user_id: user.id, descripcion: logro.descripcion });
+          await admin.from('logros').insert({
+            user_id: user.id,
+            descripcion: logro.descripcion,
+            experiencia_id: findExperienciaIdByEmpresa(expsForLink ?? [], logro.empresa),
+          });
         }
       }
 

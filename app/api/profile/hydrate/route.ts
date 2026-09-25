@@ -4,6 +4,7 @@ import { createAnthropicClient } from '@/lib/anthropic';
 import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeProfileDate } from '@/lib/profile-date';
+import { findExperienciaIdByEmpresa, LOGRO_EMPRESA_RULE } from '@/lib/profile-import';
 
 const PROVIDER_URL =
   'https://api.apify.com/v2/acts/harvestapi~linkedin-profile-scraper/run-sync-get-dataset-items';
@@ -74,7 +75,7 @@ interface ExtProfile {
 }
 
 // Bump when the structuring prompt changes: cached curated_data from an older version is
-// re-structured instead of reused (v2: dates keep the month).
+// re-structured instead of reused (v2: dates keep the month; logros report their company).
 const STRUCTURED_VERSION = 2;
 
 interface StructuredData {
@@ -83,7 +84,7 @@ interface StructuredData {
   educacion:   Array<{ institucion: string; titulo: string; area: string | null; fecha_inicio: string | null; fecha_fin: string | null }>;
   habilidades: Array<{ nombre: string; tipo: 'tecnica' | 'blanda' }>;
   idiomas:     Array<{ nombre: string; nivel: 'Básico' | 'Intermedio' | 'Avanzado' | 'Nativo' | null }>;
-  logros:      Array<{ descripcion: string }>;
+  logros:      Array<{ descripcion: string; empresa?: string | null }>;
   resumen:     string | null;
   profesion:   string | null;
   ciudad:      string | null;
@@ -143,7 +144,7 @@ Devuelve SOLAMENTE un objeto JSON válido con esta estructura (sin texto antes n
   "educacion":   [{"institucion":"string","titulo":"string","area":"string|null","fecha_inicio":"string|null","fecha_fin":"string|null"}],
   "habilidades": [{"nombre":"string","tipo":"tecnica"|"blanda"}],
   "idiomas":     [{"nombre":"string","nivel":"Básico"|"Intermedio"|"Avanzado"|"Nativo"|null}],
-  "logros":      [{"descripcion":"string"}],
+  "logros":      [{"descripcion":"string","empresa":"string|null"}],
   "resumen":     "string|null",
   "profesion":   "string|null",
   "ciudad":      "string|null",
@@ -181,6 +182,7 @@ LOGROS
   Ejemplo: "Lideré el rediseño del módulo de pagos, reduciendo el tiempo de checkout en 35% mediante optimización de queries SQL"
 - Solo incluye logros que tengan al menos una métrica concreta (%, cifras, tiempos, dinero, usuarios).
 - Construye el logro en español con la fórmula, nunca copies la descripción literal.
+${LOGRO_EMPRESA_RULE}
 - Si no hay logros cuantificables detectados → [].
 - certifications[] NO son logros — se gestionan en otra sección, ignóralas aquí.
 
@@ -435,11 +437,16 @@ async function processProfile(
   }
 
   let logrosCount = existingLogro?.length ?? 0;
+  const { data: expsForLink } = await admin.from('experiencia').select('id, empresa').eq('user_id', userId);
   for (const logro of structured.logros) {
     if (!logro.descripcion?.trim()) continue;
     const key = logro.descripcion.toLowerCase().trim();
     if (logroSet.has(key)) continue;
-    await admin.from('logros').insert({ user_id: userId, descripcion: logro.descripcion.trim() });
+    await admin.from('logros').insert({
+      user_id:        userId,
+      descripcion:    logro.descripcion.trim(),
+      experiencia_id: findExperienciaIdByEmpresa(expsForLink ?? [], logro.empresa),
+    });
     logroSet.add(key);
     logrosCount++;
   }

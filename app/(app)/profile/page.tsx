@@ -64,6 +64,7 @@ export default function PerfilPage() {
   const [newCert, setNewCert] = useState<CertForm>(emptyCert);
   const [newIdioma, setNewIdioma] = useState<IdiomaForm>({ nombre: '', nivel_cefr: '' });
   const [newLogro, setNewLogro] = useState('');
+  const [newLogroExpId, setNewLogroExpId] = useState('');
 
   // Pending deletes per section
   const [pendingExpDeleteIds, setPendingExpDeleteIds] = useState<string[]>([]);
@@ -83,6 +84,7 @@ export default function PerfilPage() {
   const [editIdiomaForm, setEditIdiomaForm] = useState<IdiomaForm>({ nombre: '', nivel_cefr: '' });
   const [editingLogroId, setEditingLogroId] = useState<string | null>(null);
   const [editLogroText, setEditLogroText] = useState('');
+  const [editLogroExpId, setEditLogroExpId] = useState('');
 
   // Chat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -358,8 +360,9 @@ export default function PerfilPage() {
         setPendingLogroDeleteIds([]);
       }
       if (newLogro.trim()) {
-        await supabase.from('logros').insert({ user_id: user.id, descripcion: newLogro.trim() });
+        await supabase.from('logros').insert({ user_id: user.id, descripcion: newLogro.trim(), experiencia_id: newLogroExpId || null });
         setNewLogro('');
+        setNewLogroExpId('');
       }
       await loadProfileData();
     } catch (err) { console.error(err); }
@@ -370,7 +373,7 @@ export default function PerfilPage() {
     if (!editLogroText.trim()) return;
     setEditSaving(true);
     try {
-      await supabase.from('logros').update({ descripcion: editLogroText.trim() }).eq('id', id);
+      await supabase.from('logros').update({ descripcion: editLogroText.trim(), experiencia_id: editLogroExpId || null }).eq('id', id);
       setEditingLogroId(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
@@ -965,6 +968,16 @@ export default function PerfilPage() {
                     <textarea value={editLogroText} onChange={e => setEditLogroText(e.target.value)} rows={2}
                       style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--blue)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 13, outline: 'none', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }}
                     />
+                    {experiencias.length > 0 && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--mute)' }}>
+                        Empleo:
+                        <select value={editLogroExpId} onChange={e => setEditLogroExpId(e.target.value)}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--mute)', fontSize: 12, fontFamily: 'inherit', padding: '2px 0', cursor: 'pointer', outline: 'none', maxWidth: '100%' }}>
+                          <option value="">sin asignar</option>
+                          {experiencias.map(e => <option key={e.id} value={e.id}>{e.cargo} · {e.empresa}</option>)}
+                        </select>
+                      </label>
+                    )}
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateLogro(logro.id)} disabled={editSaving || !editLogroText.trim()}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -978,11 +991,17 @@ export default function PerfilPage() {
                     <span style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--success-50)', color: '#148B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <CheckIcon size={14} />
                     </span>
-                    <div style={{ flex: 1, fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.5, textDecoration: marked ? 'line-through' : 'none' }}>{logro.descripcion}</div>
+                    <div style={{ flex: 1, fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.5, textDecoration: marked ? 'line-through' : 'none' }}>
+                      {logro.descripcion}
+                      {(() => {
+                        const exp = logro.experiencia_id ? experiencias.find(e => e.id === logro.experiencia_id) : null;
+                        return exp ? <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>En {exp.empresa}</div> : null;
+                      })()}
+                    </div>
                     {editSection === 'logros' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (
-                          <button onClick={() => { setEditingLogroId(logro.id); setEditLogroText(logro.descripcion || ''); }}
+                          <button onClick={() => { setEditingLogroId(logro.id); setEditLogroText(logro.descripcion || ''); setEditLogroExpId(logro.experiencia_id || ''); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                             <EditIcon size={13} />
                           </button>
@@ -1012,6 +1031,18 @@ export default function PerfilPage() {
               <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--mute)', lineHeight: 1.4 }}>
                 Usa la fórmula: <strong style={{ fontWeight: 600 }}>Verbo + Resultado + Métrica + Cómo</strong>
               </p>
+              <div style={{ marginTop: 6 }}>
+                {experiencias.length > 0 && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--mute)' }}>
+                    Empleo:
+                    <select value={newLogroExpId} onChange={e => setNewLogroExpId(e.target.value)}
+                      style={{ border: 'none', background: 'transparent', color: 'var(--mute)', fontSize: 12, fontFamily: 'inherit', padding: '2px 0', cursor: 'pointer', outline: 'none', maxWidth: '100%' }}>
+                      <option value="">sin asignar</option>
+                      {experiencias.map(e => <option key={e.id} value={e.id}>{e.cargo} · {e.empresa}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
             </div>
           )}
           {logros.length === 0 && editSection !== 'logros' && (
