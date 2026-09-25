@@ -40,6 +40,8 @@
 | 26 | Fecha de nacimiento, dirección y nacionalidad guardadas en `profiles` en texto plano | Se guardan **cifrados por la aplicación** (clave solo en el servidor), se reutilizan en próximos CVs Europass, **nunca se muestran en Mi perfil ni en miniaturas** y **nunca se envían a la IA**; solo se descifran en el servidor para su dueño (editor y PDF) (decisión CEO 2026-09-25) | Son datos de identidad: una fuga de la base de datos no debe exponerlos |
 | 27 | Datos europeos profesionales (NACE, ISCED, materias, ciudad/país de puestos y estudios, certificación de idioma, DigComp, permiso de conducir, publicaciones, ponencias, voluntariado, premios, afiliaciones, anexos) visibles en una sección "Datos adicionales" de Mi perfil | Se guardan y se reutilizan, pero **solo se ven y editan en el editor del CV**; Mi perfil no los muestra. Se cancela la sección "Datos adicionales" del perfil (decisión CEO 2026-09-25) | La mayoría de usuarios no sabe qué significan; en el perfil no aportan |
 | 28 | La explicación de compatibilidad con la vacante enviaba a la IA el CV completo | Solo se envía contenido profesional; nunca nombre, email, teléfono, fecha de nacimiento ni dirección. Aplica a los 7 estilos (decisión CEO 2026-09-25) | Minimizar datos personales enviados a terceros |
+| 29 | Cápsula CEFR "sobre la tabla" (§7.3) | Confirmado: la cápsula y el ajuste de cada celda van **dentro del CV, sobre la tabla, solo en el editor** (nunca en el PDF). Única excepción a "la hoja = PDF" (cambio 23) (decisión CEO 2026-09-25) | Se entiende de inmediato qué se ajusta |
+| 30 | Aviso no bloqueante por huecos de más de 3 meses entre empleos (§9.2) | **Eliminado** (decisión CEO 2026-09-25) | No es necesario aclararlo |
 
 ---
 

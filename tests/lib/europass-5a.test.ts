@@ -208,3 +208,36 @@ describe('professionalView (what the vacancy AI may see)', () => {
     expect(out).toEqual({ titulo: 'Analista', resumen: 'Analista de datos.', experiencias: [{ cargo: 'Analista', empresa: 'Acme' }] })
   })
 })
+
+describe('CEFR operations (5c)', () => {
+  const withLangs = () => {
+    const c = stored()
+    c.competencias_linguisticas.otras_lenguas[1] = { ...c.competencias_linguisticas.otras_lenguas[1], niveles_confirmados: false }
+    c.competencias_linguisticas.otras_lenguas[2] = { ...c.competencias_linguisticas.otras_lenguas[2], niveles: null, niveles_confirmados: false }
+    return c
+  }
+  const B = { comprension_auditiva: 'C1', comprension_lectora: 'C1', interaccion_oral: 'B2', expresion_oral: 'B2', expresion_escrita: 'B1' }
+
+  it('confirms a breakdown and saves it to the language row', () => {
+    const r = ok(edit({ op: 'cefr', id: 'i1', niveles: B }, withLangs()))
+    expect(r.writes.idioma).toEqual({ id: 'i1', patch: { niveles_cefr: B } })
+    expect(r.content.competencias_linguisticas.otras_lenguas[1]).toMatchObject({ niveles: B, niveles_confirmados: true })
+  })
+
+  it('rejects non-CEFR values and languages without a general level', () => {
+    expect(edit({ op: 'cefr', id: 'i1', niveles: { ...B, expresion_escrita: 'Avanzado' } }, withLangs()).ok).toBe(false)
+    expect(edit({ op: 'cefr', id: 'i1', niveles: { ...B, expresion_escrita: 'Nativo' } }, withLangs()).ok).toBe(false)
+    expect(edit({ op: 'cefr', id: 'i2', niveles: B }, withLangs()).ok).toBe(false)
+    expect(edit({ op: 'cefr', id: 'nope', niveles: B }, withLangs()).ok).toBe(false)
+  })
+
+  it('a general level pre-fills the 5 cells unconfirmed; "Nativo" moves it to mother tongues', () => {
+    const r = ok(edit({ op: 'nivel_idioma', id: 'i2', nivel: 'B1' }, withLangs()))
+    expect(r.writes.idioma).toEqual({ id: 'i2', patch: { nivel_cefr: 'B1', niveles_cefr: null } })
+    expect(r.content.competencias_linguisticas.otras_lenguas[2]).toMatchObject({ niveles_confirmados: false, niveles: { comprension_auditiva: 'B1', expresion_escrita: 'B1' } })
+    const n = ok(edit({ op: 'nivel_idioma', id: 'i2', nivel: 'Nativo' }, withLangs()))
+    expect(n.content.competencias_linguisticas.lenguas_maternas).toEqual(['Español', 'Italiano'])
+    expect(n.content.competencias_linguisticas.otras_lenguas.map(l => l.idioma)).toEqual(['Francés', 'Inglés'])
+    expect(edit({ op: 'nivel_idioma', id: 'i2', nivel: 'Intermedio' }, withLangs()).ok).toBe(false)
+  })
+})

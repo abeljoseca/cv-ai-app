@@ -6,7 +6,7 @@
 import EditableField from './EditableField'
 import type { CVEditProps } from './index'
 import { CV_FONT } from './fonts'
-import { CEFR_SKILLS } from '@/lib/cefr'
+import { CEFR_LEVELS, CEFR_SKILLS, type CefrBreakdown } from '@/lib/cefr'
 import {
   EUROPASS_DEFAULT_ACCENT, EUROPASS_DEFAULT_DENSITY, EUROPASS_DEFAULT_PHOTO_SIZE, EUROPASS_DENSITIES,
   EUROPASS_HEADER_ORDER, EUROPASS_PHOTO_SIZES, EUROPASS_SECTIONS, type EuropassDensity, type EuropassPhotoSize,
@@ -15,10 +15,18 @@ import { CEFR_SKILL_LABELS, DIGCOMP_AREA_LABELS, drivingLicenceLabel, iscedLabel
 import { DIGCOMP_AREAS, type EuropassContent, type PerfilTipo } from '@/lib/cv/styles/europass/schema'
 import { shouldShowArea } from '@/lib/format-education'
 
+// Editor-only controls for the CEFR table (spec §7.3, change 29). Passed only by the CV
+// editor; the print page, the PDF and thumbnails never get them.
+export interface EuropassLanguageEditor {
+  onNiveles: (idiomaId: string, niveles: CefrBreakdown) => void
+  onNivelGeneral: (idiomaId: string, nivel: string) => void
+}
+
 export interface EuropassV2Props extends CVEditProps {
   data: EuropassContent
   densidad?: EuropassDensity
   fotoTam?: EuropassPhotoSize
+  idiomasEditor?: EuropassLanguageEditor
 }
 
 const CSS = `
@@ -88,8 +96,27 @@ const CSS = `
 .ep2 .anexos-list div{ margin-bottom: 3px; }
 .ep2 .anexos-list .num{ color: var(--acento); font-weight: 700; margin-right: 6px; }
 
+/* Editor-only (never printed): CEFR capsule and cell selectors. */
+.ep2 .ep2-capsula{
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 12px; line-height: 1.4;
+  background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE; border-radius: 8px;
+  padding: 6px 10px; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.ep2 .ep2-capsula button{
+  font: inherit; font-weight: 600; background: #4B6BFB; color: #fff; border: none; border-radius: 6px;
+  padding: 3px 10px; cursor: pointer; margin-left: auto;
+}
+.ep2 .ep2-capsula select{ font: inherit; border: 1px solid #C7D2FE; border-radius: 6px; padding: 2px 4px; background: #fff; color: #1e1b4b; }
+.ep2 table.cefr.ep2-resaltada{ outline: 1.5px solid #C7D2FE; outline-offset: 3px; border-radius: 2px; }
+.ep2 table.cefr select.ep2-celda{
+  appearance: none; -webkit-appearance: none; border: none; background: transparent; font: inherit; color: inherit;
+  text-align: center; text-align-last: center; cursor: pointer; padding: 0 2px;
+  border-bottom: 1px dashed #A5B4FC;
+}
+
 @media print{
   .ep2-page{ margin: 0; padding: 0; width: auto; max-width: none; min-height: auto; }
+  .ep2 .ep2-capsula{ display: none !important; }
 }
 `
 
@@ -142,7 +169,7 @@ function headerFields(ip: EuropassContent['informacion_personal']): Array<{ key:
 }
 
 export default function EuropassV2CV({
-  data, isEditMode = false, onFieldChange, accentColor, densidad, fotoTam,
+  data, isEditMode = false, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor,
 }: EuropassV2Props) {
   const ip = data.informacion_personal
   const d = EUROPASS_DENSITIES[densidad ?? EUROPASS_DEFAULT_DENSITY] ?? EUROPASS_DENSITIES[EUROPASS_DEFAULT_DENSITY]
@@ -281,8 +308,14 @@ export default function EuropassV2CV({
             {maternas.length > 0 && (
               <p className="lengua-materna"><b>{maternas.length > 1 ? 'Lenguas maternas' : 'Lengua materna'}:</b> {maternas.join(', ')}</p>
             )}
+            {idiomasEditor && conNivel.filter(l => l._id && !l.niveles_confirmados).map(l => (
+              <div className="ep2-capsula" key={`c-${l._id}`}>
+                <span>Tu nivel general de {l.idioma.toLowerCase()} es {l.niveles!.comprension_auditiva}. Ajusta si alguna habilidad es distinta.</span>
+                <button type="button" onClick={() => idiomasEditor.onNiveles(l._id!, l.niveles!)}>Confirmar</button>
+              </div>
+            ))}
             {conNivel.length > 0 && (
-              <table className="cefr">
+              <table className={`cefr${idiomasEditor && conNivel.some(l => l._id && !l.niveles_confirmados) ? ' ep2-resaltada' : ''}`}>
                 <thead>
                   <tr>
                     <th scope="col">Idioma</th>
@@ -296,7 +329,16 @@ export default function EuropassV2CV({
                   {conNivel.map(l => (
                     <tr key={l.idioma}>
                       <td>{l.idioma}</td>
-                      {CEFR_SKILLS.map(s => <td key={s}>{l.niveles![s]}</td>)}
+                      {CEFR_SKILLS.map(s => (
+                        <td key={s}>
+                          {idiomasEditor && l._id ? (
+                            <select className="ep2-celda" aria-label={`${l.idioma}: ${CEFR_SKILL_LABELS[s]}`} value={l.niveles![s]}
+                              onChange={e => idiomasEditor.onNiveles(l._id!, { ...l.niveles!, [s]: e.target.value as CefrBreakdown[typeof s] })}>
+                              {CEFR_LEVELS.filter(v => v !== 'Nativo').map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          ) : l.niveles![s]}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -305,6 +347,15 @@ export default function EuropassV2CV({
             {sinNivel.length > 0 && (
               <p className="otras-lenguas"><b>Otras lenguas:</b> {sinNivel.map(l => l.idioma).join(', ')}</p>
             )}
+            {idiomasEditor && sinNivel.filter(l => l._id).map(l => (
+              <div className="ep2-capsula" key={`n-${l._id}`} style={{ marginTop: 6 }}>
+                <span>Indica tu nivel de {l.idioma.toLowerCase()} para mostrarlo en la tabla:</span>
+                <select aria-label={`Nivel de ${l.idioma}`} defaultValue="" onChange={e => e.target.value && idiomasEditor.onNivelGeneral(l._id!, e.target.value)}>
+                  <option value="" disabled>Elegir nivel</option>
+                  {CEFR_LEVELS.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            ))}
             {certs.length > 0 && (
               <p className="cefr-nota">
                 {certs.length > 1 ? 'Certificaciones oficiales' : 'Certificación oficial'}:{' '}

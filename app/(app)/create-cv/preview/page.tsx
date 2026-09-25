@@ -431,6 +431,10 @@ export default function PreviewPage() {
                   accentColor={accentColor ?? undefined}
                   densidad={visualPresets.densidad}
                   fotoTam={visualPresets.foto_tam}
+                  idiomasEditor={europassV2 ? {
+                    onNiveles: (id, niveles) => { europass.send({ op: 'cefr', id, niveles }); },
+                    onNivelGeneral: (id, nivel) => { europass.send({ op: 'nivel_idioma', id, nivel }); },
+                  } : undefined}
                 />
               </div>
             )}

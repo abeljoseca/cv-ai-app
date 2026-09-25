@@ -5,7 +5,7 @@ import SiliconValleyCV from './SiliconValleyCV'
 import TechCV from './TechCV'
 import MinimalistCV from './MinimalistCV'
 import EuropassCV from './EuropassCV'
-import EuropassV2CV from './EuropassV2CV'
+import EuropassV2CV, { type EuropassLanguageEditor } from './EuropassV2CV'
 import ExecutiveCV from './ExecutiveCV'
 import { cvFontVariables } from './fonts'
 import { isEuropassV2 } from '@/lib/cv/content'
@@ -27,6 +27,8 @@ export interface CVRendererProps extends CVEditProps {
   // Europass v2 presets (visual_config); ignored by the other templates.
   densidad?: EuropassDensity
   fotoTam?: EuropassPhotoSize
+  // Europass v2 editor-only CEFR controls (the CV editor passes them; nothing else does).
+  idiomasEditor?: EuropassLanguageEditor
 }
 
 export const styleAccentColors: Record<string, string[]> = {
@@ -44,13 +46,13 @@ export default function CVRenderer(props: CVRendererProps) {
   return <div className={cvFontVariables}><StyleTemplate {...props} /></div>
 }
 
-function StyleTemplate({ estilo, data: stored, isEditMode, onFieldChange, accentColor, densidad, fotoTam }: CVRendererProps) {
+function StyleTemplate({ estilo, data: stored, isEditMode, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor }: CVRendererProps) {
   const editProps: CVEditProps = { isEditMode, onFieldChange, accentColor }
 
   // Standardized styles render from their own schema; older CVs of the same style keep
   // their original template.
   if (isEuropassV2(stored)) {
-    return <EuropassV2CV data={stored} densidad={densidad} fotoTam={fotoTam} {...editProps} />
+    return <EuropassV2CV data={stored} densidad={densidad} fotoTam={fotoTam} idiomasEditor={idiomasEditor} {...editProps} />
   }
   const data = stored as CVContent
 

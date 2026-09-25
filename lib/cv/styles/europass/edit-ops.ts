@@ -14,6 +14,7 @@ import { validateIdentityValue, IDENTITY_FIELDS } from '@/lib/identity'
 import { EUROPASS_DENSITIES, EUROPASS_PHOTO_SIZES, type EuropassDensity, type EuropassPhotoSize } from './contract'
 import { DIGCOMP_LEVELS, DRIVING_LICENCE_CATEGORIES } from './format'
 import { isValidHexColor } from '@/lib/cv/visual-config'
+import { CEFR_LEVELS, CEFR_SKILLS, isCefrBreakdown, type CefrBreakdown } from '@/lib/cefr'
 import { applyEuropassTextEdit, isEuropassEditablePath } from './edit'
 import { DIGCOMP_AREAS, type DigCompArea, type DigCompNivel, type EuropassContent, type PerfilTipo } from './schema'
 
@@ -46,6 +47,10 @@ export type EuropassEditOp =
   | { op: 'item'; seccion: 'educacion'; id: string; campo: 'materias'; valor: string }
   | { op: 'item'; seccion: 'idioma'; id: string; campo: 'certificacion'; valor: string }
   | { op: 'texto'; ruta: string; valor: string }
+  // CEFR capsule (spec §7.3, change 29): adjusting any cell or "Confirmar" confirms the breakdown.
+  | { op: 'cefr'; id: string; niveles: CefrBreakdown }
+  // A language with no level yet gets its general level (pre-fills the 5 cells, unconfirmed).
+  | { op: 'nivel_idioma'; id: string; nivel: string }
   | { op: 'visual'; densidad?: EuropassDensity; foto_tam?: EuropassPhotoSize; accent_color?: string | null }
 
 export interface EuropassWrites {
@@ -242,6 +247,44 @@ export function applyEuropassEdit(content: EuropassContent, raw: unknown, ctx: E
     }
 
     case 'item': return applyItemEdit(content, op, ctx)
+
+    case 'cefr': {
+      const lenguas = content.competencias_linguisticas.otras_lenguas
+      const idx = typeof op.id === 'string' ? lenguas.findIndex(l => l._id === op.id) : -1
+      if (idx < 0) return fail('Ese idioma no está en este CV.')
+      if (!lenguas[idx].niveles) return fail('Primero indica el nivel general de este idioma.')
+      if (!isCefrBreakdown(op.niveles)) return fail('Nivel MCER inválido.')
+      const niveles = Object.fromEntries(CEFR_SKILLS.map(s => [s, (op.niveles as CefrBreakdown)[s]])) as CefrBreakdown
+      const next = {
+        ...content,
+        competencias_linguisticas: {
+          ...content.competencias_linguisticas,
+          otras_lenguas: lenguas.map((l, i) => i === idx ? { ...l, niveles, niveles_confirmados: true } : l),
+        },
+      }
+      return { ok: true, content: next, writes: { idioma: { id: op.id as string, patch: { niveles_cefr: niveles } } } }
+    }
+
+    case 'nivel_idioma': {
+      const cl = content.competencias_linguisticas
+      const idx = typeof op.id === 'string' ? cl.otras_lenguas.findIndex(l => l._id === op.id) : -1
+      if (idx < 0) return fail('Ese idioma no está en este CV.')
+      if (!(CEFR_LEVELS as readonly unknown[]).includes(op.nivel)) return fail('Nivel MCER inválido.')
+      const nivel = op.nivel as typeof CEFR_LEVELS[number]
+      const lengua = cl.otras_lenguas[idx]
+      const writes = { idioma: { id: op.id as string, patch: { nivel_cefr: nivel, niveles_cefr: null } } }
+      if (nivel === 'Nativo') {
+        return { ok: true, writes, content: { ...content, competencias_linguisticas: {
+          lenguas_maternas: [...cl.lenguas_maternas, lengua.idioma],
+          otras_lenguas: cl.otras_lenguas.filter((_, i) => i !== idx),
+        } } }
+      }
+      const niveles = Object.fromEntries(CEFR_SKILLS.map(s => [s, nivel])) as CefrBreakdown
+      return { ok: true, writes, content: { ...content, competencias_linguisticas: {
+        ...cl,
+        otras_lenguas: cl.otras_lenguas.map((l, i) => i === idx ? { ...l, niveles, niveles_confirmados: false } : l),
+      } } }
+    }
 
     case 'texto': {
       if (typeof op.ruta !== 'string' || !isEuropassEditablePath(op.ruta) || typeof op.valor !== 'string' || op.valor.length > 2000) return fail('Operación inválida.')
