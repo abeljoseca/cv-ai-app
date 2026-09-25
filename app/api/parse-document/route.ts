@@ -226,8 +226,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Only fills an empty summary — never overwrites one the user already has (same rule
+    // as the LinkedIn import).
     if (parsedData.resumen) {
-      await admin.from('profiles').update({ resumen_profesional: parsedData.resumen }).eq('id', user.id);
+      const { data: current } = await admin.from('profiles').select('resumen_profesional').eq('id', user.id).single();
+      if (!current?.resumen_profesional?.trim()) {
+        await admin.from('profiles').update({ resumen_profesional: parsedData.resumen }).eq('id', user.id);
+      }
     }
 
     return NextResponse.json({ success: true, extracted: parsedData });
