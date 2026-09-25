@@ -9,6 +9,7 @@ import { buildAnalyzeVacancyPrompt, parseVacancyResponse } from '../prompts/anal
 import { parseAndValidate } from '../validation/structure'
 import { runAntiHallucinationCheck } from '../validation/anti-hallucination'
 import { splitSkills } from '../../skill-classification'
+import { enforceIdiomaLevels } from '../enforce-idiomas'
 
 const SONNET_MODEL   = 'claude-sonnet-4-6'
 const HAIKU_MODEL    = 'claude-haiku-4-5-20251001'
@@ -86,6 +87,7 @@ export async function runVacancyPipeline(
   const { tecnicas, blandas } = splitSkills(content.habilidades, userData.habilidadesTipos)
   content.habilidades_tecnicas = tecnicas
   content.habilidades_blandas = blandas
+  enforceIdiomaLevels(content, userData.idiomas)
 
   // ── 5. Compute match percentage ──────────────────────────────────────────
   const matchPorcentaje = computeMatchScore(content, userData, vacancyProfile)

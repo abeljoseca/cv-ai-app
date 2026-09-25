@@ -60,8 +60,9 @@ export async function prepareUserData(
 
   const idiomas: CVIdioma[] = (rawIdiomas || []).map(i => ({
     nombre: i.nombre,
-    // CEFR level (confirmed by the user or explicit in the source) wins over the legacy label
-    nivel: i.nivel_cefr || i.nivel || null,
+    // Only the CEFR code (A1–C2 / Nativo) ever reaches a CV. Legacy labels like "Avanzado"
+    // are not converted: until the user confirms a CEFR level, the language has no level.
+    nivel: i.nivel_cefr || null,
   }))
 
   const habilidades: string[] = (rawHabilidades || []).map(h => h.nombre)

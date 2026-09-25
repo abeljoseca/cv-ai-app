@@ -8,6 +8,7 @@ import { buildGenerateCVPrompt } from '../prompts/generate-cv'
 import { parseAndValidate } from '../validation/structure'
 import { runAntiHallucinationCheck } from '../validation/anti-hallucination'
 import { splitSkills } from '../../skill-classification'
+import { enforceIdiomaLevels } from '../enforce-idiomas'
 
 const MAX_TOKENS = 4000
 const MAX_RETRIES = 1
@@ -76,6 +77,7 @@ export async function runGeneralPipeline(
   const { tecnicas, blandas } = splitSkills(content.habilidades, userData.habilidadesTipos)
   content.habilidades_tecnicas = tecnicas
   content.habilidades_blandas = blandas
+  enforceIdiomaLevels(content, userData.idiomas)
 
   // ── 6. Persist to DB ─────────────────────────────────────────────────────
   const titulo = content.titulo || userData.profesion_perfil || null
