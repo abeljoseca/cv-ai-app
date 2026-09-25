@@ -83,7 +83,7 @@ export const EUROPASS_OUTPUT_SCHEMA = {
 
 const LANGUAGE_NAMES: Record<string, string> = { es: 'Spanish', en: 'English', pt: 'Portuguese', fr: 'French' }
 
-export function buildEuropassUserMessage(sources: EuropassAISources, lang: string): string {
+export function buildEuropassUserMessage(sources: EuropassAISources, lang: string, feedback?: string): string {
   const payload = {
     idioma_de_salida: LANGUAGE_NAMES[lang] ?? 'Spanish',
     fuentes_generales: [
@@ -105,5 +105,8 @@ export function buildEuropassUserMessage(sources: EuropassAISources, lang: strin
   return `Write the "Sobre mí" and the job bullets for this candidate. Output language: ${payload.idioma_de_salida}.
 
 SOURCES:
-${JSON.stringify(payload, null, 2)}`
+${JSON.stringify(payload, null, 2)}${feedback ? `
+
+A PREVIOUS DRAFT HAD THESE SENTENCES REJECTED BY FACT-CHECKING. Rewrite those parts using only facts stated in the cited sources; do not repeat these problems:
+${feedback}` : ''}`
 }

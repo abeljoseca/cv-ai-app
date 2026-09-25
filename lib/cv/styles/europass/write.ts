@@ -37,12 +37,13 @@ export async function requestEuropassWriting(
   anthropic: Anthropic,
   sources: EuropassAISources,
   model: string = EUROPASS_WRITER_MODEL,
+  feedback?: string,
 ): Promise<EuropassRawWriting & { usage: Anthropic.Usage }> {
   const response = await anthropic.messages.parse({
     model,
     max_tokens: 16000,
     system: [{ type: 'text', text: EUROPASS_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: buildEuropassUserMessage(sources, sourcesLanguage(sources)) }],
+    messages: [{ role: 'user', content: buildEuropassUserMessage(sources, sourcesLanguage(sources), feedback) }],
     output_config: { format: jsonSchemaOutputFormat(EUROPASS_OUTPUT_SCHEMA) },
   })
   // A refusal or a truncated answer is a failure, never a partial CV.
