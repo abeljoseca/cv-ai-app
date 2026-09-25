@@ -34,7 +34,6 @@
 | 20 | — | Fecha de fin anterior a la de inicio: el perfil no permite guardarla; si llega por importación se guarda tal cual y el perfil marca "Revisa las fechas" (decisión CEO 2026-09-25) | No se adivina cuál de las dos fechas está mal |
 | 21 | — | **Modo Vacante:** además del título, la oferta (cargo y requisitos) se pasa al redactor **solo para priorizar y enfocar** los hechos del usuario. No es una fuente: no se cita, y los controles exacto y de sentido se aplican igual (decisión CEO 2026-09-25) | El modo vacante debe aportar valor sin abrir la puerta a inventar requisitos |
 | 22 | Edición libre de todo el CV en la vista previa + corrección ortográfica con IA de todo el CV | Hasta el panel del paso 5: en la vista previa solo se editan **"Sobre mí" y los bullets**; los datos objetivos se cambian en el perfil. **"Guardar"** guarda lo escrito tal cual, **sin IA**, y cada frase editada pasa a `_origen: "usuario"` (decisión CEO 2026-09-25) | La IA de ortografía reescribía el CV sin los controles anti-invención |
-| 23 | — | **"Sobre mí" no repite cifras de los bullets** (salvo los años de experiencia calculados). Se verifica por código: si las repite, se reescribe "Sobre mí" una sola vez con los mismos controles; si la reescritura no pasa, se conserva la versión ya verificada (decisión CEO 2026-09-25) | Una misma cifra aparecía 3 veces en el CV |
 
 ---
 
