@@ -335,8 +335,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Only fills an empty summary — never overwrites one the user already has (same rule
+      // as the document and LinkedIn imports).
       if (extracted.resumen) {
-        await admin.from('profiles').update({ resumen_profesional: extracted.resumen }).eq('id', user.id);
+        const { data: current } = await admin.from('profiles').select('resumen_profesional').eq('id', user.id).single();
+        if (!current?.resumen_profesional?.trim()) {
+          await admin.from('profiles').update({ resumen_profesional: extracted.resumen }).eq('id', user.id);
+        }
       }
     }
 
