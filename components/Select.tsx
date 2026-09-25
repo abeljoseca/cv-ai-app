@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 export interface SelectOption {
   value: string
@@ -19,8 +20,16 @@ interface SelectProps {
   triggerStyle?: React.CSSProperties
   placeholder?: string
   disabled?: boolean
+  /** Accessible name for the trigger when there is no visible <label> */
+  ariaLabel?: string
 }
 
+const PANEL_MAX_HEIGHT = 300
+const GAP = 4
+
+// The dropdown panel is rendered in a portal with fixed positioning, so it is never
+// clipped by a scrolling/overflow container (e.g. the CV Studio toolbar) and opens
+// upwards when there is not enough room below the trigger.
 export function Select({
   value,
   onChange,
@@ -29,17 +38,56 @@ export function Select({
   triggerStyle,
   placeholder,
   disabled = false,
+  ariaLabel,
 }: SelectProps) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number; maxHeight: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const selected = options.find(o => o.value === value)
 
+  // Position the panel against the trigger (below, or above when it doesn't fit).
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return
+    function place() {
+      const r = ref.current!.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - r.bottom - GAP - 8
+      const spaceAbove = r.top - GAP - 8
+      const openUp = spaceBelow < Math.min(PANEL_MAX_HEIGHT, 160) && spaceAbove > spaceBelow
+      setPos(openUp
+        ? { left: r.left, width: r.width, bottom: window.innerHeight - r.top + GAP, maxHeight: Math.min(PANEL_MAX_HEIGHT, spaceAbove) }
+        : { left: r.left, width: r.width, top: r.bottom + GAP, maxHeight: Math.min(PANEL_MAX_HEIGHT, spaceBelow) })
+    }
+    place()
+    // Any scroll (including inside scroll containers) or resize moves the trigger: close
+    // instead of letting the panel drift away from it.
+    function close(e: Event) {
+      if (panelRef.current && e.target instanceof Node && panelRef.current.contains(e.target)) return
+      setOpen(false)
+    }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [open])
+
+  // Long lists (e.g. years) open scrolled to the selected option. Only the panel scrolls.
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!open || !pos || !panel) return
+    const sel = panel.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (sel) panel.scrollTop = Math.max(0, sel.offsetTop - panel.clientHeight / 2 + sel.offsetHeight / 2)
+  }, [open, pos])
+
+  // Close on outside click (the panel lives in a portal, so it is checked separately)
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const t = e.target as Node
+      if (ref.current?.contains(t) || panelRef.current?.contains(t)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -61,6 +109,9 @@ export function Select({
       <button
         type="button"
         disabled={disabled}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         onClick={() => !disabled && setOpen(o => !o)}
         style={{
           display: 'flex',
@@ -109,33 +160,41 @@ export function Select({
         </svg>
       </button>
 
-      {/* Dropdown panel */}
-      {open && (
-        <div style={{
-          position: 'absolute',
-          top: 'calc(100% + 4px)',
-          left: 0,
-          minWidth: '100%',
-          background: 'var(--surface)',
-          border: '1px solid var(--line)',
-          borderRadius: 12,
-          boxShadow: '0 4px 6px rgba(15,23,42,.04), 0 12px 32px -4px rgba(15,23,42,.14)',
-          zIndex: 200,
-          maxHeight: 300,
-          overflowY: 'auto',
-          animation: 'fadeUp .12s var(--ease)',
-        }}>
+      {/* Dropdown panel (portal) */}
+      {open && pos && createPortal(
+        <div
+          ref={panelRef}
+          role="listbox"
+          style={{
+            position: 'fixed',
+            left: pos.left,
+            top: pos.top,
+            bottom: pos.bottom,
+            minWidth: pos.width,
+            maxHeight: pos.maxHeight,
+            overflowY: 'auto',
+            background: 'var(--surface)',
+            border: '1px solid var(--line)',
+            borderRadius: 12,
+            boxShadow: '0 4px 6px rgba(15,23,42,.04), 0 12px 32px -4px rgba(15,23,42,.14)',
+            zIndex: 1000,
+            animation: 'fadeUp .12s var(--ease)',
+          }}
+        >
           {options.map((opt, i) => {
             const isSelected = value === opt.value
             return (
               <button
                 key={opt.value}
                 type="button"
+                role="option"
+                aria-selected={isSelected}
                 onClick={() => { onChange(opt.value); setOpen(false); }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  gap: 10,
                   width: '100%',
                   textAlign: 'left',
                   padding: '10px 14px',
@@ -171,7 +230,8 @@ export function Select({
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

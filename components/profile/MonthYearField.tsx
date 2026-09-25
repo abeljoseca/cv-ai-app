@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Select } from '@/components/Select';
 import { hasMonth } from '@/lib/profile-date';
 
 // Month + year picker for profile dates. Emits the canonical value ('AAAA-MM', or 'AAAA'
@@ -48,8 +49,9 @@ export default function MonthYearField({ label, value, onChange, disabled, futur
   const unreadable = !!value && !CANONICAL.test(value);
 
   const lastYear = new Date().getFullYear() + futureYears;
-  const years: string[] = [];
-  for (let y = lastYear; y >= FIRST_YEAR; y--) years.push(String(y));
+  const yearOptions = [];
+  for (let y = lastYear; y >= FIRST_YEAR; y--) yearOptions.push({ value: String(y), label: String(y) });
+  const monthOptions = MONTHS.map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }));
 
   function pick(nextMonth: string, nextYear: string) {
     setMonth(nextMonth);
@@ -59,26 +61,33 @@ export default function MonthYearField({ label, value, onChange, disabled, futur
     onChange(next);
   }
 
-  const selectStyle: React.CSSProperties = {
-    flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--line)',
-    background: disabled ? 'var(--hover)' : 'var(--surface)', color: disabled ? 'var(--mute)' : 'var(--ink)',
-    fontSize: 13, fontFamily: 'inherit', minHeight: 36, outline: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-  };
+  const triggerStyle: React.CSSProperties = { fontSize: 13, borderRadius: 8, border: '1.5px solid var(--line)', padding: '8px 10px 8px 12px', minHeight: 36 };
 
   return (
     <div>
       <div style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500, marginBottom: 5 }}>{label}</div>
       <div style={{ display: 'flex', gap: 6 }}>
-        <select aria-label={`${label}: mes`} value={month} disabled={disabled}
-          onChange={e => pick(e.target.value, year)} style={selectStyle}>
-          <option value="">Mes</option>
-          {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
-        </select>
-        <select aria-label={`${label}: año`} value={year} disabled={disabled}
-          onChange={e => pick(month, e.target.value)} style={selectStyle}>
-          <option value="">Año</option>
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
+        <Select
+          ariaLabel={`${label}: mes`}
+          value={month}
+          onChange={v => pick(v, year)}
+          // Once a month is set, offer a way to clear it (year-only date).
+          options={month ? [{ value: '', label: 'Sin mes' }, ...monthOptions] : monthOptions}
+          placeholder="Mes"
+          disabled={disabled}
+          style={{ flex: 1, minWidth: 0 }}
+          triggerStyle={triggerStyle}
+        />
+        <Select
+          ariaLabel={`${label}: año`}
+          value={year}
+          onChange={v => pick(month, v)}
+          options={year ? [{ value: '', label: 'Sin año' }, ...yearOptions] : yearOptions}
+          placeholder="Año"
+          disabled={disabled}
+          style={{ flex: 1, minWidth: 0 }}
+          triggerStyle={triggerStyle}
+        />
       </div>
       {!disabled && unreadable && (
         <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 4 }}>

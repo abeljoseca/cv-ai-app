@@ -1,6 +1,7 @@
 'use client'
 
 import type { Layer, TextLayer, RectLayer, CircleLayer, LineLayer } from '../../types/layer.types'
+import { Select } from '@/components/Select'
 
 const FONTS = [
   'Poppins', 'Inter', 'Roboto', 'Montserrat', 'Lato',
@@ -110,13 +111,14 @@ function TextSection({ layer, onUpdate }: { layer: TextLayer; onUpdate: Props['o
       {/* Font family */}
       <div className="mt-2">
         <FieldLabel>Fuente</FieldLabel>
-        <select
+        <Select
+          ariaLabel="Fuente"
           value={layer.fontFamily ?? 'Poppins'}
-          onChange={e => onUpdate(layer.id, { fontFamily: e.target.value } as Partial<TextLayer>)}
-          className="w-full text-xs border border-[#e2e8f0] rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#4B6BFB]/40 bg-white"
-        >
-          {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
+          onChange={v => onUpdate(layer.id, { fontFamily: v } as Partial<TextLayer>)}
+          options={FONTS.map(f => ({ value: f, label: f }))}
+          style={{ width: '100%' }}
+          triggerStyle={{ padding: '6px 8px', fontSize: 12, borderRadius: 6, border: '1px solid #e2e8f0' }}
+        />
       </div>
 
       {/* Size + Color */}

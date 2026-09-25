@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { Select } from '@/components/Select'
 import type { Layer, TextLayer, RectLayer, CircleLayer, LineLayer, PolygonLayer, StarLayer, PathLayer, ImageLayer, FrameLayer } from '../../types/layer.types'
 import { ICONS, iconToDataUrl } from '../../lib/icon-registry'
 import type { AlignAction } from '../../lib/align-utils'
@@ -130,14 +131,14 @@ function TextControls({ layer, onUpdate }: { layer: TextLayer; onUpdate: Props['
   const isItalic = layer.fontStyle === 'italic'
   return (
     <>
-      <select
+      <Select
+        ariaLabel="Fuente"
         value={layer.fontFamily ?? 'Poppins'}
-        onChange={e => onUpdate(layer.id, { fontFamily: e.target.value } as Partial<TextLayer>)}
-        className="h-7 text-[11px] border border-[#e2e8f0] rounded-md pl-2 pr-6 focus:outline-none focus:border-[#4B6BFB] bg-white cursor-pointer flex-shrink-0"
-        style={{ width: 116 }}
-      >
-        {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
-      </select>
+        onChange={v => onUpdate(layer.id, { fontFamily: v } as Partial<TextLayer>)}
+        options={FONTS.map(f => ({ value: f, label: f }))}
+        style={{ width: 116, flexShrink: 0 }}
+        triggerStyle={{ height: 28, padding: '0 8px', fontSize: 11, borderRadius: 6, border: '1px solid #e2e8f0' }}
+      />
       <NumInput label="px" value={layer.fontSize ?? 12} onChange={v => onUpdate(layer.id, { fontSize: Math.max(6, v) } as Partial<TextLayer>)} w={40} min={6} max={120} />
       <Divider />
       <TglBtn active={isBold}   onClick={() => onUpdate(layer.id, { fontWeight: isBold   ? '400' : '700'    } as Partial<TextLayer>)}><span className="font-bold   text-[13px] leading-none">B</span></TglBtn>
