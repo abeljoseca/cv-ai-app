@@ -97,7 +97,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let visual = parseVisualConfig(cv.visual_config)
   const update: Record<string, unknown> = {}
   if (result.content !== ctx.content) update.contenido_json = withoutIdentity(result.content)
-  if (writes.visual) { visual = { ...visual, ...writes.visual }; update.visual_config = visual }
+  if (writes.visual) {
+    const { accent_color, ...presets } = writes.visual
+    visual = { ...visual, ...presets }
+    if (accent_color === null) delete visual.accent_color
+    else if (accent_color !== undefined) visual.accent_color = accent_color
+    update.visual_config = visual
+  }
   if (Object.keys(update).length > 0) {
     const { data, error } = await supabase.from('cvs').update(update).eq('id', cv.id).eq('user_id', user.id).select('id')
     if (error || data?.length !== 1) {

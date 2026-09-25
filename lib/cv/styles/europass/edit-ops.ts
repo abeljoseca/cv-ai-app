@@ -13,6 +13,7 @@ import type { IdentityData, IdentityField } from '@/lib/identity'
 import { validateIdentityValue, IDENTITY_FIELDS } from '@/lib/identity'
 import { EUROPASS_DENSITIES, EUROPASS_PHOTO_SIZES, type EuropassDensity, type EuropassPhotoSize } from './contract'
 import { DIGCOMP_LEVELS, DRIVING_LICENCE_CATEGORIES } from './format'
+import { isValidHexColor } from '@/lib/cv/visual-config'
 import { applyEuropassTextEdit, isEuropassEditablePath } from './edit'
 import { DIGCOMP_AREAS, type DigCompArea, type DigCompNivel, type EuropassContent, type PerfilTipo } from './schema'
 
@@ -45,7 +46,7 @@ export type EuropassEditOp =
   | { op: 'item'; seccion: 'educacion'; id: string; campo: 'materias'; valor: string }
   | { op: 'item'; seccion: 'idioma'; id: string; campo: 'certificacion'; valor: string }
   | { op: 'texto'; ruta: string; valor: string }
-  | { op: 'visual'; densidad?: EuropassDensity; foto_tam?: EuropassPhotoSize }
+  | { op: 'visual'; densidad?: EuropassDensity; foto_tam?: EuropassPhotoSize; accent_color?: string | null }
 
 export interface EuropassWrites {
   profile?: Record<string, unknown>
@@ -53,7 +54,8 @@ export interface EuropassWrites {
   educacion?: { id: string; patch: Record<string, unknown> }
   idioma?: { id: string; patch: Record<string, unknown> }
   identidad?: { campo: IdentityField; valor: string } // '' clears
-  visual?: { densidad?: EuropassDensity; foto_tam?: EuropassPhotoSize }
+  // accent_color null = back to the style's default color.
+  visual?: { densidad?: EuropassDensity; foto_tam?: EuropassPhotoSize; accent_color?: string | null }
 }
 
 export type EditResult =
@@ -256,7 +258,11 @@ export function applyEuropassEdit(content: EuropassContent, raw: unknown, ctx: E
         if (typeof op.foto_tam !== 'string' || !Object.prototype.hasOwnProperty.call(EUROPASS_PHOTO_SIZES, op.foto_tam)) return fail('Tamaño de foto inválido.')
         visual.foto_tam = op.foto_tam as EuropassPhotoSize
       }
-      if (!visual.densidad && !visual.foto_tam) return fail('Operación inválida.')
+      if (op.accent_color !== undefined) {
+        if (op.accent_color !== null && !isValidHexColor(op.accent_color)) return fail('Color inválido.')
+        visual.accent_color = op.accent_color === null ? null : (op.accent_color as string).toUpperCase()
+      }
+      if (Object.keys(visual).length === 0) return fail('Operación inválida.')
       return { ok: true, content, writes: { visual } }
     }
 

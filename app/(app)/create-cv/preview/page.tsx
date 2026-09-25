@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CVRenderer, { styleAccentColors } from '@/components/CVTemplates';
 import { createClient } from '@/lib/supabase/client';
@@ -8,7 +8,9 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
 import { parseVisualConfig, VisualConfig } from '@/lib/cv/visual-config';
 import { isEuropassV2, withoutInternalFields } from '@/lib/cv/content';
+import EuropassPanel from '@/components/cv-editor/EuropassPanel';
 import { applyEuropassTextEdit } from '@/lib/cv/styles/europass/edit';
+import { useEuropassEditor } from '@/components/cv-editor/useEuropassEditor';
 
 interface CVParams {
   mode: 'general' | 'job';
@@ -52,7 +54,7 @@ function setNestedValue(obj: any, path: string, value: string): any {
 export default function PreviewPage() {
   const router = useRouter();
   const supabase = createClient();
-  const { profile } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const { registerGuard, unregisterGuard, setGuardMode } = useNavigationGuard();
 
   const initDone = useRef(false);
@@ -78,6 +80,35 @@ export default function PreviewPage() {
   // Other visual_config keys (Europass density / photo size) are kept on every color save.
   const [visualPresets, setVisualPresets] = useState<Omit<VisualConfig, 'accent_color'>>({});
   const visualPresetsRef = useRef<Omit<VisualConfig, 'accent_color'>>({});
+
+  // Europass v2: the editor works against /api/cv/[id]/europass — it loads the CV there
+  // (identity values are decrypted on the server) and sends every change there. The
+  // client never writes the CV row for this style.
+  // Text edits ("Editar") are kept here until "Guardar", as in the other styles;
+  // "Cancelar edición" drops them. They stay visible over any server update meanwhile.
+  const europassTextEdits = useRef<Map<string, string>>(new Map());
+  const onEuropassState = useCallback((st: { content: unknown; visual: VisualConfig }) => {
+    let next = st.content;
+    if (isEuropassV2(next)) {
+      let c = next;
+      for (const [ruta, valor] of europassTextEdits.current) c = applyEuropassTextEdit(c, ruta, valor);
+      next = c;
+    }
+    setCvData(next);
+    const { accent_color, ...presets } = st.visual;
+    setAccentColor(accent_color ?? null);
+    visualPresetsRef.current = presets;
+    setVisualPresets(presets);
+  }, []);
+  const europass = useEuropassEditor(cvId, onEuropassState);
+  const europassLoadedFor = useRef<string | null>(null);
+  const europassV2 = isEuropassV2(cvData);
+  const { load: loadEuropass } = europass;
+  useEffect(() => {
+    if (!cvId || !europassV2 || europassLoadedFor.current === cvId) return;
+    europassLoadedFor.current = cvId;
+    loadEuropass();
+  }, [cvId, europassV2, loadEuropass]);
 
   async function loadExistingCV(id: string, p: CVParams) {
     setLoading(true);
@@ -178,13 +209,15 @@ export default function PreviewPage() {
     // Europass: saved exactly as the user typed it. The AI proofreading pass rewrites the
     // whole CV without the anti-invention controls, so it never runs on this style.
     if (isEuropassV2(cvData)) {
-      try {
-        if (cvId) await supabase.from('cvs').update({ contenido_json: cvData }).eq('id', cvId);
-        setGuardMode('saved');
-      } catch { /* best-effort, same as below */ } finally {
-        setSaving(false);
-        setEditing(false);
-      }
+      const edits = [...europassTextEdits.current];
+      europassTextEdits.current.clear();
+      const results = await Promise.all(edits.map(([ruta, valor]) => europass.send({ op: 'texto', ruta, valor })));
+      await europass.drain();
+      // Anything not saved disappears from the screen: it shows the server's version.
+      if (results.some(r => !r.ok)) await europass.load();
+      setGuardMode('saved');
+      setSaving(false);
+      setEditing(false);
       return;
     }
     try {
@@ -228,6 +261,11 @@ export default function PreviewPage() {
   }
 
   function changeAccentColor(color: string | null) {
+    if (isEuropassV2(cvData)) {
+      // Shown once the server confirms it (it comes back in the editor state).
+      europass.send({ op: 'visual', accent_color: color });
+      return;
+    }
     setAccentColor(color);
     if (!cvId) return;
     const seq = ++visualSaveSeq.current;
@@ -247,16 +285,43 @@ export default function PreviewPage() {
   }
 
   function updateCvField(path: string, value: string) {
-    setCvData((prev: any) => {
-      if (!prev) return prev;
-      if (isEuropassV2(prev)) return applyEuropassTextEdit(prev, path, value);
-      return setNestedValue(prev, path, value);
-    });
+    if (isEuropassV2(cvData)) {
+      europassTextEdits.current.set(path, value);
+      setCvData((prev: any) => prev && isEuropassV2(prev) ? applyEuropassTextEdit(prev, path, value) : prev);
+      return;
+    }
+    setCvData((prev: any) => prev ? setNestedValue(prev, path, value) : prev);
+  }
+
+  async function uploadEuropassPhoto(file: File): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase();
+    if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext) || file.size > 5 * 1024 * 1024) return false;
+    const path = `${user.id}.${ext}`;
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (error) return false;
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+    const { data, error: updError } = await supabase.from('profiles').update({ foto_url: publicUrl }).eq('id', user.id).select('id');
+    if (updError || data?.length !== 1) return false;
+    updateProfile({ foto_url: publicUrl });
+    return true;
   }
 
   async function handleCreateCV() {
     if (!cvId) return;
     setCreatingCV(true);
+
+    if (isEuropassV2(cvData)) {
+      // Europass changes are saved one by one; the screen shows only confirmed ones.
+      await europass.drain();
+      unregisterGuard();
+      sessionStorage.setItem('cv_created_id', cvId);
+      sessionStorage.removeItem('cv_params');
+      sessionStorage.removeItem('cv_preview_id');
+      router.push('/create-cv/success');
+      return;
+    }
 
     // The color must be confirmed saved before leaving: the PDF is rendered from the DB.
     const seq = ++visualSaveSeq.current;
@@ -321,7 +386,6 @@ export default function PreviewPage() {
   /* ── Main ─────────────────────────────────────────────────────────── */
   const matchMeta = matchData ? getMatchMeta(matchData.match_porcentaje) : null;
   const palette = styleAccentColors[params?.estilo ?? ''] ?? styleAccentColors['harvard'];
-  const europassV2 = isEuropassV2(cvData);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', animation: 'fadeUp .25s var(--ease) both', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px)' }}>
@@ -374,7 +438,7 @@ export default function PreviewPage() {
         </div>
 
         {/* ── Right: sidebar ────────────────────────────────────── */}
-        <div style={{ width: 272, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, alignSelf: 'flex-start', position: 'sticky', top: 0 }}>
+        <div style={{ width: 272, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, alignSelf: 'flex-start', position: 'sticky', top: 0, maxHeight: '100%', overflowY: 'auto', paddingBottom: 12 }}>
 
           {/* Meta card */}
           <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: 'var(--sh-2)' }}>
@@ -484,6 +548,16 @@ export default function PreviewPage() {
             )}
           </div>
 
+          {europassV2 && cvData && (
+            <>
+              <EuropassPanel content={cvData} visual={visualPresets} send={europass.send}
+                identidadDisponible={europass.identidadDisponible} onUploadPhoto={uploadEuropassPhoto} />
+              {europass.lastError && (
+                <div role="alert" style={{ fontSize: 12, color: '#DC2626', lineHeight: 1.4, padding: '0 4px' }}>{europass.lastError}</div>
+              )}
+            </>
+          )}
+
           {/* Match card (vacante only) */}
           {params?.mode === 'job' && matchData && matchMeta && (
             <div style={{ background: matchMeta.bg, border: `1px solid ${matchMeta.border}`, borderRadius: 14, padding: '16px 18px' }}>
@@ -525,7 +599,10 @@ export default function PreviewPage() {
                   {europassV2 ? (saving ? 'Guardando...' : 'Guardar') : (saving ? 'Revisando...' : 'Guardar y revisar')}
                 </button>
                 <button
-                  onClick={() => { setEditing(false); setGuardMode('saved'); }}
+                  onClick={() => {
+                    if (isEuropassV2(cvData) && europassTextEdits.current.size > 0) { europassTextEdits.current.clear(); europass.load(); }
+                    setEditing(false); setGuardMode('saved');
+                  }}
                   disabled={saving}
                   style={{ width: '100%', padding: '9px 16px', borderRadius: 10, background: 'transparent', color: 'var(--ink)', border: '1px solid var(--line)', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 500, transition: 'background .15s var(--ease)', opacity: saving ? 0.5 : 1 }}
                   onMouseEnter={e => { if (!saving) e.currentTarget.style.background = 'var(--hover)'; }}
