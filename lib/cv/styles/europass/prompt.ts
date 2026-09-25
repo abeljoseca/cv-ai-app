@@ -39,6 +39,7 @@ CITATIONS
 
 LENGTH
 - "Sobre mí": ${sobreMiLineas.min} to ${sobreMiLineas.max} lines about specialisation, years of experience (only the calculated figure given in the sources) and main domains. If the sources are not enough for a factual summary, return an empty string — never filler.
+- "Sobre mí" gives the overview; concrete results belong in the bullets. Do not repeat in "Sobre mí" a figure (percentage, amount, count) that appears in a job bullet. The calculated years of experience are the exception.
 - Each job: ${bulletsPorPuesto.min} to ${bulletsPorPuesto.max} bullets, most relevant first. If a job's sources only support fewer, write fewer. If a job has no descriptive source, return no bullets for it. Never pad.
 
 OUTPUT
@@ -119,6 +120,6 @@ export function buildEuropassUserMessage(sources: EuropassAISources, lang: strin
 SOURCES:
 ${JSON.stringify(payload, null, 2)}${feedback ? `
 
-A PREVIOUS DRAFT HAD THESE SENTENCES REJECTED BY FACT-CHECKING. Rewrite those parts using only facts stated in the cited sources; do not repeat these problems:
+A PREVIOUS DRAFT WAS REJECTED FOR THESE REASONS. Rewrite those parts using only facts stated in the cited sources; do not repeat these problems:
 ${feedback}` : ''}`
 }

@@ -7,7 +7,7 @@ function normalize(s: string): string {
 }
 
 // Figures compared by their digits ("1.250.000" == "1,250,000" == "1250000"; "7%" -> "7").
-function figures(text: string): string[] {
+export function figures(text: string): string[] {
   return (text.match(/\d+(?:[.,]\d+)*/g) ?? []).map(n => n.replace(/[.,]/g, ''))
 }
 
