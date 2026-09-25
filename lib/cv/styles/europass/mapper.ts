@@ -87,6 +87,30 @@ function mapDigComp(raw: unknown): EuropassContent['competencias_digitales']['di
   return { activo: DIGCOMP_AREAS.every(a => areas[a] !== null), ...areas }
 }
 
+// "03/2021 – actualidad" (or null when the profile has no dates for the job).
+function jobPeriod(e: Experiencia): string | null {
+  const start = formatEuropassDate(e.fecha_inicio)
+  const end = e.activo ? 'actualidad' : formatEuropassDate(e.fecha_fin)
+  return start || end ? `${start ?? '—'} – ${end ?? '—'}` : null
+}
+
+// Whole years between the earliest start and the latest end (today for current jobs).
+// Computed by code so the AI quotes a number instead of calculating one.
+function yearsOfExperienceFact(exps: Experiencia[], now = new Date()): EuropassAISources['hechos'] {
+  const toMonths = (v: string | null) => {
+    const m = v?.match(/^(\d{4})(?:-(\d{2}))?$/)
+    return m ? +m[1] * 12 + (m[2] ? +m[2] - 1 : 0) : null
+  }
+  const starts = exps.map(e => toMonths(e.fecha_inicio)).filter((x): x is number => x !== null)
+  const nowMonths = now.getFullYear() * 12 + now.getMonth()
+  const ends = exps.map(e => (e.activo ? nowMonths : toMonths(e.fecha_fin))).filter((x): x is number => x !== null)
+  if (starts.length === 0 || ends.length === 0) return []
+  const years = Math.floor((Math.max(...ends) - Math.min(...starts)) / 12)
+  return years >= 1
+    ? [{ ref: 'calc:anios_experiencia', texto: `Años de experiencia profesional (calculado de las fechas del perfil): ${years}` }]
+    : []
+}
+
 export function mapEuropassObjective(
   src: EuropassProfileSource,
   opts: { tituloProfesional?: string | null } = {},
@@ -189,11 +213,13 @@ export function mapEuropassObjective(
   }
 
   const aiSources: EuropassAISources = {
+    hechos: yearsOfExperienceFact(experiencias),
     resumen: clean(profile.resumen_profesional) ? { ref: 'perfil:resumen', texto: profile.resumen_profesional!.trim() } : null,
     experiencias: experiencias.map(e => ({
       ref: `exp:${e.id}`,
       cargo: e.cargo,
       empleador: e.empresa,
+      periodo: jobPeriod(e),
       descripcion: clean(e.descripcion) ? { ref: `exp:${e.id}:descripcion`, texto: e.descripcion!.trim() } : null,
       logros: linkedLogros(e.id).map(l => ({ ref: `logro:${l.id}`, texto: l.descripcion.trim() })),
     })),

@@ -28,6 +28,11 @@ export function detectLanguage(userData: CVUserData): string {
     .filter(Boolean)
     .join(' ')
 
+  return detectLanguageFromText(samples)
+}
+
+// Same heuristic on any text sample (used by style backends with their own data shape).
+export function detectLanguageFromText(samples: string): string {
   if (!samples || samples.trim().length < 30) return 'es'
 
   const scores = Object.entries(MARKERS).map(([lang, markers]) => ({

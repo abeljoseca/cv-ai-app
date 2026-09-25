@@ -115,10 +115,14 @@ export interface EuropassContent {
 // Source texts the AI step (4b) is allowed to write from, with stable references.
 export interface EuropassAISources {
   resumen: { ref: string; texto: string } | null
+  // Facts computed by code (e.g. years of experience) so the AI never has to calculate them.
+  hechos: Array<{ ref: string; texto: string }>
   experiencias: Array<{
     ref: string
     cargo: string
     empleador: string
+    // Already formatted, e.g. "03/2021 – actualidad"; null when the profile has no dates.
+    periodo: string | null
     descripcion: { ref: string; texto: string } | null
     logros: Array<{ ref: string; texto: string }>
   }>
