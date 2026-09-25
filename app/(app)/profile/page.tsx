@@ -66,6 +66,9 @@ export default function PerfilPage() {
   const [newLogro, setNewLogro] = useState('');
   const [newLogroExpId, setNewLogroExpId] = useState('');
 
+  // Which section's "Añadir …" accordion is open (only one at a time)
+  const [addOpen, setAddOpen] = useState<string | null>(null);
+
   // Pending deletes per section
   const [pendingExpDeleteIds, setPendingExpDeleteIds] = useState<string[]>([]);
   const [pendingEduDeleteIds, setPendingEduDeleteIds] = useState<string[]>([]);
@@ -171,10 +174,20 @@ export default function PerfilPage() {
     return localSoftNamesRef.current.has(nombre.toLowerCase()) || isLikelySoft(nombre);
   }
 
+  function cancelAdd(section: string) {
+    if (addOpen === section) setAddOpen(null);
+    if (section === 'experiencia') setNewExp(emptyExp);
+    if (section === 'educacion') setNewEdu(emptyEdu);
+    if (section === 'certificaciones') setNewCert(emptyCert);
+    if (section === 'idiomas') setNewIdioma({ nombre: '', nivel_cefr: '' });
+    if (section === 'logros') { setNewLogro(''); setNewLogroExpId(''); }
+  }
+
   function toggleEdit(section: string) {
     if (editSection === section) {
       setEditSection(null);
       setEditingExpId(null); setEditingEduId(null); setEditingIdiomaId(null); setEditingLogroId(null); setEditingCertId(null);
+      cancelAdd(section);
       // Clear pending deletes (cancel = restore)
       if (section === 'habilidades') { setPendingHardDeleteIds([]); setPendingSoftDeleteIds([]); }
       if (section === 'experiencia') setPendingExpDeleteIds([]);
@@ -238,16 +251,28 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
+  // Section "Guardar cambios": applies the items marked for deletion.
   async function saveExperiencia() {
+    if (pendingExpDeleteIds.length === 0) return;
+    setEditSaving(true);
+    try {
+      await supabase.from('experiencia').delete().in('id', pendingExpDeleteIds);
+      setPendingExpDeleteIds([]);
+      setAddOpen(null);
+      setEditSection(null);
+      await loadProfileData();
+    } catch (err) { console.error(err); }
+    finally { setEditSaving(false); }
+  }
+
+  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
+  // section's edit mode when nothing else is pending).
+  async function addExperiencia() {
+    if (!(newExp.empresa && newExp.cargo)) return;
     setEditSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      if (pendingExpDeleteIds.length > 0) {
-        await supabase.from('experiencia').delete().in('id', pendingExpDeleteIds);
-        setPendingExpDeleteIds([]);
-      }
-      if (newExp.empresa && newExp.cargo) {
         await supabase.from('experiencia').insert({
           user_id: user.id, empresa: newExp.empresa, cargo: newExp.cargo,
           fecha_inicio: normalizeProfileDate(newExp.fecha_inicio),
@@ -255,7 +280,8 @@ export default function PerfilPage() {
           activo: newExp.activo, descripcion: newExp.descripcion || null,
         });
         setNewExp(emptyExp);
-      }
+      setAddOpen(null);
+      if (pendingExpDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -277,16 +303,28 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
+  // Section "Guardar cambios": applies the items marked for deletion.
   async function saveEducacion() {
+    if (pendingEduDeleteIds.length === 0) return;
+    setEditSaving(true);
+    try {
+      await supabase.from('educacion').delete().in('id', pendingEduDeleteIds);
+      setPendingEduDeleteIds([]);
+      setAddOpen(null);
+      setEditSection(null);
+      await loadProfileData();
+    } catch (err) { console.error(err); }
+    finally { setEditSaving(false); }
+  }
+
+  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
+  // section's edit mode when nothing else is pending).
+  async function addEducacion() {
+    if (!(newEdu.institucion && newEdu.titulo)) return;
     setEditSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      if (pendingEduDeleteIds.length > 0) {
-        await supabase.from('educacion').delete().in('id', pendingEduDeleteIds);
-        setPendingEduDeleteIds([]);
-      }
-      if (newEdu.institucion && newEdu.titulo) {
         await supabase.from('educacion').insert({
           user_id: user.id, institucion: newEdu.institucion, titulo: newEdu.titulo,
           area: newEdu.area || null,
@@ -294,7 +332,8 @@ export default function PerfilPage() {
           fecha_fin: normalizeProfileDate(newEdu.fecha_fin),
         });
         setNewEdu(emptyEdu);
-      }
+      setAddOpen(null);
+      if (pendingEduDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -316,21 +355,34 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
+  // Section "Guardar cambios": applies the items marked for deletion.
   async function saveIdioma() {
+    if (pendingIdiomaDeleteIds.length === 0) return;
+    setEditSaving(true);
+    try {
+      await supabase.from('idiomas').delete().in('id', pendingIdiomaDeleteIds);
+      setPendingIdiomaDeleteIds([]);
+      setAddOpen(null);
+      setEditSection(null);
+      await loadProfileData();
+    } catch (err) { console.error(err); }
+    finally { setEditSaving(false); }
+  }
+
+  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
+  // section's edit mode when nothing else is pending).
+  async function addIdioma() {
+    if (!(newIdioma.nombre)) return;
     setEditSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      if (pendingIdiomaDeleteIds.length > 0) {
-        await supabase.from('idiomas').delete().in('id', pendingIdiomaDeleteIds);
-        setPendingIdiomaDeleteIds([]);
-      }
-      if (newIdioma.nombre) {
         const nivelCefr = normalizeCefr(newIdioma.nivel_cefr);
         // The legacy `nivel` label is kept in sync so older readers show the same level.
         await supabase.from('idiomas').insert({ user_id: user.id, nombre: newIdioma.nombre, nivel_cefr: nivelCefr, nivel: nivelCefr });
         setNewIdioma({ nombre: '', nivel_cefr: '' });
-      }
+      setAddOpen(null);
+      if (pendingIdiomaDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -353,20 +405,33 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
+  // Section "Guardar cambios": applies the items marked for deletion.
   async function saveLogro() {
+    if (pendingLogroDeleteIds.length === 0) return;
+    setEditSaving(true);
+    try {
+      await supabase.from('logros').delete().in('id', pendingLogroDeleteIds);
+      setPendingLogroDeleteIds([]);
+      setAddOpen(null);
+      setEditSection(null);
+      await loadProfileData();
+    } catch (err) { console.error(err); }
+    finally { setEditSaving(false); }
+  }
+
+  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
+  // section's edit mode when nothing else is pending).
+  async function addLogro() {
+    if (!(newLogro.trim())) return;
     setEditSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      if (pendingLogroDeleteIds.length > 0) {
-        await supabase.from('logros').delete().in('id', pendingLogroDeleteIds);
-        setPendingLogroDeleteIds([]);
-      }
-      if (newLogro.trim()) {
         await supabase.from('logros').insert({ user_id: user.id, descripcion: newLogro.trim(), experiencia_id: newLogroExpId || null });
         setNewLogro('');
         setNewLogroExpId('');
-      }
+      setAddOpen(null);
+      if (pendingLogroDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -384,16 +449,28 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
+  // Section "Guardar cambios": applies the items marked for deletion.
   async function saveCertificacion() {
+    if (pendingCertDeleteIds.length === 0) return;
+    setEditSaving(true);
+    try {
+      await supabase.from('certificaciones').delete().in('id', pendingCertDeleteIds);
+      setPendingCertDeleteIds([]);
+      setAddOpen(null);
+      setEditSection(null);
+      await loadProfileData();
+    } catch (err) { console.error(err); }
+    finally { setEditSaving(false); }
+  }
+
+  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
+  // section's edit mode when nothing else is pending).
+  async function addCertificacion() {
+    if (!(newCert.titulo.trim() && newCert.institucion.trim())) return;
     setEditSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      if (pendingCertDeleteIds.length > 0) {
-        await supabase.from('certificaciones').delete().in('id', pendingCertDeleteIds);
-        setPendingCertDeleteIds([]);
-      }
-      if (newCert.titulo.trim() && newCert.institucion.trim()) {
         await supabase.from('certificaciones').insert({
           user_id: user.id,
           titulo: newCert.titulo.trim(),
@@ -401,7 +478,8 @@ export default function PerfilPage() {
           anio_egreso: newCert.anio_egreso.trim() || null,
         });
         setNewCert(emptyCert);
-      }
+      setAddOpen(null);
+      if (pendingCertDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -655,7 +733,7 @@ export default function PerfilPage() {
           lockHeader={editingExpId !== null}
           isEditing={editSection === 'experiencia'} onEdit={() => toggleEdit('experiencia')}
           onSave={saveExperiencia} saving={editSaving}
-          saveDisabled={(!newExp.empresa || !newExp.cargo) && pendingExpDeleteIds.length === 0}>
+          saveDisabled={pendingExpDeleteIds.length === 0}>
           {experiencias.map((exp, i) => {
             const marked = pendingExpDeleteIds.includes(exp.id);
             return (
@@ -720,8 +798,9 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'experiencia' && (
-            <div style={{ marginTop: experiencias.length > 0 ? 16 : 0, padding: 16, background: 'var(--surface-2)', borderRadius: 12, border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep)' }}>Añadir experiencia</div>
+            <AddAccordion label="Añadir experiencia" open={addOpen === 'experiencia'} spaced={experiencias.length > 0}
+              onOpen={() => setAddOpen('experiencia')} onCancel={() => cancelAdd('experiencia')}
+              onSave={addExperiencia} saving={editSaving} saveDisabled={!newExp.empresa || !newExp.cargo}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <EField label="Empresa *" value={newExp.empresa} onChange={v => setNewExp(p => ({ ...p, empresa: v }))} placeholder="Ej. Google" />
                 <EField label="Cargo *" value={newExp.cargo} onChange={v => setNewExp(p => ({ ...p, cargo: v }))} placeholder="Ej. Desarrollador Senior" />
@@ -732,7 +811,7 @@ export default function PerfilPage() {
                 <input type="checkbox" checked={newExp.activo} onChange={e => setNewExp(p => ({ ...p, activo: e.target.checked }))} /> Trabajo actual
               </label>
               <EField label="Descripción" value={newExp.descripcion} onChange={v => setNewExp(p => ({ ...p, descripcion: v }))} placeholder="Responsabilidades y logros..." multiline />
-            </div>
+            </AddAccordion>
           )}
           {experiencias.length === 0 && editSection !== 'experiencia' && (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--mute)', fontStyle: 'italic' }}>Comparte tu historial laboral o haz clic en Editar</p>
@@ -744,7 +823,7 @@ export default function PerfilPage() {
           lockHeader={editingEduId !== null}
           isEditing={editSection === 'educacion'} onEdit={() => toggleEdit('educacion')}
           onSave={saveEducacion} saving={editSaving}
-          saveDisabled={(!newEdu.institucion || !newEdu.titulo) && pendingEduDeleteIds.length === 0}>
+          saveDisabled={pendingEduDeleteIds.length === 0}>
           {educaciones.map((edu, i) => {
             const marked = pendingEduDeleteIds.includes(edu.id);
             return (
@@ -791,13 +870,14 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'educacion' && (
-            <div style={{ marginTop: educaciones.length > 0 ? 14 : 0, padding: 14, background: 'var(--surface-2)', borderRadius: 10, border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep)' }}>Añadir educación</div>
+            <AddAccordion label="Añadir educación" open={addOpen === 'educacion'} spaced={educaciones.length > 0}
+              onOpen={() => setAddOpen('educacion')} onCancel={() => cancelAdd('educacion')}
+              onSave={addEducacion} saving={editSaving} saveDisabled={!newEdu.institucion || !newEdu.titulo}>
               <EField label="Institución *" value={newEdu.institucion} onChange={v => setNewEdu(p => ({ ...p, institucion: v }))} placeholder="Universidad de..." />
               <EField label="Título *" value={newEdu.titulo} onChange={v => setNewEdu(p => ({ ...p, titulo: v }))} placeholder="Ingeniería en..." />
               <EField label="Área" value={newEdu.area} onChange={v => setNewEdu(p => ({ ...p, area: v }))} placeholder="Informática, Administración..." />
               <MonthYearField label="Fecha de graduación" value={newEdu.fecha_fin} onChange={v => setNewEdu(p => ({ ...p, fecha_fin: v }))} futureYears={6} />
-            </div>
+            </AddAccordion>
           )}
           {educaciones.length === 0 && editSection !== 'educacion' && (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--mute)', fontStyle: 'italic' }}>Añade tu formación académica</p>
@@ -809,7 +889,7 @@ export default function PerfilPage() {
           lockHeader={editingCertId !== null}
           isEditing={editSection === 'certificaciones'} onEdit={() => toggleEdit('certificaciones')}
           onSave={saveCertificacion} saving={editSaving}
-          saveDisabled={(!newCert.titulo.trim() || !newCert.institucion.trim()) && pendingCertDeleteIds.length === 0}>
+          saveDisabled={pendingCertDeleteIds.length === 0}>
           {certificaciones.map((cert, i) => {
             const marked = pendingCertDeleteIds.includes(cert.id);
             return (
@@ -855,12 +935,13 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'certificaciones' && (
-            <div style={{ marginTop: certificaciones.length > 0 ? 14 : 0, padding: 14, background: 'var(--surface-2)', borderRadius: 10, border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep)' }}>Añadir certificación</div>
+            <AddAccordion label="Añadir certificación" open={addOpen === 'certificaciones'} spaced={certificaciones.length > 0}
+              onOpen={() => setAddOpen('certificaciones')} onCancel={() => cancelAdd('certificaciones')}
+              onSave={addCertificacion} saving={editSaving} saveDisabled={!newCert.titulo.trim() || !newCert.institucion.trim()}>
               <EField label="Título *" value={newCert.titulo} onChange={v => setNewCert(p => ({ ...p, titulo: v }))} placeholder="Ej. Diplomado de Marketing Digital" />
               <EField label="Institución *" value={newCert.institucion} onChange={v => setNewCert(p => ({ ...p, institucion: v }))} placeholder="Ej. Universidad Central" />
               <EField label="Año de egreso" value={newCert.anio_egreso} onChange={v => setNewCert(p => ({ ...p, anio_egreso: v }))} placeholder="Ej. 2023" />
-            </div>
+            </AddAccordion>
           )}
           {certificaciones.length === 0 && editSection !== 'certificaciones' && (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--mute)', fontStyle: 'italic' }}>Añade tus cursos y certificaciones</p>
@@ -872,7 +953,7 @@ export default function PerfilPage() {
           lockHeader={editingIdiomaId !== null}
           isEditing={editSection === 'idiomas'} onEdit={() => toggleEdit('idiomas')}
           onSave={saveIdioma} saving={editSaving}
-          saveDisabled={!newIdioma.nombre && pendingIdiomaDeleteIds.length === 0}>
+          saveDisabled={pendingIdiomaDeleteIds.length === 0}>
           {idiomas.some(i => !i.nivel_cefr) && (
             <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#B45309', lineHeight: 1.45 }}>
               Actualiza el nivel de tus idiomas a la escala europea (A1–C2): así tus CVs muestran tu nivel real.
@@ -939,8 +1020,9 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'idiomas' && (
-            <div style={{ marginTop: idiomas.length > 0 ? 14 : 0, padding: 14, background: 'var(--surface-2)', borderRadius: 10, border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep)' }}>Añadir idioma</div>
+            <AddAccordion label="Añadir idioma" open={addOpen === 'idiomas'} spaced={idiomas.length > 0}
+              onOpen={() => setAddOpen('idiomas')} onCancel={() => cancelAdd('idiomas')}
+              onSave={addIdioma} saving={editSaving} saveDisabled={!newIdioma.nombre}>
               <EField label="Idioma *" value={newIdioma.nombre} onChange={v => setNewIdioma(p => ({ ...p, nombre: v }))} placeholder="Ej. Inglés" />
               <div>
                 <div style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500, marginBottom: 6 }}>Nivel</div>
@@ -956,7 +1038,7 @@ export default function PerfilPage() {
                         <div style={{ fontSize: 11.5, color: 'var(--mute)', marginTop: 4 }}>{CEFR_HINTS[newIdioma.nivel_cefr as CefrLevel]}</div>
                       )}
               </div>
-            </div>
+            </AddAccordion>
           )}
           {idiomas.length === 0 && editSection !== 'idiomas' && (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--mute)', fontStyle: 'italic' }}>Añade tus idiomas</p>
@@ -968,7 +1050,7 @@ export default function PerfilPage() {
           lockHeader={editingLogroId !== null}
           isEditing={editSection === 'logros'} onEdit={() => toggleEdit('logros')}
           onSave={saveLogro} saving={editSaving}
-          saveDisabled={!newLogro.trim() && pendingLogroDeleteIds.length === 0}>
+          saveDisabled={pendingLogroDeleteIds.length === 0}>
           {logros.map((logro, i) => {
             const marked = pendingLogroDeleteIds.includes(logro.id);
             return (
@@ -1029,7 +1111,9 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'logros' && (
-            <div style={{ marginTop: logros.length > 0 ? 14 : 0, padding: 14, background: 'var(--surface-2)', borderRadius: 10, border: '1px dashed var(--line)' }}>
+            <AddAccordion label="Añadir logro" open={addOpen === 'logros'} spaced={logros.length > 0}
+              onOpen={() => setAddOpen('logros')} onCancel={() => cancelAdd('logros')}
+              onSave={addLogro} saving={editSaving} saveDisabled={!newLogro.trim()}>
               <div style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500, marginBottom: 6 }}>Describe tu logro</div>
               <textarea value={newLogro} onChange={e => setNewLogro(e.target.value)}
                 placeholder="Ej. Reduje costos operativos en 40% migrando la infraestructura a la nube."
@@ -1053,7 +1137,7 @@ export default function PerfilPage() {
                   </label>
                 )}
               </div>
-            </div>
+            </AddAccordion>
           )}
           {logros.length === 0 && editSection !== 'logros' && (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--mute)', fontStyle: 'italic' }}>Comparte tus logros con el asistente</p>
@@ -1222,7 +1306,7 @@ function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Edita
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--deep)' }}>{title}</h3>
         </div>
         {!lockHeader && <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {isEditing && onSave && (
+          {isEditing && onSave && (!saveDisabled || saving) && (
             <button onClick={onSave} disabled={saving || saveDisabled} style={{
               background: saving || saveDisabled ? 'var(--line)' : 'var(--blue)',
               color: saving || saveDisabled ? 'var(--mute)' : '#fff',
@@ -1250,6 +1334,41 @@ function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Edita
         </div>}
       </div>
       {children}
+    </div>
+  );
+}
+
+/* ── AddAccordion ── collapsed "+ Añadir …" button that expands into the add form,
+   with its own Guardar/Cancelar. Closes again after saving or cancelling. */
+function AddAccordion({ label, open, spaced, onOpen, onCancel, onSave, saving, saveDisabled, children }: {
+  label: string; open: boolean; spaced: boolean; onOpen: () => void; onCancel: () => void;
+  onSave: () => void; saving: boolean; saveDisabled: boolean; children: React.ReactNode;
+}) {
+  const marginTop = spaced ? 14 : 0;
+  if (!open) {
+    return (
+      <button onClick={onOpen}
+        style={{ marginTop, width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px dashed var(--line)', background: 'transparent', color: 'var(--blue)', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit', transition: 'background .15s var(--ease)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+        + {label}
+      </button>
+    );
+  }
+  return (
+    <div style={{ marginTop, padding: 16, background: 'var(--surface-2)', borderRadius: 12, border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 12, animation: 'fadeUp .18s var(--ease) both' }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--deep)' }}>{label}</div>
+      {children}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={onSave} disabled={saving || saveDisabled}
+          style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: saving || saveDisabled ? 'var(--line)' : 'var(--blue)', color: saving || saveDisabled ? 'var(--mute)' : '#fff', fontSize: 12.5, fontWeight: 600, cursor: saving || saveDisabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <SaveIcon size={12} /> {saving ? 'Guardando…' : 'Guardar'}
+        </button>
+        <button onClick={onCancel} disabled={saving}
+          style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--mute)', fontSize: 12.5, cursor: 'pointer' }}>
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }
