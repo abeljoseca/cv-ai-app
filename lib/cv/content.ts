@@ -24,3 +24,37 @@ export function cvContentTitle(content: unknown): string | null {
 export function withoutInternalFields<T>(content: T): T {
   return JSON.parse(JSON.stringify(content, (k, v) => (k.startsWith('_') ? undefined : v)))
 }
+
+// What an AI may see of a CV when it only needs the professional content (vacancy match
+// explanation — Europass spec change 28, all styles). ALLOWLIST: only fields known to be
+// professional pass; name, contact data, photo, identity data and anything unknown don't.
+export function professionalView(content: unknown): Record<string, unknown> {
+  if (!content || typeof content !== 'object') return {}
+  if (isEuropassV2(content)) {
+    const c = content
+    return {
+      titulo_profesional: c.informacion_personal?.titulo_profesional ?? null,
+      sobre_mi: c.sobre_mi?.texto ?? null,
+      experiencia: (c.experiencia_laboral ?? []).map(e => ({
+        cargo: e.cargo, empleador: e.empleador, fecha_inicio: e.fecha_inicio, fecha_fin: e.fecha_fin,
+        bullets: (e.bullets ?? []).map(b => b.texto),
+      })),
+      educacion: (c.educacion_formacion ?? []).map(e => ({
+        titulo: e.titulo, institucion: e.institucion, area: e.area, fecha_inicio: e.fecha_inicio, fecha_fin: e.fecha_fin,
+      })),
+      idiomas: [
+        ...(c.competencias_linguisticas?.lenguas_maternas ?? []).map(idioma => ({ idioma, nivel: 'Nativo' })),
+        ...(c.competencias_linguisticas?.otras_lenguas ?? []).map(l => ({ idioma: l.idioma, niveles: l.niveles })),
+      ],
+      herramientas: c.competencias_digitales?.herramientas ?? [],
+      otras_competencias: c.otras_competencias ?? [],
+    }
+  }
+  const src = content as Record<string, unknown>
+  const PROFESSIONAL_KEYS = [
+    'titulo', 'resumen', 'resumen_ejecutivo', 'experiencias', 'educacion', 'habilidades',
+    'habilidades_tecnicas', 'habilidades_blandas', 'idiomas', 'logros', 'proyectos',
+    'tech_stack', 'areas_expertise', 'certificaciones',
+  ]
+  return Object.fromEntries(PROFESSIONAL_KEYS.filter(k => src[k] !== undefined).map(k => [k, src[k]]))
+}

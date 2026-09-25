@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAnthropicClient } from '@/lib/anthropic';
 import { rateLimit } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
+import { professionalView } from '@/lib/cv/content';
 
 const P8_MATCH_VACANTE = `Analiza el CV generado vs la descripción de la vacante.
 El porcentaje de compatibilidad YA fue calculado de forma determinística por el sistema (se te
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Only the professional content reaches the AI — never name, contact or identity data
+    // (Europass spec change 28, all styles).
     const anthropic = createAnthropicClient();
 
     const response = await anthropic.messages.create({
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'user',
-          content: `Porcentaje de compatibilidad ya calculado: ${match_porcentaje}%\n\nCV: ${JSON.stringify(cv)}\n\nVacante: ${vacante}`,
+          content: `Porcentaje de compatibilidad ya calculado: ${match_porcentaje}%\n\nCV: ${JSON.stringify(professionalView(cv))}\n\nVacante: ${vacante}`,
         },
       ],
     });

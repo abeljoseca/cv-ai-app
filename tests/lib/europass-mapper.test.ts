@@ -54,11 +54,19 @@ describe('mapEuropassObjective', () => {
     expect(ip.titulo_profesional).toBe('Coordinadora de Operaciones')
     expect(ip.telefono).toBe('+34 611 22 33 44')
     expect(ip.ciudad_pais).toBe('Madrid, España')
-    expect(ip.fecha_nacimiento).toEqual({ activo: true, valor: '14/03/1994' })
-    expect(ip.nacionalidad).toEqual({ activo: true, valor: 'Española' })
+    // Identity data never comes from the profile row and never lands in the CV.
+    expect(ip.fecha_nacimiento).toEqual({ activo: false, valor: null })
+    expect(ip.nacionalidad).toEqual({ activo: false, valor: null })
     expect(ip.direccion).toEqual({ activo: false, valor: null })
     expect(ip.foto.activo).toBe(false)
     expect(ip.perfiles).toEqual([{ tipo: 'linkedin', url: 'https://www.linkedin.com/in/laura/', activo: true }])
+  })
+
+  it('switches identity fields on when the (decrypted) data exists, without storing the values', () => {
+    const ip = mapEuropassObjective(source(), { identity: { fecha_nacimiento: '1994-03-14', nacionalidad: 'Española' } }).content.informacion_personal
+    expect(ip.fecha_nacimiento).toEqual({ activo: true, valor: null })
+    expect(ip.nacionalidad).toEqual({ activo: true, valor: null })
+    expect(ip.direccion).toEqual({ activo: false, valor: null })
   })
 
   it('uses the vacancy title when given', () => {

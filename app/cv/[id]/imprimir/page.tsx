@@ -6,6 +6,9 @@ import { canDownloadCV } from '@/lib/cv/entitlement';
 import { parseVisualConfig } from '@/lib/cv/visual-config';
 import type { CV } from '@/types';
 import { isEuropassV2 } from '@/lib/cv/content';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { loadIdentitySafe } from '@/lib/identity';
+import { withIdentity } from '@/lib/cv/styles/europass/identity-view';
 import type { StoredCVContent } from '@/lib/cv/types/pipeline';
 
 // Print-ready render of a CV. It is also the page headless Chromium loads to produce the
@@ -51,7 +54,12 @@ export default async function ImprimirPage({
 
   const isPdfRender = modo === 'pdf';
   const visual = parseVisualConfig(cv.visual_config);
-  const content = cv.contenido_json as unknown as StoredCVContent;
+  const stored = cv.contenido_json as unknown as StoredCVContent;
+  // Europass identity values live only encrypted; they are decrypted here, on the server,
+  // for the owner (this page already checked ownership and payment).
+  const content = isEuropassV2(stored)
+    ? withIdentity(stored, await loadIdentitySafe(createAdminClient(), user.id))
+    : stored;
   const printCss = isEuropassV2(content) ? EUROPASS_PRINT_CSS : CV_PRINT_CSS;
 
   return (

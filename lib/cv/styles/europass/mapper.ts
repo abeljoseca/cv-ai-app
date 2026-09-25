@@ -9,7 +9,8 @@ import { normalizeProfileDate } from '@/lib/profile-date'
 import { isCefrBreakdown, CEFR_SKILLS, type CefrBreakdown } from '@/lib/cefr'
 import { splitSkills, type SkillTipo } from '@/lib/skill-classification'
 import { DIGCOMP_AREAS, EUROPASS_SCHEMA, type DigCompNivel, type EuropassAISources, type EuropassContent, type EuropassIdioma, type ToggleList } from './schema'
-import { DIGCOMP_LEVELS, DRIVING_LICENCE_CATEGORIES, formatBirthDate, formatEuropassDate } from './format'
+import { DIGCOMP_LEVELS, DRIVING_LICENCE_CATEGORIES, formatEuropassDate } from './format'
+import type { IdentityData } from '@/lib/identity'
 
 export interface EuropassProfileSource {
   profile: Profile
@@ -78,7 +79,7 @@ function mapIdioma(i: Idioma): EuropassIdioma {
       niveles = Object.fromEntries(CEFR_SKILLS.map(s => [s, level])) as CefrBreakdown
     }
   }
-  return { idioma: i.nombre, niveles, niveles_confirmados: confirmados, certificacion: toggle(clean(i.certificacion)) }
+  return { _id: i.id, idioma: i.nombre, niveles, niveles_confirmados: confirmados, certificacion: toggle(clean(i.certificacion)) }
 }
 
 function mapDigComp(raw: unknown): EuropassContent['competencias_digitales']['digcomp'] {
@@ -142,7 +143,9 @@ function yearsOfExperienceFact(exps: Experiencia[], now = new Date()): EuropassA
 
 export function mapEuropassObjective(
   src: EuropassProfileSource,
-  opts: { tituloProfesional?: string | null } = {},
+  // identity: only whether each value exists (decrypted on the server by the caller) — the
+  // values themselves are never stored in the CV (spec change 26).
+  opts: { tituloProfesional?: string | null; identity?: IdentityData } = {},
 ): { content: EuropassContent; aiSources: EuropassAISources } {
   const { profile } = src
   const experiencias = [...src.experiencias].sort(byStartDesc)
@@ -198,9 +201,9 @@ export function mapEuropassObjective(
       email: clean(profile.email_cv),
       ciudad_pais: place(profile.ciudad, profile.pais),
       foto: { activo: !!clean(profile.foto_url), url: clean(profile.foto_url) },
-      fecha_nacimiento: toggle(formatBirthDate(profile.fecha_nacimiento)),
-      nacionalidad: toggle(clean(profile.nacionalidad)),
-      direccion: toggle(clean(profile.direccion)),
+      fecha_nacimiento: { activo: !!opts.identity?.fecha_nacimiento, valor: null },
+      nacionalidad: { activo: !!clean(opts.identity?.nacionalidad), valor: null },
+      direccion: { activo: !!clean(opts.identity?.direccion), valor: null },
       perfiles,
     },
     // Written by the AI step (4b) from aiSources; null until then.

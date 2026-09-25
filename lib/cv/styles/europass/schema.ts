@@ -55,6 +55,8 @@ export interface EuropassEducacion {
 }
 
 export interface EuropassIdioma {
+  // Profile row id (absent in CVs generated before step 5).
+  _id?: string
   idioma: string
   // null when the user has not confirmed a CEFR level yet: the CV only ever shows CEFR codes.
   niveles: CefrBreakdown | null

@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { anthropicSenseJudge, type SenseJudge } from '@/lib/cv/verify/sense'
 import { loadEuropassSource, mapEuropassObjective, type EuropassProfileSource } from './mapper'
 import type { EuropassVacancyFocus } from './prompt'
+import { loadIdentitySafe } from '@/lib/identity'
 import { applyEuropassWriting, requestEuropassWriting, sanitizeEuropassWriting, type EuropassWriting } from './write'
 import { userTextWriting, verifyEuropassWriting, type VerificationReport } from './verify'
 import type { EuropassAISources, EuropassContent } from './schema'
@@ -48,9 +49,13 @@ export async function generateEuropassContent(params: {
   // which facts the writer puts first (never what the facts are).
   vacancy?: EuropassVacancyFocus | null
 }): Promise<EuropassGenerationResult & { source: EuropassProfileSource }> {
-  const source = await loadEuropassSource(params.supabase, params.userId)
+  // `supabase` is the service-role client here (pipelines run server-side).
+  const [source, identity] = await Promise.all([
+    loadEuropassSource(params.supabase, params.userId),
+    loadIdentitySafe(params.supabase, params.userId),
+  ])
   const focus = params.vacancy ?? undefined
-  const { content, aiSources } = mapEuropassObjective(source, { tituloProfesional: focus?.cargo })
+  const { content, aiSources } = mapEuropassObjective(source, { tituloProfesional: focus?.cargo, identity })
   const result = await writeAndVerifyEuropass(content, aiSources, {
     write: async feedback => sanitizeEuropassWriting(await requestEuropassWriting(params.anthropic, aiSources, undefined, feedback, focus), aiSources),
     judge: anthropicSenseJudge(params.anthropic),

@@ -26,9 +26,6 @@ export interface Profile {
   cv_pendiente_pago_id: string | null;
   descarga_gratis_inspiracion_usada: boolean;
   // Europass / standardized styles (migrations/step3a-profile-fields.sql)
-  fecha_nacimiento?: string | null;
-  nacionalidad?: string | null;
-  direccion?: string | null;
   orcid_url?: string | null;
   researchgate_url?: string | null;
   permiso_conducir?: string[];
