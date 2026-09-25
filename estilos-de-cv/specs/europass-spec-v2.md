@@ -34,6 +34,9 @@
 | 20 | — | Fecha de fin anterior a la de inicio: el perfil no permite guardarla; si llega por importación se guarda tal cual y el perfil marca "Revisa las fechas" (decisión CEO 2026-09-25) | No se adivina cuál de las dos fechas está mal |
 | 21 | — | **Modo Vacante:** además del título, la oferta (cargo y requisitos) se pasa al redactor **solo para priorizar y enfocar** los hechos del usuario. No es una fuente: no se cita, y los controles exacto y de sentido se aplican igual (decisión CEO 2026-09-25) | El modo vacante debe aportar valor sin abrir la puerta a inventar requisitos |
 | 22 | Edición libre de todo el CV en la vista previa + corrección ortográfica con IA de todo el CV | Hasta el panel del paso 5: en la vista previa solo se editan **"Sobre mí" y los bullets**; los datos objetivos se cambian en el perfil. **"Guardar"** guarda lo escrito tal cual, **sin IA**, y cada frase editada pasa a `_origen: "usuario"` (decisión CEO 2026-09-25) | La IA de ortografía reescribía el CV sin los controles anti-invención |
+| 23 | Al encender un campo, "se enfoca su input" (sin ubicación definida) | El input estructurado aparece **en el panel lateral**, debajo de su interruptor; la hoja del CV sigue siendo una vista fiel del PDF (decisión CEO 2026-09-25) | Controles de formulario dentro de la hoja A4 la desfiguran y fallan en móvil |
+| 24 | Campos por elemento "activables por puesto / por estudio" | **Un interruptor por sección** (p. ej. "Ciudad y país de cada puesto") y, debajo, un campo por elemento (decisión CEO 2026-09-25) | Evita CVs inconsistentes (un puesto con ciudad y otro sin ella) |
+| 25 | — | Los campos por elemento (ciudad/país y NACE del puesto; ISCED, ciudad y materias del estudio; certificación del idioma) se editan **solo desde el panel del CV**, no en las tarjetas de Mi perfil. Sin "Editar" en Mis CVs por ahora: el panel existe solo durante la creación (decisión CEO 2026-09-25) | Alcance acotado del paso 5 |
 
 ---
 
