@@ -41,9 +41,11 @@ export interface EuropassExperiencia {
 
 export interface EuropassEducacion {
   _id: string
+  // Profile "Cursos y Certificaciones" are listed here too, as Europass does (CEO 2026-09-25).
+  origen: 'educacion' | 'certificacion'
   titulo: string
   institucion: string
-  // Field of study. Not in the v2 visual spec; carried so the template can decide (see 4d).
+  // Field of study — shown as a gray line under the title (CEO 2026-09-25).
   area: string | null
   fecha_inicio: string | null
   fecha_fin: string | null

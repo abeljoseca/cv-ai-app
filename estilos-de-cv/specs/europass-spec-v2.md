@@ -29,6 +29,9 @@
 | 15 | Títulos de sección en peso 600 | **700** | Carlito y Calibri solo tienen 400 y 700; el 600 ya se renderizaba como 700 |
 | 16 | Fechas siempre `MM/AAAA` | `MM/AAAA`, o **solo `AAAA`** cuando el mes no se conoce (decisión CEO 2026-09-25) | Los datos existentes solo tienen año; nunca se inventa el mes |
 | 17 | Idioma sin confirmar: nivel en texto en una fila combinada | **Sin nivel** hasta que el usuario lo confirme (decisión CEO 2026-09-25: el CV solo muestra códigos MCER). La presentación exacta de esa fila se define en la plantilla (4d) | Ningún texto como "Avanzado" llega al CV |
+| 18 | Sin lugar para "Cursos y Certificaciones" del perfil | Se listan **como elementos de "Educación y formación"** (título, institución, año), ordenados junto con los estudios (decisión CEO 2026-09-25) | Como hace el Europass oficial; ningún dato del perfil se pierde |
+| 19 | Sin "Área" en educación | **Área** (campo de estudio) como línea gris bajo el título del estudio (decisión CEO 2026-09-25) | Es útil y ya existe en el perfil |
+| 20 | — | Fecha de fin anterior a la de inicio: el perfil no permite guardarla; si llega por importación se guarda tal cual y el perfil marca "Revisa las fechas" (decisión CEO 2026-09-25) | No se adivina cuál de las dos fechas está mal |
 
 ---
 
@@ -147,6 +150,8 @@ Reglas comunes:
 | | Sector NACE | Activable (por puesto, texto libre) | **Nuevo campo** | No |
 | **4** | **Educación y formación** (cronología inversa) | Núcleo | Perfil | |
 | | Título, institución, fechas | Núcleo | Perfil | No |
+| | Área (campo de estudio), línea gris bajo el título | Núcleo si hay dato | Perfil | No |
+| | Cursos y certificaciones del perfil (título, institución, año) como elementos de esta sección | Núcleo si hay datos | Perfil | No |
 | | Nivel CINE/ISCED | Recomendada (por estudio). **El usuario lo elige de una lista; la IA nunca lo deduce** | **Nuevo campo** | No |
 | | Ciudad, país | Activable (por estudio) | **Nuevo campo** | No |
 | | Materias principales | Activable (por estudio) | **Nuevo campo** | No |

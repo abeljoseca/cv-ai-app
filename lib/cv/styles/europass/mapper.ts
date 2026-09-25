@@ -5,6 +5,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Certificacion, Educacion, Experiencia, Habilidad, Idioma, Logro, Profile } from '@/types'
 import { formatPhone } from '@/lib/format-phone'
+import { normalizeProfileDate } from '@/lib/profile-date'
 import { isCefrBreakdown, CEFR_SKILLS, type CefrBreakdown } from '@/lib/cefr'
 import { splitSkills, type SkillTipo } from '@/lib/skill-classification'
 import { DIGCOMP_AREAS, EUROPASS_SCHEMA, type DigCompNivel, type EuropassAISources, type EuropassContent, type EuropassIdioma, type ToggleList } from './schema'
@@ -17,7 +18,7 @@ export interface EuropassProfileSource {
   idiomas: Idioma[]
   logros: Logro[]
   habilidades: Habilidad[]
-  // Loaded but not placed yet: the v2 spec has no section for them (pending CEO decision).
+  // Listed as items of "Educación y formación" (CEO decision 2026-09-25).
   certificaciones: Certificacion[]
 }
 
@@ -51,12 +52,16 @@ const list = (items: string[] | null | undefined): ToggleList => {
 }
 const place = (...parts: Array<string | null | undefined>) => clean(parts.map(clean).filter(Boolean).join(', '))
 
-// Reverse chronological by start date ('AAAA' / 'AAAA-MM' sort as strings); undated last.
-function byStartDesc<T extends { fecha_inicio: string | null }>(a: T, b: T): number {
-  if (!a.fecha_inicio) return b.fecha_inicio ? 1 : 0
-  if (!b.fecha_inicio) return -1
-  return b.fecha_inicio.localeCompare(a.fecha_inicio)
+// Reverse chronological ('AAAA' / 'AAAA-MM' sort as strings); undated last.
+function dateDesc(a: string | null, b: string | null): number {
+  if (!a) return b ? 1 : 0
+  if (!b) return -1
+  return b.localeCompare(a)
 }
+const byStartDesc = <T extends { fecha_inicio: string | null }>(a: T, b: T) => dateDesc(a.fecha_inicio, b.fecha_inicio)
+
+// Placeholder the LinkedIn import stores when the issuer is unknown — never printed.
+const PLACEHOLDER_INSTITUCION = 'sin institución'
 
 function mapIdioma(i: Idioma): EuropassIdioma {
   const level = i.nivel_cefr
@@ -88,7 +93,12 @@ export function mapEuropassObjective(
 ): { content: EuropassContent; aiSources: EuropassAISources } {
   const { profile } = src
   const experiencias = [...src.experiencias].sort(byStartDesc)
-  const educaciones = [...src.educaciones].sort(byStartDesc)
+  // Studies and certifications share the section, ordered by start date (end date for
+  // certifications, which only have a year).
+  const formacion = [
+    ...src.educaciones.map(e => ({ kind: 'educacion' as const, key: e.fecha_inicio ?? e.fecha_fin, e })),
+    ...src.certificaciones.map(c => ({ kind: 'certificacion' as const, key: normalizeProfileDate(c.anio_egreso), c })),
+  ].sort((a, b) => dateDesc(a.key, b.key))
 
   const expIds = new Set(experiencias.map(e => e.id))
   const linkedLogros = (expId: string) => src.logros.filter(l => l.experiencia_id === expId && clean(l.descripcion))
@@ -142,17 +152,31 @@ export function mapEuropassObjective(
       lugar: toggle(place(e.ciudad, e.pais)),
       sector_nace: toggle(clean(e.sector_nace)),
     })),
-    educacion_formacion: educaciones.map(e => ({
-      _id: e.id,
-      titulo: e.titulo,
-      institucion: e.institucion,
-      area: clean(e.area),
-      fecha_inicio: formatEuropassDate(e.fecha_inicio),
-      fecha_fin: formatEuropassDate(e.fecha_fin),
-      nivel_isced: toggle(e.nivel_isced != null && e.nivel_isced >= 0 && e.nivel_isced <= 8 ? e.nivel_isced : null),
-      lugar: toggle(place(e.ciudad, e.pais)),
-      materias: toggle(clean(e.materias)),
-    })),
+    educacion_formacion: formacion.map(item => item.kind === 'educacion'
+      ? {
+          _id: item.e.id,
+          origen: 'educacion' as const,
+          titulo: item.e.titulo,
+          institucion: item.e.institucion,
+          area: clean(item.e.area),
+          fecha_inicio: formatEuropassDate(item.e.fecha_inicio),
+          fecha_fin: formatEuropassDate(item.e.fecha_fin),
+          nivel_isced: toggle(item.e.nivel_isced != null && item.e.nivel_isced >= 0 && item.e.nivel_isced <= 8 ? item.e.nivel_isced : null),
+          lugar: toggle(place(item.e.ciudad, item.e.pais)),
+          materias: toggle(clean(item.e.materias)),
+        }
+      : {
+          _id: item.c.id,
+          origen: 'certificacion' as const,
+          titulo: item.c.titulo,
+          institucion: item.c.institucion?.trim().toLowerCase() === PLACEHOLDER_INSTITUCION ? '' : item.c.institucion,
+          area: null,
+          fecha_inicio: null,
+          fecha_fin: formatEuropassDate(item.key),
+          nivel_isced: toggle<number>(null),
+          lugar: toggle<string>(null),
+          materias: toggle<string>(null),
+        }),
     competencias_linguisticas: {
       lenguas_maternas: idiomasConNombre.filter(i => i.nivel_cefr === 'Nativo').map(i => i.nombre),
       otras_lenguas: idiomasConNombre.filter(i => i.nivel_cefr !== 'Nativo').map(mapIdioma),

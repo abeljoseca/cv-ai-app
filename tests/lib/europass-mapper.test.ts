@@ -37,7 +37,10 @@ function source(overrides: Partial<EuropassProfileSource> = {}): EuropassProfile
       { ...base, id: 'h1', nombre: 'Excel', tipo: 'tecnica' },
       { ...base, id: 'h2', nombre: 'Liderazgo', tipo: 'blanda' },
     ],
-    certificaciones: [],
+    certificaciones: [
+      { ...base, id: 'c1', titulo: 'Lean Six Sigma Green Belt', institucion: 'ASQ', anio_egreso: '2019' },
+      { ...base, id: 'c2', titulo: 'Curso de Power BI', institucion: 'Sin institución', anio_egreso: null },
+    ],
     ...overrides,
   }
 }
@@ -116,6 +119,21 @@ describe('mapEuropassObjective', () => {
     const before = JSON.stringify(src)
     mapEuropassObjective(src)
     expect(JSON.stringify(src)).toBe(before)
+  })
+})
+
+describe('certifications inside Educación y formación', () => {
+  const { content } = mapEuropassObjective(source())
+  const ef = content.educacion_formacion
+
+  it('lists studies and certifications together, reverse-chronologically', () => {
+    expect(ef.map(x => x._id)).toEqual(['c1', 'd1', 'c2'])
+    expect(ef[0]).toMatchObject({ origen: 'certificacion', titulo: 'Lean Six Sigma Green Belt', institucion: 'ASQ', fecha_inicio: null, fecha_fin: '2019' })
+    expect(ef[1]).toMatchObject({ origen: 'educacion', area: 'Administración', nivel_isced: { activo: true, valor: 6 } })
+  })
+
+  it('never prints the import placeholder "Sin institución"', () => {
+    expect(ef[2].institucion).toBe('')
   })
 })
 
