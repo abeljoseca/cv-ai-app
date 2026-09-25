@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatProfileDate, hasMonth, normalizeProfileDate } from '@/lib/profile-date'
+import { formatProfileDate, hasMonth, isDateRangeValid, normalizeProfileDate } from '@/lib/profile-date'
 
 describe('normalizeProfileDate', () => {
   it('keeps canonical values', () => {
@@ -57,5 +57,22 @@ describe('hasMonth', () => {
     expect(hasMonth('2021-03')).toBe(true)
     expect(hasMonth('2021')).toBe(false)
     expect(hasMonth(null)).toBe(false)
+  })
+})
+
+
+describe('isDateRangeValid', () => {
+  it('rejects an end date certainly before the start', () => {
+    expect(isDateRangeValid('2024-03', '2015-05')).toBe(false)
+    expect(isDateRangeValid('2021-06', '2021-03')).toBe(false)
+    expect(isDateRangeValid('2021', '2020')).toBe(false)
+  })
+  it('accepts valid, equal, partial or missing ranges', () => {
+    expect(isDateRangeValid('2015-05', '2024-03')).toBe(true)
+    expect(isDateRangeValid('2021-03', '2021-03')).toBe(true)
+    expect(isDateRangeValid('2021', '2021-01')).toBe(true)
+    expect(isDateRangeValid('2021-06', '2021')).toBe(true)
+    expect(isDateRangeValid(null, '2020')).toBe(true)
+    expect(isDateRangeValid('2020', null)).toBe(true)
   })
 })

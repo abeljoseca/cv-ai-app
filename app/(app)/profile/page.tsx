@@ -8,7 +8,7 @@ import { Select } from '@/components/Select';
 import { calcularPuntajeCompletitud } from '@/lib/completitud';
 import { isLikelySoft } from '@/lib/skill-classification';
 import MonthYearField from '@/components/profile/MonthYearField';
-import { formatProfileDate, normalizeProfileDate } from '@/lib/profile-date';
+import { formatProfileDate, isDateRangeValid, normalizeProfileDate } from '@/lib/profile-date';
 import { CEFR_HINTS, CEFR_LABELS, CEFR_LEVELS, CefrLevel, normalizeCefr } from '@/lib/cefr';
 
 interface ChatMessage { role: 'ai' | 'user'; text: string; }
@@ -17,6 +17,25 @@ interface EduForm { institucion: string; titulo: string; area: string; fecha_ini
 interface IdiomaForm { nombre: string; nivel_cefr: string; }
 
 const CEFR_OPTIONS = CEFR_LEVELS.map(l => ({ value: l, label: CEFR_LABELS[l], description: CEFR_HINTS[l] }));
+
+const DATE_RANGE_ERROR = 'La fecha de fin no puede ser anterior a la de inicio.';
+
+function expDatesValid(f: { fecha_inicio: string; fecha_fin: string; activo: boolean }): boolean {
+  return isDateRangeValid(f.fecha_inicio, f.activo ? null : f.fecha_fin);
+}
+
+function DateRangeError() {
+  return <div role="alert" style={{ fontSize: 12, color: '#DC2626', marginTop: -4 }}>{DATE_RANGE_ERROR}</div>;
+}
+
+// Subtle flag for saved items whose dates are impossible (e.g. imported that way).
+function DatesToReview() {
+  return (
+    <span title={DATE_RANGE_ERROR} style={{ background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A', fontSize: 11.5, fontWeight: 500, padding: '1px 7px', borderRadius: 6, whiteSpace: 'nowrap' }}>
+      Revisa las fechas
+    </span>
+  );
+}
 
 function dateRange(inicio: string | null, fin: string | null, activo = false): string {
   const a = formatProfileDate(inicio);
@@ -279,7 +298,7 @@ export default function PerfilPage() {
   // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
   // in edit mode so the user can keep adding or editing without extra clicks.
   async function addExperiencia() {
-    if (!(newExp.empresa && newExp.cargo)) return;
+    if (!(newExp.empresa && newExp.cargo) || !expDatesValid(newExp)) return;
     setEditSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -299,6 +318,7 @@ export default function PerfilPage() {
   }
 
   async function updateExperiencia(id: string) {
+    if (!expDatesValid(editExpForm)) return;
     setEditSaving(true);
     try {
       await supabase.from('experiencia').update({
@@ -761,12 +781,13 @@ export default function PerfilPage() {
                       <MonthYearField label="Fecha inicio" value={editExpForm.fecha_inicio} onChange={v => setEditExpForm(p => ({ ...p, fecha_inicio: v }))} />
                       <MonthYearField label="Fecha fin" value={editExpForm.activo ? '' : editExpForm.fecha_fin} onChange={v => setEditExpForm(p => ({ ...p, fecha_fin: v }))} disabled={editExpForm.activo} />
                     </div>
+                    {!expDatesValid(editExpForm) && <DateRangeError />}
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
                       <input type="checkbox" checked={editExpForm.activo} onChange={e => setEditExpForm(p => ({ ...p, activo: e.target.checked }))} /> Trabajo actual
                     </label>
                     <EField label="Descripción" value={editExpForm.descripcion} onChange={v => setEditExpForm(p => ({ ...p, descripcion: v }))} placeholder="Responsabilidades y logros..." multiline />
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => updateExperiencia(exp.id)} disabled={editSaving || !editExpForm.empresa || !editExpForm.cargo}
+                      <button onClick={() => updateExperiencia(exp.id)} disabled={editSaving || !editExpForm.empresa || !editExpForm.cargo || !expDatesValid(editExpForm)}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <SaveIcon size={12} /> Guardar
                       </button>
@@ -787,6 +808,9 @@ export default function PerfilPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                           {(exp.fecha_inicio || exp.fecha_fin) && (
                             <div style={{ fontSize: 12.5, color: 'var(--mute)' }}>{dateRange(exp.fecha_inicio, exp.fecha_fin, exp.activo)}</div>
+                          )}
+                          {!isDateRangeValid(exp.fecha_inicio, exp.activo ? null : exp.fecha_fin) && (
+                            <DatesToReview />
                           )}
                           {editSection === 'experiencia' && (
                             <>
@@ -815,13 +839,14 @@ export default function PerfilPage() {
           {editSection === 'experiencia' && (
             <AddAccordion label="Añadir experiencia" open={addOpen === 'experiencia'} spaced={experiencias.length > 0}
               onOpen={() => { setAddOpen('experiencia'); setEditingExpId(null); }} onCancel={() => cancelAdd('experiencia')}
-              onSave={addExperiencia} saving={editSaving} saveDisabled={!newExp.empresa || !newExp.cargo}>
+              onSave={addExperiencia} saving={editSaving} saveDisabled={!newExp.empresa || !newExp.cargo || !expDatesValid(newExp)}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <EField label="Empresa *" value={newExp.empresa} onChange={v => setNewExp(p => ({ ...p, empresa: v }))} placeholder="Ej. Google" />
                 <EField label="Cargo *" value={newExp.cargo} onChange={v => setNewExp(p => ({ ...p, cargo: v }))} placeholder="Ej. Desarrollador Senior" />
                 <MonthYearField label="Fecha inicio" value={newExp.fecha_inicio} onChange={v => setNewExp(p => ({ ...p, fecha_inicio: v }))} />
                 <MonthYearField label="Fecha fin" value={newExp.activo ? '' : newExp.fecha_fin} onChange={v => setNewExp(p => ({ ...p, fecha_fin: v }))} disabled={newExp.activo} />
               </div>
+              {!expDatesValid(newExp) && <DateRangeError />}
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={newExp.activo} onChange={e => setNewExp(p => ({ ...p, activo: e.target.checked }))} /> Trabajo actual
               </label>
@@ -865,6 +890,7 @@ export default function PerfilPage() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     {edu.fecha_fin && <div style={{ fontSize: 12.5, color: 'var(--mute)' }}>{formatProfileDate(edu.fecha_fin)}</div>}
+                    {!isDateRangeValid(edu.fecha_inicio, edu.fecha_fin) && <DatesToReview />}
                     {editSection === 'educacion' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (

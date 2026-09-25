@@ -82,3 +82,13 @@ export function formatProfileDate(value: string | null | undefined): string {
 export function hasMonth(value: string | null | undefined): boolean {
   return !!value && /^\d{4}-\d{2}$/.test(value)
 }
+
+// False only when the end date is certainly before the start date. With year-only
+// precision on either side, only the years are compared (2021 → 2021-03 is fine).
+export function isDateRangeValid(start: string | null | undefined, end: string | null | undefined): boolean {
+  const a = start?.match(/^(\d{4})(?:-(\d{2}))?$/)
+  const b = end?.match(/^(\d{4})(?:-(\d{2}))?$/)
+  if (!a || !b) return true
+  if (+b[1] !== +a[1]) return +b[1] > +a[1]
+  return !(a[2] && b[2] && +b[2] < +a[2])
+}
