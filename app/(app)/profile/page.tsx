@@ -8,6 +8,7 @@ import { Select } from '@/components/Select';
 import { calcularPuntajeCompletitud } from '@/lib/completitud';
 import { isLikelySoft } from '@/lib/skill-classification';
 import MonthYearField from '@/components/profile/MonthYearField';
+import { isTempId, useStagedList } from '@/lib/use-staged-list';
 import { formatProfileDate, normalizeProfileDate } from '@/lib/profile-date';
 import { CEFR_HINTS, CEFR_LABELS, CEFR_LEVELS, CefrLevel, normalizeCefr } from '@/lib/cefr';
 
@@ -39,6 +40,13 @@ export default function PerfilPage() {
   const [logros, setLogros] = useState<Logro[]>([]);
   const [idiomas, setIdiomas] = useState<Idioma[]>([]);
   const [certificaciones, setCertificaciones] = useState<Certificacion[]>([]);
+
+  // Unsaved changes per card (see lib/use-staged-list.ts)
+  const expStage = useStagedList<Experiencia>();
+  const eduStage = useStagedList<Educacion>();
+  const certStage = useStagedList<Certificacion>();
+  const idiomaStage = useStagedList<Idioma>();
+  const logroStage = useStagedList<Logro>();
   const [loading, setLoading] = useState(true);
   const [completitud, setCompletitud] = useState(0);
 
@@ -174,6 +182,18 @@ export default function PerfilPage() {
     return localSoftNamesRef.current.has(nombre.toLowerCase()) || isLikelySoft(nombre);
   }
 
+  // Lists as the user sees them while editing (saved rows + staged changes)
+  const expView = expStage.view(experiencias);
+  const eduView = eduStage.view(educaciones);
+  const certView = certStage.view(certificaciones);
+  const idiomaView = idiomaStage.view(idiomas);
+  const logroView = logroStage.view(logros);
+  const expDirty = expStage.isDirty || pendingExpDeleteIds.length > 0;
+  const eduDirty = eduStage.isDirty || pendingEduDeleteIds.length > 0;
+  const certDirty = certStage.isDirty || pendingCertDeleteIds.length > 0;
+  const idiomaDirty = idiomaStage.isDirty || pendingIdiomaDeleteIds.length > 0;
+  const logroDirty = logroStage.isDirty || pendingLogroDeleteIds.length > 0;
+
   function jobOptions(current: string) {
     const jobs = experiencias.map(e => ({ value: e.id, label: `${e.cargo} · ${e.empresa}` }));
     return current ? [{ value: '', label: 'Sin puesto asignado' }, ...jobs] : jobs;
@@ -195,11 +215,11 @@ export default function PerfilPage() {
       cancelAdd(section);
       // Clear pending deletes (cancel = restore)
       if (section === 'habilidades') { setPendingHardDeleteIds([]); setPendingSoftDeleteIds([]); }
-      if (section === 'experiencia') setPendingExpDeleteIds([]);
-      if (section === 'educacion') setPendingEduDeleteIds([]);
-      if (section === 'certificaciones') setPendingCertDeleteIds([]);
-      if (section === 'idiomas') setPendingIdiomaDeleteIds([]);
-      if (section === 'logros') setPendingLogroDeleteIds([]);
+      if (section === 'experiencia') { setPendingExpDeleteIds([]); expStage.reset(); }
+      if (section === 'educacion') { setPendingEduDeleteIds([]); eduStage.reset(); }
+      if (section === 'certificaciones') { setPendingCertDeleteIds([]); certStage.reset(); }
+      if (section === 'idiomas') { setPendingIdiomaDeleteIds([]); idiomaStage.reset(); }
+      if (section === 'logros') { setPendingLogroDeleteIds([]); logroStage.reset(); }
     } else {
       setEditSection(section);
     }
@@ -212,18 +232,23 @@ export default function PerfilPage() {
     setPendingSoftDeleteIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   }
   function toggleExpDelete(id: string) {
+    if (isTempId(id)) { expStage.removeAdd(id); return; }
     setPendingExpDeleteIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   }
   function toggleEduDelete(id: string) {
+    if (isTempId(id)) { eduStage.removeAdd(id); return; }
     setPendingEduDeleteIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   }
   function toggleIdiomaDelete(id: string) {
+    if (isTempId(id)) { idiomaStage.removeAdd(id); return; }
     setPendingIdiomaDeleteIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   }
   function toggleLogroDelete(id: string) {
+    if (isTempId(id)) { logroStage.removeAdd(id); return; }
     setPendingLogroDeleteIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   }
   function toggleCertDelete(id: string) {
+    if (isTempId(id)) { certStage.removeAdd(id); return; }
     setPendingCertDeleteIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   }
 
@@ -256,243 +281,166 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // Section "Guardar cambios": applies the items marked for deletion.
-  async function saveExperiencia() {
-    if (pendingExpDeleteIds.length === 0) return;
-    setEditSaving(true);
-    try {
-      await supabase.from('experiencia').delete().in('id', pendingExpDeleteIds);
-      setPendingExpDeleteIds([]);
-      setAddOpen(null);
-      setEditSection(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
-  }
+  // ── Card save model ──
+  // "Añadir" (accordion) and "Actualizar" (inline edit) only stage changes; the card's
+  // "Guardar cambios" persists deletes, updates and adds together; "Cancelar" discards.
 
-  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
-  // in edit mode so the user can keep adding or editing without extra clicks.
-  async function addExperiencia() {
-    if (!(newExp.empresa && newExp.cargo)) return;
+  // Persists one card's staged changes. On any DB error the staging is dropped and the
+  // data reloaded, so the screen always shows what was actually saved.
+  async function commitCard<T extends { id: string }>(opts: {
+    table: string;
+    deleteIds: string[];
+    stage: { adds: T[]; updates: T[]; reset: () => void };
+    toPayload: (row: T) => Record<string, unknown>;
+    clearDeletes: () => void;
+  }) {
     setEditSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-        await supabase.from('experiencia').insert({
-          user_id: user.id, empresa: newExp.empresa, cargo: newExp.cargo,
-          fecha_inicio: normalizeProfileDate(newExp.fecha_inicio),
-          fecha_fin: newExp.activo ? null : normalizeProfileDate(newExp.fecha_fin),
-          activo: newExp.activo, descripcion: newExp.descripcion || null,
-        });
-        setNewExp(emptyExp);
-      setAddOpen(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
-  }
-
-  async function updateExperiencia(id: string) {
-    setEditSaving(true);
-    try {
-      await supabase.from('experiencia').update({
-        empresa: editExpForm.empresa, cargo: editExpForm.cargo,
-        fecha_inicio: normalizeProfileDate(editExpForm.fecha_inicio),
-        fecha_fin: editExpForm.activo ? null : normalizeProfileDate(editExpForm.fecha_fin),
-        activo: editExpForm.activo, descripcion: editExpForm.descripcion || null,
-      }).eq('id', id);
-      setEditingExpId(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
-  }
-
-  // Section "Guardar cambios": applies the items marked for deletion.
-  async function saveEducacion() {
-    if (pendingEduDeleteIds.length === 0) return;
-    setEditSaving(true);
-    try {
-      await supabase.from('educacion').delete().in('id', pendingEduDeleteIds);
-      setPendingEduDeleteIds([]);
+      let failed = false;
+      const check = ({ error }: { error: unknown }) => { if (error) { failed = true; console.error(error); } };
+      if (opts.deleteIds.length > 0) check(await supabase.from(opts.table).delete().in('id', opts.deleteIds));
+      for (const row of opts.stage.updates) {
+        if (!opts.deleteIds.includes(row.id)) check(await supabase.from(opts.table).update(opts.toPayload(row)).eq('id', row.id));
+      }
+      for (const row of opts.stage.adds) check(await supabase.from(opts.table).insert({ user_id: user.id, ...opts.toPayload(row) }));
+      opts.clearDeletes();
+      opts.stage.reset();
       setAddOpen(null);
       setEditSection(null);
       await loadProfileData();
+      if (failed) alert('Algunos cambios no se pudieron guardar. Revisa la sección e inténtalo de nuevo.');
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
   }
 
-  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
-  // in edit mode so the user can keep adding or editing without extra clicks.
-  async function addEducacion() {
-    if (!(newEdu.institucion && newEdu.titulo)) return;
-    setEditSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-        await supabase.from('educacion').insert({
-          user_id: user.id, institucion: newEdu.institucion, titulo: newEdu.titulo,
-          area: newEdu.area || null,
-          fecha_inicio: normalizeProfileDate(newEdu.fecha_inicio),
-          fecha_fin: normalizeProfileDate(newEdu.fecha_fin),
-        });
-        setNewEdu(emptyEdu);
-      setAddOpen(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
+  // Experiencia
+  function expRowFromForm(f: ExpForm, base?: Experiencia): Omit<Experiencia, 'id'> {
+    return {
+      ...(base ?? { user_id: '', created_at: '' }),
+      empresa: f.empresa, cargo: f.cargo,
+      fecha_inicio: normalizeProfileDate(f.fecha_inicio),
+      fecha_fin: f.activo ? null : normalizeProfileDate(f.fecha_fin),
+      activo: f.activo, descripcion: f.descripcion || null,
+    };
+  }
+  const expPayload = (r: Experiencia) => ({
+    empresa: r.empresa, cargo: r.cargo, fecha_inicio: r.fecha_inicio, fecha_fin: r.fecha_fin,
+    activo: r.activo, descripcion: r.descripcion,
+  });
+  function addExperiencia() {
+    if (!newExp.empresa || !newExp.cargo) return;
+    expStage.add(expRowFromForm(newExp));
+    setNewExp(emptyExp);
+    setAddOpen(null);
+  }
+  function updateExperiencia(id: string) {
+    const base = expView.find(r => r.id === id);
+    if (!base) return;
+    expStage.update({ ...expRowFromForm(editExpForm, base), id } as Experiencia);
+    setEditingExpId(null);
+  }
+  function saveExperiencia() {
+    return commitCard({ table: 'experiencia', deleteIds: pendingExpDeleteIds, stage: expStage, toPayload: expPayload, clearDeletes: () => setPendingExpDeleteIds([]) });
   }
 
-  async function updateEducacion(id: string) {
-    setEditSaving(true);
-    try {
-      await supabase.from('educacion').update({
-        institucion: editEduForm.institucion, titulo: editEduForm.titulo,
-        area: editEduForm.area || null,
-        fecha_inicio: normalizeProfileDate(editEduForm.fecha_inicio),
-        fecha_fin: normalizeProfileDate(editEduForm.fecha_fin),
-      }).eq('id', id);
-      setEditingEduId(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
+  // Educación
+  function eduRowFromForm(f: EduForm, base?: Educacion): Omit<Educacion, 'id'> {
+    return {
+      ...(base ?? { user_id: '', created_at: '' }),
+      institucion: f.institucion, titulo: f.titulo, area: f.area || null,
+      fecha_inicio: normalizeProfileDate(f.fecha_inicio),
+      fecha_fin: normalizeProfileDate(f.fecha_fin),
+    };
+  }
+  const eduPayload = (r: Educacion) => ({
+    institucion: r.institucion, titulo: r.titulo, area: r.area, fecha_inicio: r.fecha_inicio, fecha_fin: r.fecha_fin,
+  });
+  function addEducacion() {
+    if (!newEdu.institucion || !newEdu.titulo) return;
+    eduStage.add(eduRowFromForm(newEdu));
+    setNewEdu(emptyEdu);
+    setAddOpen(null);
+  }
+  function updateEducacion(id: string) {
+    const base = eduView.find(r => r.id === id);
+    if (!base) return;
+    eduStage.update({ ...eduRowFromForm(editEduForm, base), id } as Educacion);
+    setEditingEduId(null);
+  }
+  function saveEducacion() {
+    return commitCard({ table: 'educacion', deleteIds: pendingEduDeleteIds, stage: eduStage, toPayload: eduPayload, clearDeletes: () => setPendingEduDeleteIds([]) });
   }
 
-  // Section "Guardar cambios": applies the items marked for deletion.
-  async function saveIdioma() {
-    if (pendingIdiomaDeleteIds.length === 0) return;
-    setEditSaving(true);
-    try {
-      await supabase.from('idiomas').delete().in('id', pendingIdiomaDeleteIds);
-      setPendingIdiomaDeleteIds([]);
-      setAddOpen(null);
-      setEditSection(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
+  // Idiomas — without a chosen CEFR level the legacy label is kept (never overwritten with null)
+  function idiomaRowFromForm(f: IdiomaForm, base?: Idioma): Omit<Idioma, 'id'> {
+    const nivelCefr = normalizeCefr(f.nivel_cefr);
+    return {
+      ...(base ?? { user_id: '', created_at: '', nivel: null }),
+      nombre: f.nombre,
+      nivel_cefr: nivelCefr,
+      nivel: nivelCefr ?? base?.nivel ?? null,
+    };
+  }
+  const idiomaPayload = (r: Idioma) => ({ nombre: r.nombre, nivel_cefr: r.nivel_cefr ?? null, nivel: r.nivel });
+  function addIdioma() {
+    if (!newIdioma.nombre) return;
+    idiomaStage.add(idiomaRowFromForm(newIdioma));
+    setNewIdioma({ nombre: '', nivel_cefr: '' });
+    setAddOpen(null);
+  }
+  function updateIdioma(id: string) {
+    const base = idiomaView.find(r => r.id === id);
+    if (!base) return;
+    idiomaStage.update({ ...idiomaRowFromForm(editIdiomaForm, base), id } as Idioma);
+    setEditingIdiomaId(null);
+  }
+  function saveIdioma() {
+    return commitCard({ table: 'idiomas', deleteIds: pendingIdiomaDeleteIds, stage: idiomaStage, toPayload: idiomaPayload, clearDeletes: () => setPendingIdiomaDeleteIds([]) });
   }
 
-  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
-  // in edit mode so the user can keep adding or editing without extra clicks.
-  async function addIdioma() {
-    if (!(newIdioma.nombre)) return;
-    setEditSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-        const nivelCefr = normalizeCefr(newIdioma.nivel_cefr);
-        // The legacy `nivel` label is kept in sync so older readers show the same level.
-        await supabase.from('idiomas').insert({ user_id: user.id, nombre: newIdioma.nombre, nivel_cefr: nivelCefr, nivel: nivelCefr });
-        setNewIdioma({ nombre: '', nivel_cefr: '' });
-      setAddOpen(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
+  // Logros
+  const logroPayload = (r: Logro) => ({ descripcion: r.descripcion, experiencia_id: r.experiencia_id ?? null });
+  function addLogro() {
+    if (!newLogro.trim()) return;
+    logroStage.add({ user_id: '', created_at: '', descripcion: newLogro.trim(), experiencia_id: newLogroExpId || null });
+    setNewLogro('');
+    setNewLogroExpId('');
+    setAddOpen(null);
+  }
+  function updateLogro(id: string) {
+    const base = logroView.find(r => r.id === id);
+    if (!base || !editLogroText.trim()) return;
+    logroStage.update({ ...base, descripcion: editLogroText.trim(), experiencia_id: editLogroExpId || null });
+    setEditingLogroId(null);
+  }
+  function saveLogro() {
+    return commitCard({ table: 'logros', deleteIds: pendingLogroDeleteIds, stage: logroStage, toPayload: logroPayload, clearDeletes: () => setPendingLogroDeleteIds([]) });
   }
 
-  async function updateIdioma(id: string) {
-    setEditSaving(true);
-    try {
-      const nivelCefr = normalizeCefr(editIdiomaForm.nivel_cefr);
-      // Without a chosen level, the legacy label is left untouched (never overwritten with null).
-      await supabase.from('idiomas').update({
-        nombre: editIdiomaForm.nombre,
-        nivel_cefr: nivelCefr,
-        ...(nivelCefr ? { nivel: nivelCefr } : {}),
-      }).eq('id', id);
-      setEditingIdiomaId(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
+  // Certificaciones
+  const certPayload = (r: Certificacion) => ({ titulo: r.titulo, institucion: r.institucion, anio_egreso: r.anio_egreso });
+  function addCertificacion() {
+    if (!newCert.titulo.trim() || !newCert.institucion.trim()) return;
+    certStage.add({
+      user_id: '', created_at: '',
+      titulo: newCert.titulo.trim(), institucion: newCert.institucion.trim(), anio_egreso: newCert.anio_egreso.trim() || null,
+    });
+    setNewCert(emptyCert);
+    setAddOpen(null);
   }
-
-  // Section "Guardar cambios": applies the items marked for deletion.
-  async function saveLogro() {
-    if (pendingLogroDeleteIds.length === 0) return;
-    setEditSaving(true);
-    try {
-      await supabase.from('logros').delete().in('id', pendingLogroDeleteIds);
-      setPendingLogroDeleteIds([]);
-      setAddOpen(null);
-      setEditSection(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
+  function updateCertificacion(id: string) {
+    const base = certView.find(r => r.id === id);
+    if (!base) return;
+    certStage.update({
+      ...base,
+      titulo: editCertForm.titulo.trim(), institucion: editCertForm.institucion.trim(), anio_egreso: editCertForm.anio_egreso.trim() || null,
+    });
+    setEditingCertId(null);
   }
-
-  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
-  // in edit mode so the user can keep adding or editing without extra clicks.
-  async function addLogro() {
-    if (!(newLogro.trim())) return;
-    setEditSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-        await supabase.from('logros').insert({ user_id: user.id, descripcion: newLogro.trim(), experiencia_id: newLogroExpId || null });
-        setNewLogro('');
-        setNewLogroExpId('');
-      setAddOpen(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
-  }
-
-  async function updateLogro(id: string) {
-    if (!editLogroText.trim()) return;
-    setEditSaving(true);
-    try {
-      await supabase.from('logros').update({ descripcion: editLogroText.trim(), experiencia_id: editLogroExpId || null }).eq('id', id);
-      setEditingLogroId(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
-  }
-
-  // Section "Guardar cambios": applies the items marked for deletion.
-  async function saveCertificacion() {
-    if (pendingCertDeleteIds.length === 0) return;
-    setEditSaving(true);
-    try {
-      await supabase.from('certificaciones').delete().in('id', pendingCertDeleteIds);
-      setPendingCertDeleteIds([]);
-      setAddOpen(null);
-      setEditSection(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
-  }
-
-  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
-  // in edit mode so the user can keep adding or editing without extra clicks.
-  async function addCertificacion() {
-    if (!(newCert.titulo.trim() && newCert.institucion.trim())) return;
-    setEditSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-        await supabase.from('certificaciones').insert({
-          user_id: user.id,
-          titulo: newCert.titulo.trim(),
-          institucion: newCert.institucion.trim(),
-          anio_egreso: newCert.anio_egreso.trim() || null,
-        });
-        setNewCert(emptyCert);
-      setAddOpen(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
-  }
-
-  async function updateCertificacion(id: string) {
-    setEditSaving(true);
-    try {
-      await supabase.from('certificaciones').update({
-        titulo: editCertForm.titulo.trim(),
-        institucion: editCertForm.institucion.trim(),
-        anio_egreso: editCertForm.anio_egreso.trim() || null,
-      }).eq('id', id);
-      setEditingCertId(null);
-      await loadProfileData();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
+  function saveCertificacion() {
+    return commitCard({ table: 'certificaciones', deleteIds: pendingCertDeleteIds, stage: certStage, toPayload: certPayload, clearDeletes: () => setPendingCertDeleteIds([]) });
   }
 
   async function sendChatMessage() {
@@ -728,8 +676,8 @@ export default function PerfilPage() {
           lockHeader={editingExpId !== null}
           isEditing={editSection === 'experiencia'} onEdit={() => toggleEdit('experiencia')}
           onSave={saveExperiencia} saving={editSaving}
-          saveDisabled={pendingExpDeleteIds.length === 0}>
-          {experiencias.map((exp, i) => {
+          saveDisabled={!expDirty}>
+          {expView.map((exp, i) => {
             const marked = pendingExpDeleteIds.includes(exp.id);
             return (
               <div key={exp.id} style={{ padding: '12px 0', borderTop: i === 0 ? 'none' : '1px solid var(--line-soft)', opacity: marked ? 0.45 : 1, transition: 'opacity .15s' }}>
@@ -748,7 +696,7 @@ export default function PerfilPage() {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateExperiencia(exp.id)} disabled={editSaving || !editExpForm.empresa || !editExpForm.cargo}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <SaveIcon size={12} /> Guardar
+                        Actualizar
                       </button>
                       <button onClick={() => setEditingExpId(null)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--mute)', fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
                     </div>
@@ -793,7 +741,7 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'experiencia' && (
-            <AddAccordion label="Añadir experiencia" open={addOpen === 'experiencia'} spaced={experiencias.length > 0}
+            <AddAccordion label="Añadir experiencia" open={addOpen === 'experiencia'} spaced={expView.length > 0}
               onOpen={() => setAddOpen('experiencia')} onCancel={() => cancelAdd('experiencia')}
               onSave={addExperiencia} saving={editSaving} saveDisabled={!newExp.empresa || !newExp.cargo}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -818,8 +766,8 @@ export default function PerfilPage() {
           lockHeader={editingEduId !== null}
           isEditing={editSection === 'educacion'} onEdit={() => toggleEdit('educacion')}
           onSave={saveEducacion} saving={editSaving}
-          saveDisabled={pendingEduDeleteIds.length === 0}>
-          {educaciones.map((edu, i) => {
+          saveDisabled={!eduDirty}>
+          {eduView.map((edu, i) => {
             const marked = pendingEduDeleteIds.includes(edu.id);
             return (
               <div key={edu.id} style={{ padding: '8px 0', borderTop: i === 0 ? 'none' : '1px solid var(--line-soft)', opacity: marked ? 0.45 : 1, transition: 'opacity .15s' }}>
@@ -832,7 +780,7 @@ export default function PerfilPage() {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateEducacion(edu.id)} disabled={editSaving || !editEduForm.institucion || !editEduForm.titulo}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <SaveIcon size={12} /> Guardar
+                        Actualizar
                       </button>
                       <button onClick={() => setEditingEduId(null)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--mute)', fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
                     </div>
@@ -867,7 +815,7 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'educacion' && (
-            <AddAccordion label="Añadir educación" open={addOpen === 'educacion'} spaced={educaciones.length > 0}
+            <AddAccordion label="Añadir educación" open={addOpen === 'educacion'} spaced={eduView.length > 0}
               onOpen={() => setAddOpen('educacion')} onCancel={() => cancelAdd('educacion')}
               onSave={addEducacion} saving={editSaving} saveDisabled={!newEdu.institucion || !newEdu.titulo}>
               <EField label="Institución *" value={newEdu.institucion} onChange={v => setNewEdu(p => ({ ...p, institucion: v }))} placeholder="Universidad de..." />
@@ -886,8 +834,8 @@ export default function PerfilPage() {
           lockHeader={editingCertId !== null}
           isEditing={editSection === 'certificaciones'} onEdit={() => toggleEdit('certificaciones')}
           onSave={saveCertificacion} saving={editSaving}
-          saveDisabled={pendingCertDeleteIds.length === 0}>
-          {certificaciones.map((cert, i) => {
+          saveDisabled={!certDirty}>
+          {certView.map((cert, i) => {
             const marked = pendingCertDeleteIds.includes(cert.id);
             return (
               <div key={cert.id} style={{ padding: '8px 0', borderTop: i === 0 ? 'none' : '1px solid var(--line-soft)', opacity: marked ? 0.45 : 1, transition: 'opacity .15s' }}>
@@ -899,7 +847,7 @@ export default function PerfilPage() {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateCertificacion(cert.id)} disabled={editSaving || !editCertForm.titulo.trim() || !editCertForm.institucion.trim()}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <SaveIcon size={12} /> Guardar
+                        Actualizar
                       </button>
                       <button onClick={() => setEditingCertId(null)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--mute)', fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
                     </div>
@@ -932,7 +880,7 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'certificaciones' && (
-            <AddAccordion label="Añadir certificación" open={addOpen === 'certificaciones'} spaced={certificaciones.length > 0}
+            <AddAccordion label="Añadir certificación" open={addOpen === 'certificaciones'} spaced={certView.length > 0}
               onOpen={() => setAddOpen('certificaciones')} onCancel={() => cancelAdd('certificaciones')}
               onSave={addCertificacion} saving={editSaving} saveDisabled={!newCert.titulo.trim() || !newCert.institucion.trim()}>
               <EField label="Título *" value={newCert.titulo} onChange={v => setNewCert(p => ({ ...p, titulo: v }))} placeholder="Ej. Diplomado de Marketing Digital" />
@@ -950,13 +898,13 @@ export default function PerfilPage() {
           lockHeader={editingIdiomaId !== null}
           isEditing={editSection === 'idiomas'} onEdit={() => toggleEdit('idiomas')}
           onSave={saveIdioma} saving={editSaving}
-          saveDisabled={pendingIdiomaDeleteIds.length === 0}>
-          {idiomas.some(i => !i.nivel_cefr) && (
+          saveDisabled={!idiomaDirty}>
+          {idiomaView.some(i => !i.nivel_cefr) && (
             <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#B45309', lineHeight: 1.45 }}>
               Actualiza el nivel de tus idiomas a la escala europea (A1–C2): así tus CVs muestran tu nivel real.
             </p>
           )}
-          {idiomas.map((idioma, i) => {
+          {idiomaView.map((idioma, i) => {
             const marked = pendingIdiomaDeleteIds.includes(idioma.id);
             return (
               <div key={idioma.id} style={{ padding: '8px 0', borderTop: i === 0 ? 'none' : '1px solid var(--line-soft)', opacity: marked ? 0.45 : 1, transition: 'opacity .15s' }}>
@@ -980,7 +928,7 @@ export default function PerfilPage() {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateIdioma(idioma.id)} disabled={editSaving || !editIdiomaForm.nombre}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <SaveIcon size={12} /> Guardar
+                        Actualizar
                       </button>
                       <button onClick={() => setEditingIdiomaId(null)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--mute)', fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
                     </div>
@@ -1017,7 +965,7 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'idiomas' && (
-            <AddAccordion label="Añadir idioma" open={addOpen === 'idiomas'} spaced={idiomas.length > 0}
+            <AddAccordion label="Añadir idioma" open={addOpen === 'idiomas'} spaced={idiomaView.length > 0}
               onOpen={() => setAddOpen('idiomas')} onCancel={() => cancelAdd('idiomas')}
               onSave={addIdioma} saving={editSaving} saveDisabled={!newIdioma.nombre}>
               <EField label="Idioma *" value={newIdioma.nombre} onChange={v => setNewIdioma(p => ({ ...p, nombre: v }))} placeholder="Ej. Inglés" />
@@ -1047,8 +995,8 @@ export default function PerfilPage() {
           lockHeader={editingLogroId !== null}
           isEditing={editSection === 'logros'} onEdit={() => toggleEdit('logros')}
           onSave={saveLogro} saving={editSaving}
-          saveDisabled={pendingLogroDeleteIds.length === 0}>
-          {logros.map((logro, i) => {
+          saveDisabled={!logroDirty}>
+          {logroView.map((logro, i) => {
             const marked = pendingLogroDeleteIds.includes(logro.id);
             return (
               <div key={logro.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--line-soft)', alignItems: 'flex-start', opacity: marked ? 0.45 : 1, transition: 'opacity .15s' }}>
@@ -1073,7 +1021,7 @@ export default function PerfilPage() {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateLogro(logro.id)} disabled={editSaving || !editLogroText.trim()}
                         style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--blue)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <SaveIcon size={12} /> Guardar
+                        Actualizar
                       </button>
                       <button onClick={() => setEditingLogroId(null)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--mute)', fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
                     </div>
@@ -1111,7 +1059,7 @@ export default function PerfilPage() {
             );
           })}
           {editSection === 'logros' && (
-            <AddAccordion label="Añadir logro" open={addOpen === 'logros'} spaced={logros.length > 0}
+            <AddAccordion label="Añadir logro" open={addOpen === 'logros'} spaced={logroView.length > 0}
               onOpen={() => setAddOpen('logros')} onCancel={() => cancelAdd('logros')}
               onSave={addLogro} saving={editSaving} saveDisabled={!newLogro.trim()}>
               <div style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500, marginBottom: 6 }}>Describe tu logro</div>
@@ -1343,8 +1291,8 @@ function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Edita
 
 /* ── AddAccordion ── collapsed "+ Añadir …" button that expands into the add form,
    with its own Guardar/Cancelar. Closes again after saving or cancelling. */
-function AddAccordion({ label, open, spaced, onOpen, onCancel, onSave, saving, saveDisabled, children }: {
-  label: string; open: boolean; spaced: boolean; onOpen: () => void; onCancel: () => void;
+function AddAccordion({ label, open, spaced, onOpen, onCancel, onSave, saving, saveDisabled, children, submitLabel = 'Añadir' }: {
+  label: string; open: boolean; spaced: boolean; onOpen: () => void; onCancel: () => void; submitLabel?: string;
   onSave: () => void; saving: boolean; saveDisabled: boolean; children: React.ReactNode;
 }) {
   const marginTop = spaced ? 14 : 0;
@@ -1365,7 +1313,7 @@ function AddAccordion({ label, open, spaced, onOpen, onCancel, onSave, saving, s
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={onSave} disabled={saving || saveDisabled}
           style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: saving || saveDisabled ? 'var(--line)' : 'var(--blue)', color: saving || saveDisabled ? 'var(--mute)' : '#fff', fontSize: 12.5, fontWeight: 600, cursor: saving || saveDisabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <SaveIcon size={12} /> {saving ? 'Guardando…' : 'Guardar'}
+          {submitLabel}
         </button>
         <button onClick={onCancel} disabled={saving}
           style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--mute)', fontSize: 12.5, cursor: 'pointer' }}>
