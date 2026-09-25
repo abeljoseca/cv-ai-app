@@ -1,40 +1,7 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+// DOCX export — Pro feature, not live yet (see known issue: uses edu.fecha instead of
+// fecha_inicio/fecha_fin; fix before launching). The old image-based PDF exporter was
+// removed: image PDFs are unreadable by ATS. PDFs are generated server-side (/api/cv/[id]/pdf).
 import { Document, Packer, Paragraph, HeadingLevel, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, convertInchesToTwip } from 'docx';
-
-export async function exportToPDF(elementId: string, filename: string) {
-  const element = document.getElementById(elementId);
-  if (!element) throw new Error('Element not found');
-
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    backgroundColor: '#ffffff',
-  });
-
-  const imgData = canvas.toDataURL('image/png');
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
-
-  const imgWidth = 210; // A4 width in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  let heightLeft = imgHeight;
-  let position = 0;
-
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= 297; // A4 height in mm
-
-  while (heightLeft >= 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= 297;
-  }
-
-  pdf.save(filename);
-}
 
 export async function exportToDOCX(
   data: {

@@ -40,7 +40,7 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   'CVs y descargas ilimitadas, sin pagar por separado',
   'Aplicaciones ilimitadas',
-  'Descarga en PDF y DOCX',
+  'Descarga en PDF',
   'Soporte prioritario',
 ];
 
@@ -382,7 +382,7 @@ export default function CuentaPage() {
           >
             <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--deep)' }}>¿Cancelar tu suscripción Pro?</h3>
             <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--mute)', lineHeight: 1.5 }}>
-              Perderás el acceso a Pro de inmediato — CVs y descargas ilimitadas, DOCX, los 7 estilos y soporte prioritario. Puedes volver a suscribirte cuando quieras.
+              Perderás el acceso a Pro de inmediato — CVs y descargas ilimitadas, los 7 estilos y soporte prioritario. Puedes volver a suscribirte cuando quieras.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
