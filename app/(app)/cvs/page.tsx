@@ -48,7 +48,9 @@ function CanvasThumbIcon() {
   );
 }
 
-const LIMIT_MSG = 'Ya alcanzaste el límite de CVs gratis. Hazte Pro para continuar creando CVs y encuentra ese trabajo deseado, o paga este CV para descargarlo.';
+// Shown when a free user who used up the lifetime free limit tries to delete their
+// last CV (blocked in the DB by the guard_last_cv_delete trigger).
+const LAST_CV_MSG = 'Tu perfil no puede quedar completamente vacío, así que no es posible eliminar este CV.';
 
 export default function MisCVsPage() {
   const router = useRouter();
@@ -67,6 +69,7 @@ export default function MisCVsPage() {
   const [form, setForm] = useState<AplicacionForm>({ cargo: '', empresa: '', fecha: '', estado: 'pending', nota: '' });
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [freeLimitExhausted, setFreeLimitExhausted] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -74,13 +77,15 @@ export default function MisCVsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [{ data: cvsData }, { data: appsData }, { data: canvasData }, { data: profileData }, { data: pagosData }] = await Promise.all([
+      const [{ data: cvsData }, { data: appsData }, { data: canvasData }, { data: profileData }, { data: pagosData }, { data: exhausted }] = await Promise.all([
         supabase.from('cvs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('aplicaciones').select('*').eq('user_id', user.id),
         supabase.from('cvs_inspiracion').select('id, template_id, created_at, updated_at, canvas_state').eq('user_id', user.id).order('updated_at', { ascending: false }),
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('pagos').select('cv_id').eq('user_id', user.id).eq('estado', 'confirmado').not('cv_id', 'is', null),
+        supabase.rpc('user_free_generations_exhausted', { p_user_id: user.id }),
       ]);
+      setFreeLimitExhausted(exhausted === true);
       const uniqueCvs = Array.from(new Map(((cvsData as CV[]) || []).map(cv => [cv.id, cv])).values());
       setCvs(uniqueCvs);
       setAplicaciones((appsData as Aplicacion[]) || []);
@@ -97,9 +102,8 @@ export default function MisCVsPage() {
   // si RLS bloquea el borrado, Postgrest no da error, solo 0 filas, y sin esto la
   // UI mostraría el CV como eliminado aunque siga en la base.
   function deleteFailureMessage(error: { message?: string } | null, deletedRows: number): string | null {
-    if (error?.message?.includes('ULTIMO_CV_LIMITE_GRATIS')) return LIMIT_MSG;
-    if (error) return 'No se pudo eliminar el CV. Intenta de nuevo.';
-    if (deletedRows === 0) return LIMIT_MSG;
+    if (error?.message?.includes('ULTIMO_CV_LIMITE_GRATIS')) return LAST_CV_MSG;
+    if (error || deletedRows === 0) return 'No se pudo eliminar el CV. Intenta de nuevo.';
     return null;
   }
 
@@ -155,6 +159,8 @@ export default function MisCVsPage() {
   }
 
   const isPro = profile?.plan === 'pro';
+  // Same rule as the DB trigger: with the free limit used up, the last CV can't be deleted.
+  const lastCvLocked = freeLimitExhausted && cvs.length + canvasCvs.length <= 1;
 
   async function startDownload(cvId: string) {
     setDownloadingId(cvId);
@@ -283,19 +289,21 @@ export default function MisCVsPage() {
                       >
                         <EditIcon size={13} /> Continuar editando
                       </button>
+                      <span title={lastCvLocked ? LAST_CV_MSG : 'Eliminar'} style={{ display: 'flex' }}>
                       <button
                         onClick={() => handleDeleteCanvas(cv.id)}
-                        disabled={deletingCanvasId === cv.id}
-                        title="Eliminar"
+                        disabled={deletingCanvasId === cv.id || lastCvLocked}
+                        aria-label={lastCvLocked ? LAST_CV_MSG : 'Eliminar'}
                         style={{
                           padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line)',
                           background: 'var(--surface)', color: 'var(--mute)', fontSize: 12.5,
-                          cursor: deletingCanvasId === cv.id ? 'not-allowed' : 'pointer',
+                          cursor: deletingCanvasId === cv.id || lastCvLocked ? 'not-allowed' : 'pointer',
+                          opacity: lastCvLocked ? 0.45 : 1,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all .2s var(--ease)',
                         }}
                         onMouseEnter={e => {
-                          if (deletingCanvasId !== cv.id) {
+                          if (deletingCanvasId !== cv.id && !lastCvLocked) {
                             (e.currentTarget as HTMLElement).style.background = 'var(--danger-50)';
                             (e.currentTarget as HTMLElement).style.color = '#B52020';
                           }
@@ -307,6 +315,7 @@ export default function MisCVsPage() {
                       >
                         <TrashIcon size={13} />
                       </button>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -429,18 +438,20 @@ export default function MisCVsPage() {
                     >
                       <MailIcon size={13} />
                     </button>
+                    <span title={lastCvLocked ? LAST_CV_MSG : 'Eliminar CV'} style={{ display: 'flex' }}>
                     <button
                       onClick={() => handleDelete(cv.id)}
-                      disabled={deletingId === cv.id}
-                      title="Eliminar CV"
+                      disabled={deletingId === cv.id || lastCvLocked}
+                      aria-label={lastCvLocked ? LAST_CV_MSG : 'Eliminar CV'}
                       style={{
                         padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line)',
                         background: 'var(--surface)', color: 'var(--mute)', fontSize: 12.5,
-                        cursor: deletingId === cv.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: deletingId === cv.id || lastCvLocked ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        opacity: lastCvLocked ? 0.45 : 1,
                         transition: 'all .2s var(--ease)',
                       }}
                       onMouseEnter={e => {
-                        if (deletingId !== cv.id) {
+                        if (deletingId !== cv.id && !lastCvLocked) {
                           (e.currentTarget as HTMLElement).style.background = 'var(--danger-50)';
                           (e.currentTarget as HTMLElement).style.color = '#B52020';
                         }
@@ -452,6 +463,7 @@ export default function MisCVsPage() {
                     >
                       <TrashIcon size={13} />
                     </button>
+                    </span>
                   </div>
 
                   {downloadError?.cvId === cv.id && (
