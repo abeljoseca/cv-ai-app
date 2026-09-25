@@ -651,7 +651,7 @@ export default function PerfilPage() {
                 return editSection === 'habilidades' ? (
                   <span key={h.id} style={{ padding: '5px 10px', borderRadius: 999, background: marked ? 'var(--hover)' : 'var(--lav)', color: marked ? 'var(--mute)' : 'var(--blue)', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 5, opacity: marked ? 0.55 : 1, textDecoration: marked ? 'line-through' : 'none', transition: 'all .15s' }}>
                     {h.nombre}
-                    <button onClick={() => toggleHardDelete(h.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : 'var(--blue)', padding: 0, fontSize: marked ? 12 : 14, lineHeight: 1 }} title={marked ? 'Deshacer' : 'Eliminar'}>{marked ? '↩' : '×'}</button>
+                    <button onClick={() => toggleHardDelete(h.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : 'var(--blue)', padding: 0, fontSize: marked ? 12 : 14, lineHeight: 1 }} title={marked ? 'Recuperar' : 'Eliminar'}>{marked ? <span style={{ fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>↩ Recuperar</span> : '×'}</button>
                   </span>
                 ) : (
                   <span key={h.id} style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--lav)', color: 'var(--blue)', fontSize: 13, fontWeight: 500 }}>{h.nombre}</span>
@@ -702,7 +702,7 @@ export default function PerfilPage() {
                 return editSection === 'habilidades' ? (
                   <span key={h.id} style={{ padding: '5px 10px', borderRadius: 999, background: marked ? 'var(--hover)' : '#F0FDF4', border: marked ? '1px solid var(--line)' : '1px solid #BBF7D0', color: marked ? 'var(--mute)' : '#15803D', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 5, opacity: marked ? 0.55 : 1, textDecoration: marked ? 'line-through' : 'none', transition: 'all .15s' }}>
                     {h.nombre}
-                    <button onClick={() => toggleSoftDelete(h.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : '#15803D', padding: 0, fontSize: marked ? 12 : 14, lineHeight: 1 }} title={marked ? 'Deshacer' : 'Eliminar'}>{marked ? '↩' : '×'}</button>
+                    <button onClick={() => toggleSoftDelete(h.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : '#15803D', padding: 0, fontSize: marked ? 12 : 14, lineHeight: 1 }} title={marked ? 'Recuperar' : 'Eliminar'}>{marked ? <span style={{ fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>↩ Recuperar</span> : '×'}</button>
                   </span>
                 ) : (
                   <span key={h.id} style={{ padding: '5px 12px', borderRadius: 999, background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D', fontSize: 13, fontWeight: 500 }}>{h.nombre}</span>
@@ -791,15 +791,15 @@ export default function PerfilPage() {
                           {editSection === 'experiencia' && (
                             <>
                               {!marked && (
-                                <button onClick={() => { setEditingExpId(exp.id); setEditExpForm({ empresa: exp.empresa || '', cargo: exp.cargo || '', fecha_inicio: exp.fecha_inicio || '', fecha_fin: exp.fecha_fin || '', activo: exp.activo || false, descripcion: exp.descripcion || '' }); }}
+                                <button onClick={() => { setAddOpen(null); setEditingExpId(exp.id); setEditExpForm({ empresa: exp.empresa || '', cargo: exp.cargo || '', fecha_inicio: exp.fecha_inicio || '', fecha_fin: exp.fecha_fin || '', activo: exp.activo || false, descripcion: exp.descripcion || '' }); }}
                                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                                   <EditIcon size={13} />
                                 </button>
                               )}
                               <button onClick={() => toggleExpDelete(exp.id)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : '#EF4444', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center', fontSize: 13 }}
-                                title={marked ? 'Deshacer' : 'Eliminar'}>
-                                {marked ? '↩' : <TrashIcon size={13} />}
+                                title={marked ? 'Recuperar' : 'Eliminar'}>
+                                {marked ? <span style={{ fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>↩ Recuperar</span> : <TrashIcon size={13} />}
                               </button>
                             </>
                           )}
@@ -814,7 +814,7 @@ export default function PerfilPage() {
           })}
           {editSection === 'experiencia' && (
             <AddAccordion label="Añadir experiencia" open={addOpen === 'experiencia'} spaced={experiencias.length > 0}
-              onOpen={() => setAddOpen('experiencia')} onCancel={() => cancelAdd('experiencia')}
+              onOpen={() => { setAddOpen('experiencia'); setEditingExpId(null); }} onCancel={() => cancelAdd('experiencia')}
               onSave={addExperiencia} saving={editSaving} saveDisabled={!newExp.empresa || !newExp.cargo}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <EField label="Empresa *" value={newExp.empresa} onChange={v => setNewExp(p => ({ ...p, empresa: v }))} placeholder="Ej. Google" />
@@ -868,15 +868,15 @@ export default function PerfilPage() {
                     {editSection === 'educacion' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (
-                          <button onClick={() => { setEditingEduId(edu.id); setEditEduForm({ institucion: edu.institucion || '', titulo: edu.titulo || '', area: edu.area || '', fecha_inicio: edu.fecha_inicio || '', fecha_fin: edu.fecha_fin || '' }); }}
+                          <button onClick={() => { setAddOpen(null); setEditingEduId(edu.id); setEditEduForm({ institucion: edu.institucion || '', titulo: edu.titulo || '', area: edu.area || '', fecha_inicio: edu.fecha_inicio || '', fecha_fin: edu.fecha_fin || '' }); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                             <EditIcon size={13} />
                           </button>
                         )}
                         <button onClick={() => toggleEduDelete(edu.id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : '#EF4444', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center', fontSize: 13 }}
-                          title={marked ? 'Deshacer' : 'Eliminar'}>
-                          {marked ? '↩' : <TrashIcon size={13} />}
+                          title={marked ? 'Recuperar' : 'Eliminar'}>
+                          {marked ? <span style={{ fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>↩ Recuperar</span> : <TrashIcon size={13} />}
                         </button>
                       </div>
                     )}
@@ -888,7 +888,7 @@ export default function PerfilPage() {
           })}
           {editSection === 'educacion' && (
             <AddAccordion label="Añadir educación" open={addOpen === 'educacion'} spaced={educaciones.length > 0}
-              onOpen={() => setAddOpen('educacion')} onCancel={() => cancelAdd('educacion')}
+              onOpen={() => { setAddOpen('educacion'); setEditingEduId(null); }} onCancel={() => cancelAdd('educacion')}
               onSave={addEducacion} saving={editSaving} saveDisabled={!newEdu.institucion || !newEdu.titulo}>
               <EField label="Institución *" value={newEdu.institucion} onChange={v => setNewEdu(p => ({ ...p, institucion: v }))} placeholder="Universidad de..." />
               <EField label="Título *" value={newEdu.titulo} onChange={v => setNewEdu(p => ({ ...p, titulo: v }))} placeholder="Ingeniería en..." />
@@ -935,15 +935,15 @@ export default function PerfilPage() {
                     {editSection === 'certificaciones' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (
-                          <button onClick={() => { setEditingCertId(cert.id); setEditCertForm({ titulo: cert.titulo || '', institucion: cert.institucion || '', anio_egreso: cert.anio_egreso || '' }); }}
+                          <button onClick={() => { setAddOpen(null); setEditingCertId(cert.id); setEditCertForm({ titulo: cert.titulo || '', institucion: cert.institucion || '', anio_egreso: cert.anio_egreso || '' }); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                             <EditIcon size={13} />
                           </button>
                         )}
                         <button onClick={() => toggleCertDelete(cert.id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : '#EF4444', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center', fontSize: 13 }}
-                          title={marked ? 'Deshacer' : 'Eliminar'}>
-                          {marked ? '↩' : <TrashIcon size={13} />}
+                          title={marked ? 'Recuperar' : 'Eliminar'}>
+                          {marked ? <span style={{ fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>↩ Recuperar</span> : <TrashIcon size={13} />}
                         </button>
                       </div>
                     )}
@@ -955,7 +955,7 @@ export default function PerfilPage() {
           })}
           {editSection === 'certificaciones' && (
             <AddAccordion label="Añadir certificación" open={addOpen === 'certificaciones'} spaced={certificaciones.length > 0}
-              onOpen={() => setAddOpen('certificaciones')} onCancel={() => cancelAdd('certificaciones')}
+              onOpen={() => { setAddOpen('certificaciones'); setEditingCertId(null); }} onCancel={() => cancelAdd('certificaciones')}
               onSave={addCertificacion} saving={editSaving} saveDisabled={!newCert.titulo.trim() || !newCert.institucion.trim()}>
               <EField label="Título *" value={newCert.titulo} onChange={v => setNewCert(p => ({ ...p, titulo: v }))} placeholder="Ej. Diplomado de Marketing Digital" />
               <EField label="Institución *" value={newCert.institucion} onChange={v => setNewCert(p => ({ ...p, institucion: v }))} placeholder="Ej. Universidad Central" />
@@ -1021,15 +1021,15 @@ export default function PerfilPage() {
                     {editSection === 'idiomas' && (
                       <div style={{ display: 'flex', gap: 4 }}>
                         {!marked && (
-                          <button onClick={() => { setEditingIdiomaId(idioma.id); setEditIdiomaForm({ nombre: idioma.nombre || '', nivel_cefr: idioma.nivel_cefr || '' }); }}
+                          <button onClick={() => { setAddOpen(null); setEditingIdiomaId(idioma.id); setEditIdiomaForm({ nombre: idioma.nombre || '', nivel_cefr: idioma.nivel_cefr || '' }); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                             <EditIcon size={13} />
                           </button>
                         )}
                         <button onClick={() => toggleIdiomaDelete(idioma.id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : '#EF4444', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center', fontSize: 13 }}
-                          title={marked ? 'Deshacer' : 'Eliminar'}>
-                          {marked ? '↩' : <TrashIcon size={13} />}
+                          title={marked ? 'Recuperar' : 'Eliminar'}>
+                          {marked ? <span style={{ fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>↩ Recuperar</span> : <TrashIcon size={13} />}
                         </button>
                       </div>
                     )}
@@ -1040,7 +1040,7 @@ export default function PerfilPage() {
           })}
           {editSection === 'idiomas' && (
             <AddAccordion label="Añadir idioma" open={addOpen === 'idiomas'} spaced={idiomas.length > 0}
-              onOpen={() => setAddOpen('idiomas')} onCancel={() => cancelAdd('idiomas')}
+              onOpen={() => { setAddOpen('idiomas'); setEditingIdiomaId(null); }} onCancel={() => cancelAdd('idiomas')}
               onSave={addIdioma} saving={editSaving} saveDisabled={!newIdioma.nombre}>
               <EField label="Idioma *" value={newIdioma.nombre} onChange={v => setNewIdioma(p => ({ ...p, nombre: v }))} placeholder="Ej. Inglés" />
               <div>
@@ -1115,15 +1115,15 @@ export default function PerfilPage() {
                     {editSection === 'logros' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (
-                          <button onClick={() => { setEditingLogroId(logro.id); setEditLogroText(logro.descripcion || ''); setEditLogroExpId(logro.experiencia_id || ''); }}
+                          <button onClick={() => { setAddOpen(null); setEditingLogroId(logro.id); setEditLogroText(logro.descripcion || ''); setEditLogroExpId(logro.experiencia_id || ''); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center' }}>
                             <EditIcon size={13} />
                           </button>
                         )}
                         <button onClick={() => toggleLogroDelete(logro.id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: marked ? 'var(--mute)' : '#EF4444', padding: '3px', borderRadius: 5, display: 'flex', alignItems: 'center', fontSize: 13 }}
-                          title={marked ? 'Deshacer' : 'Eliminar'}>
-                          {marked ? '↩' : <TrashIcon size={13} />}
+                          title={marked ? 'Recuperar' : 'Eliminar'}>
+                          {marked ? <span style={{ fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>↩ Recuperar</span> : <TrashIcon size={13} />}
                         </button>
                       </div>
                     )}
@@ -1134,7 +1134,7 @@ export default function PerfilPage() {
           })}
           {editSection === 'logros' && (
             <AddAccordion label="Añadir logro" open={addOpen === 'logros'} spaced={logros.length > 0}
-              onOpen={() => setAddOpen('logros')} onCancel={() => cancelAdd('logros')}
+              onOpen={() => { setAddOpen('logros'); setEditingLogroId(null); }} onCancel={() => cancelAdd('logros')}
               onSave={addLogro} saving={editSaving} saveDisabled={!newLogro.trim()}>
               <div style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500, marginBottom: 6 }}>Describe tu logro</div>
               <textarea value={newLogro} onChange={e => setNewLogro(e.target.value)}
