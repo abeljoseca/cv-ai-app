@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from 'react'
 export interface SelectOption {
   value: string
   label: string
+  // Optional helper line shown under the label inside the dropdown only (not in the trigger).
+  description?: string
 }
 
 interface SelectProps {
@@ -119,7 +121,8 @@ export function Select({
           borderRadius: 12,
           boxShadow: '0 4px 6px rgba(15,23,42,.04), 0 12px 32px -4px rgba(15,23,42,.14)',
           zIndex: 200,
-          overflow: 'hidden',
+          maxHeight: 300,
+          overflowY: 'auto',
           animation: 'fadeUp .12s var(--ease)',
         }}>
           {options.map((opt, i) => {
@@ -154,7 +157,12 @@ export function Select({
                   if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent';
                 }}
               >
-                {opt.label}
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                  <span>{opt.label}</span>
+                  {opt.description && (
+                    <span style={{ fontSize: 11.5, fontWeight: 400, color: '#9CA3AF', whiteSpace: 'normal', lineHeight: 1.35 }}>{opt.description}</span>
+                  )}
+                </span>
                 {isSelected && (
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                     <polyline points="20 6 9 17 4 12"/>

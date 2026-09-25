@@ -16,7 +16,7 @@ interface ExpForm { empresa: string; cargo: string; fecha_inicio: string; fecha_
 interface EduForm { institucion: string; titulo: string; area: string; fecha_inicio: string; fecha_fin: string; }
 interface IdiomaForm { nombre: string; nivel_cefr: string; }
 
-const CEFR_OPTIONS = CEFR_LEVELS.map(l => ({ value: l, label: CEFR_LABELS[l] }));
+const CEFR_OPTIONS = CEFR_LEVELS.map(l => ({ value: l, label: CEFR_LABELS[l], description: CEFR_HINTS[l] }));
 
 function dateRange(inicio: string | null, fin: string | null, activo = false): string {
   const a = formatProfileDate(inicio);
@@ -174,6 +174,11 @@ export default function PerfilPage() {
     return localSoftNamesRef.current.has(nombre.toLowerCase()) || isLikelySoft(nombre);
   }
 
+  function jobOptions(current: string) {
+    const jobs = experiencias.map(e => ({ value: e.id, label: `${e.cargo} · ${e.empresa}` }));
+    return current ? [{ value: '', label: 'Sin puesto asignado' }, ...jobs] : jobs;
+  }
+
   function cancelAdd(section: string) {
     if (addOpen === section) setAddOpen(null);
     if (section === 'experiencia') setNewExp(emptyExp);
@@ -265,8 +270,8 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
-  // section's edit mode when nothing else is pending).
+  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
+  // in edit mode so the user can keep adding or editing without extra clicks.
   async function addExperiencia() {
     if (!(newExp.empresa && newExp.cargo)) return;
     setEditSaving(true);
@@ -281,7 +286,6 @@ export default function PerfilPage() {
         });
         setNewExp(emptyExp);
       setAddOpen(null);
-      if (pendingExpDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -297,7 +301,6 @@ export default function PerfilPage() {
         activo: editExpForm.activo, descripcion: editExpForm.descripcion || null,
       }).eq('id', id);
       setEditingExpId(null);
-      if (pendingExpDeleteIds.length === 0 && !newExp.empresa && !newExp.cargo) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -317,8 +320,8 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
-  // section's edit mode when nothing else is pending).
+  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
+  // in edit mode so the user can keep adding or editing without extra clicks.
   async function addEducacion() {
     if (!(newEdu.institucion && newEdu.titulo)) return;
     setEditSaving(true);
@@ -333,7 +336,6 @@ export default function PerfilPage() {
         });
         setNewEdu(emptyEdu);
       setAddOpen(null);
-      if (pendingEduDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -349,7 +351,6 @@ export default function PerfilPage() {
         fecha_fin: normalizeProfileDate(editEduForm.fecha_fin),
       }).eq('id', id);
       setEditingEduId(null);
-      if (pendingEduDeleteIds.length === 0 && !newEdu.institucion && !newEdu.titulo) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -369,8 +370,8 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
-  // section's edit mode when nothing else is pending).
+  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
+  // in edit mode so the user can keep adding or editing without extra clicks.
   async function addIdioma() {
     if (!(newIdioma.nombre)) return;
     setEditSaving(true);
@@ -382,7 +383,6 @@ export default function PerfilPage() {
         await supabase.from('idiomas').insert({ user_id: user.id, nombre: newIdioma.nombre, nivel_cefr: nivelCefr, nivel: nivelCefr });
         setNewIdioma({ nombre: '', nivel_cefr: '' });
       setAddOpen(null);
-      if (pendingIdiomaDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -399,7 +399,6 @@ export default function PerfilPage() {
         ...(nivelCefr ? { nivel: nivelCefr } : {}),
       }).eq('id', id);
       setEditingIdiomaId(null);
-      if (pendingIdiomaDeleteIds.length === 0 && !newIdioma.nombre) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -419,8 +418,8 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
-  // section's edit mode when nothing else is pending).
+  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
+  // in edit mode so the user can keep adding or editing without extra clicks.
   async function addLogro() {
     if (!(newLogro.trim())) return;
     setEditSaving(true);
@@ -431,7 +430,6 @@ export default function PerfilPage() {
         setNewLogro('');
         setNewLogroExpId('');
       setAddOpen(null);
-      if (pendingLogroDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -443,7 +441,6 @@ export default function PerfilPage() {
     try {
       await supabase.from('logros').update({ descripcion: editLogroText.trim(), experiencia_id: editLogroExpId || null }).eq('id', id);
       setEditingLogroId(null);
-      if (pendingLogroDeleteIds.length === 0 && !newLogro.trim()) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -463,8 +460,8 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // "Añadir …" accordion: inserts the new item, then closes the accordion (and the
-  // section's edit mode when nothing else is pending).
+  // "Añadir …" accordion: inserts the new item and closes the accordion; the card stays
+  // in edit mode so the user can keep adding or editing without extra clicks.
   async function addCertificacion() {
     if (!(newCert.titulo.trim() && newCert.institucion.trim())) return;
     setEditSaving(true);
@@ -479,7 +476,6 @@ export default function PerfilPage() {
         });
         setNewCert(emptyCert);
       setAddOpen(null);
-      if (pendingCertDeleteIds.length === 0) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -494,7 +490,6 @@ export default function PerfilPage() {
         anio_egreso: editCertForm.anio_egreso.trim() || null,
       }).eq('id', id);
       setEditingCertId(null);
-      if (pendingCertDeleteIds.length === 0 && !newCert.titulo && !newCert.institucion) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -847,8 +842,9 @@ export default function PerfilPage() {
                     <div>
                       <div style={{ fontWeight: 600, color: 'var(--deep)', fontSize: 14, textDecoration: marked ? 'line-through' : 'none' }}>{edu.titulo}</div>
                       <div style={{ fontSize: 13, color: 'var(--mute)' }}>{edu.institucion}</div>
-                      {edu.fecha_fin && <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>{formatProfileDate(edu.fecha_fin)}</div>}
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    {edu.fecha_fin && <div style={{ fontSize: 12.5, color: 'var(--mute)' }}>{formatProfileDate(edu.fecha_fin)}</div>}
                     {editSection === 'educacion' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (
@@ -864,6 +860,7 @@ export default function PerfilPage() {
                         </button>
                       </div>
                     )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1061,14 +1058,17 @@ export default function PerfilPage() {
                       style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--blue)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 13, outline: 'none', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }}
                     />
                     {experiencias.length > 0 && (
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         <span style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500 }}>¿En qué puesto lograste esto?</span>
-                        <select value={editLogroExpId} onChange={e => setEditLogroExpId(e.target.value)}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', background: 'var(--surface)', color: editLogroExpId ? 'var(--ink)' : 'var(--mute)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', minHeight: 34 }}>
-                          <option value="">Seleccionar empleo</option>
-                          {experiencias.map(e => <option key={e.id} value={e.id}>{e.cargo} · {e.empresa}</option>)}
-                        </select>
-                      </label>
+                        <Select
+                          value={editLogroExpId}
+                          onChange={setEditLogroExpId}
+                          options={jobOptions(editLogroExpId)}
+                          placeholder="Seleccionar empleo"
+                          style={{ width: '100%' }}
+                          triggerStyle={{ fontSize: 13, borderRadius: 8, border: '1.5px solid var(--line)' }}
+                        />
+                      </div>
                     )}
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => updateLogro(logro.id)} disabled={editSaving || !editLogroText.trim()}
@@ -1127,14 +1127,17 @@ export default function PerfilPage() {
               </p>
               <div style={{ marginTop: 12 }}>
                 {experiencias.length > 0 && (
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <span style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500 }}>¿En qué puesto lograste esto?</span>
-                    <select value={newLogroExpId} onChange={e => setNewLogroExpId(e.target.value)}
-                      style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', background: 'var(--surface)', color: newLogroExpId ? 'var(--ink)' : 'var(--mute)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', minHeight: 34 }}>
-                      <option value="">Seleccionar empleo</option>
-                      {experiencias.map(e => <option key={e.id} value={e.id}>{e.cargo} · {e.empresa}</option>)}
-                    </select>
-                  </label>
+                    <Select
+                      value={newLogroExpId}
+                      onChange={setNewLogroExpId}
+                      options={jobOptions(newLogroExpId)}
+                      placeholder="Seleccionar empleo"
+                      style={{ width: '100%' }}
+                      triggerStyle={{ fontSize: 13, borderRadius: 8, border: '1.5px solid var(--line)' }}
+                    />
+                  </div>
                 )}
               </div>
             </AddAccordion>
