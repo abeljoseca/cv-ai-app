@@ -4,7 +4,7 @@ import { createAnthropicClient } from '@/lib/anthropic';
 import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeProfileDate } from '@/lib/profile-date';
-import { findExperienciaIdByEmpresa, LOGRO_EMPRESA_RULE } from '@/lib/profile-import';
+import { emptyImportReport, findExperienciaIdByEmpresa, isNearDuplicateLogro, LOGRO_EMPRESA_RULE, type ImportReport } from '@/lib/profile-import';
 
 const PROVIDER_URL =
   'https://api.apify.com/v2/acts/harvestapi~linkedin-profile-scraper/run-sync-get-dataset-items';
@@ -304,7 +304,7 @@ async function processProfile(
   canonicalUrl: string,
   userId: string,
   currentPhotoUrl: string | null
-): Promise<{ formFields: Record<string, string>; completitudEstimada: number } | null> {
+): Promise<{ formFields: Record<string, string>; completitudEstimada: number; resultado: ImportReport } | null> {
   const admin = createAdminClient();
 
   let rawProfile: ExtProfile | null = null;
@@ -357,7 +357,7 @@ async function processProfile(
     { data: existingCert },
   ] = await Promise.all([
     admin.from('profiles').select('resumen_profesional, profesion_perfil, ciudad, pais, foto_url').eq('id', userId).single(),
-    admin.from('experiencia').select('empresa, cargo').eq('user_id', userId),
+    admin.from('experiencia').select('id, empresa, cargo, descripcion').eq('user_id', userId),
     admin.from('educacion').select('institucion, titulo').eq('user_id', userId),
     admin.from('habilidades').select('nombre').eq('user_id', userId),
     admin.from('idiomas').select('nombre').eq('user_id', userId),
@@ -365,6 +365,14 @@ async function processProfile(
     admin.from('certificaciones').select('titulo').eq('user_id', userId),
   ]);
 
+  // What this import added vs. what was already there (confirmation screen).
+  const report = emptyImportReport();
+  const failed = (table: string, error: { message: string } | null) => {
+    if (error) console.error(`[hydrate] insert into ${table} failed:`, error.message);
+    return !!error;
+  };
+  const expByKey = new Map((existingExp ?? []).map(e => [`${e.empresa?.toLowerCase().trim()}|${e.cargo?.toLowerCase().trim()}`, e]));
+  const logroTexts = (existingLogro ?? []).map(e => e.descripcion as string).filter(Boolean);
   const expSet    = new Set((existingExp    ?? []).map(e => `${e.empresa?.toLowerCase().trim()}|${e.cargo?.toLowerCase().trim()}`));
   const eduSet    = new Set((existingEdu    ?? []).map(e => `${e.institucion?.toLowerCase().trim()}|${e.titulo?.toLowerCase().trim()}`));
   const habSet    = new Set((existingHab    ?? []).map(e => e.nombre?.toLowerCase().trim()));
@@ -376,8 +384,18 @@ async function processProfile(
   for (const exp of structured.experiencia) {
     if (!exp.empresa?.trim() || !exp.cargo?.trim()) continue;
     const key = `${exp.empresa.toLowerCase().trim()}|${exp.cargo.toLowerCase().trim()}`;
-    if (expSet.has(key)) continue;
-    await admin.from('experiencia').insert({
+    if (expSet.has(key)) {
+      report.existentes.experiencias++;
+      // Only fills a description the user left empty — never overwrites one.
+      const current = expByKey.get(key);
+      if (current && !current.descripcion?.trim() && exp.descripcion?.trim()) {
+        const { error } = await admin.from('experiencia').update({ descripcion: exp.descripcion.trim() }).eq('id', current.id);
+        failed('experiencia (descripcion)', error);
+        current.descripcion = exp.descripcion.trim();
+      }
+      continue;
+    }
+    const { error: expError } = await admin.from('experiencia').insert({
       user_id:      userId,
       empresa:      exp.empresa.trim(),
       cargo:        exp.cargo.trim(),
@@ -386,6 +404,8 @@ async function processProfile(
       descripcion:  exp.descripcion?.trim() || null,
     });
     expSet.add(key);
+    if (failed('experiencia', expError)) continue;
+    report.agregados.experiencias++;
     expInserted++;
   }
 
@@ -393,8 +413,8 @@ async function processProfile(
   for (const edu of structured.educacion) {
     if (!edu.institucion?.trim() || !edu.titulo?.trim()) continue;
     const key = `${edu.institucion.toLowerCase().trim()}|${edu.titulo.toLowerCase().trim()}`;
-    if (eduSet.has(key)) continue;
-    await admin.from('educacion').insert({
+    if (eduSet.has(key)) { report.existentes.educacion++; continue; }
+    const { error: eduError } = await admin.from('educacion').insert({
       user_id:      userId,
       institucion:  edu.institucion.trim(),
       titulo:       edu.titulo.trim(),
@@ -403,6 +423,8 @@ async function processProfile(
       fecha_fin:    normalizeProfileDate(edu.fecha_fin),
     });
     eduSet.add(key);
+    if (failed('educacion', eduError)) continue;
+    report.agregados.educacion++;
     eduInserted++;
   }
 
@@ -411,13 +433,15 @@ async function processProfile(
   for (const hab of finalSkills) {
     if (!hab.nombre?.trim()) continue;
     const key = hab.nombre.toLowerCase().trim();
-    if (habSet.has(key)) continue;
-    await admin.from('habilidades').insert({
+    if (habSet.has(key)) { report.existentes.habilidades++; continue; }
+    const { error: habError } = await admin.from('habilidades').insert({
       user_id: userId,
       nombre:  hab.nombre.trim(),
       tipo:    VALID_TIPOS.has(hab.tipo) ? hab.tipo : null,
     });
     habSet.add(key);
+    if (failed('habilidades', habError)) continue;
+    report.agregados.habilidades++;
     habCount++;
   }
 
@@ -426,13 +450,15 @@ async function processProfile(
   for (const idioma of structured.idiomas) {
     if (!idioma.nombre?.trim()) continue;
     const key = idioma.nombre.toLowerCase().trim();
-    if (idiomaSet.has(key)) continue;
-    await admin.from('idiomas').insert({
+    if (idiomaSet.has(key)) { report.existentes.idiomas++; continue; }
+    const { error: idiomaError } = await admin.from('idiomas').insert({
       user_id: userId,
       nombre:  idioma.nombre.trim(),
       nivel:   VALID_NIVELES.has(idioma.nivel ?? '') ? idioma.nivel : null,
     });
     idiomaSet.add(key);
+    if (failed('idiomas', idiomaError)) continue;
+    report.agregados.idiomas++;
     idiomasInserted++;
   }
 
@@ -441,28 +467,34 @@ async function processProfile(
   for (const logro of structured.logros) {
     if (!logro.descripcion?.trim()) continue;
     const key = logro.descripcion.toLowerCase().trim();
-    if (logroSet.has(key)) continue;
-    await admin.from('logros').insert({
+    // Same achievement already saved: identical, or the same figures and most of the same
+    // words (also against the ones added earlier in this import).
+    if (logroSet.has(key) || isNearDuplicateLogro(logro.descripcion, logroTexts)) { report.existentes.logros++; continue; }
+    logroTexts.push(logro.descripcion.trim());
+    const { error: logroError } = await admin.from('logros').insert({
       user_id:        userId,
       descripcion:    logro.descripcion.trim(),
       experiencia_id: findExperienciaIdByEmpresa(expsForLink ?? [], logro.empresa),
     });
     logroSet.add(key);
+    if (failed('logros', logroError)) continue;
+    report.agregados.logros++;
     logrosCount++;
   }
 
   for (const cert of rawProfile.certifications ?? []) {
     if (!cert.title?.trim()) continue;
     const key = cert.title.toLowerCase().trim();
-    if (certSet.has(key)) continue;
+    if (certSet.has(key)) { report.existentes.certificaciones++; continue; }
     const yearMatch = cert.issuedAt?.match(/\d{4}/);
-    await admin.from('certificaciones').insert({
+    const { error: certError } = await admin.from('certificaciones').insert({
       user_id:     userId,
       titulo:      cert.title.trim(),
       institucion: cert.issuedBy?.trim() || 'Sin institución',
       anio_egreso: yearMatch ? yearMatch[0] : null,
     });
     certSet.add(key);
+    if (!failed('certificaciones', certError)) report.agregados.certificaciones++;
   }
 
   const profilePatch: Record<string, unknown> = { id: userId, updated_at: new Date().toISOString() };
@@ -492,7 +524,7 @@ async function processProfile(
   if (structured.pais)               formFields.pais      = structured.pais;
   if (photoUrl)                      formFields.foto_url  = photoUrl;
 
-  return { formFields, completitudEstimada: Math.min(estimada, 100) };
+  return { formFields, completitudEstimada: Math.min(estimada, 100), resultado: report };
 }
 
 export async function POST(request: NextRequest) {
@@ -527,5 +559,5 @@ export async function POST(request: NextRequest) {
   }
   if (!result) return NextResponse.json({ ok: false });
 
-  return NextResponse.json({ ok: true, patch: result.formFields, q: result.completitudEstimada });
+  return NextResponse.json({ ok: true, patch: result.formFields, q: result.completitudEstimada, resultado: result.resultado });
 }

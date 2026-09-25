@@ -65,7 +65,7 @@ export default function EditarPerfilPage() {
     const r = await runLinkedInImport(slug);
     if (!r.ok) { setImportError(true); return; }
     setImportedName([r.patch.nombre, r.patch.apellido].filter(Boolean).join(' '));
-    setImportResult({ source: 'linkedin', completitud: r.summary.completitud, counts: r.summary.counts });
+    setImportResult({ source: 'linkedin', completitud: r.summary.completitud, counts: r.summary.counts, existentes: r.summary.existentes });
     setView('confirmacion');
   }
 
@@ -77,7 +77,7 @@ export default function EditarPerfilPage() {
     const r = await runCVImport(file);
     if (!r.ok) { setImportError(true); return; }
     setImportedName('');
-    setImportResult({ source: 'cv', completitud: r.summary.completitud, counts: r.summary.counts });
+    setImportResult({ source: 'cv', completitud: r.summary.completitud, counts: r.summary.counts, existentes: r.summary.existentes });
     setView('confirmacion');
   }
 

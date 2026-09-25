@@ -8,6 +8,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
 import { calcularPuntajeCompletitud } from '@/lib/completitud';
 import { Profile, Experiencia, Educacion, Habilidad, Logro, Idioma } from '@/types';
+import { ImportCountsSummary } from '@/components/import/ImportFlow';
 
 interface FormData {
   nombre: string;
@@ -36,7 +37,10 @@ interface ImportCounts {
 interface ImportResult {
   source: ImportSource;
   completitud: number;
+  // What the import added (profile totals when the import gave no report).
   counts: ImportCounts;
+  // What was already in the profile — present when the import reported it.
+  existentes?: ImportCounts;
 }
 
 function slugFromLinkedInUrl(url?: string | null): string {
@@ -221,7 +225,10 @@ export default function OnboardingPage() {
       if (!res.ok || !data.ok) { setImportError(true); return; }
       setImportedFields(data.patch || {});
       const { counts, completitud } = await fetchImportSummary();
-      setImportResult({ source: 'linkedin', completitud, counts });
+      const r = data.resultado;
+      setImportResult(r?.agregados && r.existentes
+        ? { source: 'linkedin', completitud, counts: r.agregados, existentes: r.existentes }
+        : { source: 'linkedin', completitud, counts });
       setView('confirmacion');
     } catch {
       setImportError(true);
@@ -239,8 +246,12 @@ export default function OnboardingPage() {
       fd.append('file', file);
       const res = await fetch('/api/parse-document', { method: 'POST', body: fd });
       if (!res.ok) { setImportError(true); return; }
+      const data = await res.json().catch(() => ({}));
       const { counts, completitud } = await fetchImportSummary();
-      setImportResult({ source: 'cv', completitud, counts });
+      const r = data.resultado;
+      setImportResult(r?.agregados && r.existentes
+        ? { source: 'cv', completitud, counts: r.agregados, existentes: r.existentes }
+        : { source: 'cv', completitud, counts });
       setView('confirmacion');
     } catch {
       setImportError(true);
@@ -667,14 +678,6 @@ function ConfirmationView({
   onContinue: () => void;
 }) {
   const { counts, completitud } = result;
-  const items = [
-    { n: counts.experiencias,    one: 'experiencia laboral', many: 'experiencias laborales' },
-    { n: counts.educacion,       one: 'título académico',    many: 'títulos académicos' },
-    { n: counts.habilidades,     one: 'habilidad',           many: 'habilidades' },
-    { n: counts.idiomas,         one: 'idioma',              many: 'idiomas' },
-    { n: counts.certificaciones, one: 'certificación',       many: 'certificaciones' },
-    { n: counts.logros,          one: 'logro',               many: 'logros' },
-  ].filter(i => i.n > 0);
 
   const variant = completitud >= 70
     ? {
@@ -733,24 +736,7 @@ function ConfirmationView({
 
         <div style={{ height: 1, background: 'var(--line-soft)', margin: '0 0 18px' }} />
 
-        {items.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-            {items.map((it, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', background: 'var(--surface-2)', border: '1px solid var(--line-soft)', borderRadius: 10 }}>
-                <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--success-50)', color: '#148B3D', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <CheckIcon size={12} />
-                </span>
-                <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>
-                  <strong style={{ color: 'var(--deep)', fontWeight: 700 }}>{it.n}</strong> {it.n === 1 ? it.one : it.many}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--mute)', textAlign: 'center' }}>
-            No extrajimos secciones detalladas, pero podrás añadirlas fácilmente.
-          </p>
-        )}
+        <ImportCountsSummary counts={counts} existentes={result.existentes} />
 
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

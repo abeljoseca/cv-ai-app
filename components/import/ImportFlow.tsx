@@ -19,7 +19,18 @@ export interface ImportCounts {
 export interface ImportResult {
   source: ImportSource;
   completitud: number;
+  // What the import added (profile totals when the import gave no report).
   counts: ImportCounts;
+  // What was already in the profile — present when the import reported it.
+  existentes?: ImportCounts;
+}
+
+interface ImportReportResponse { agregados?: ImportCounts; existentes?: ImportCounts }
+
+function fromReport(report: ImportReportResponse | undefined, summary: { counts: ImportCounts; completitud: number }) {
+  return report?.agregados && report.existentes
+    ? { counts: report.agregados, existentes: report.existentes, completitud: summary.completitud }
+    : { counts: summary.counts, completitud: summary.completitud };
 }
 
 const EMPTY_COUNTS: ImportCounts = { experiencias: 0, educacion: 0, habilidades: 0, idiomas: 0, logros: 0, certificaciones: 0 };
@@ -102,7 +113,7 @@ export async function fetchImportSummary(): Promise<{ counts: ImportCounts; comp
   return { counts, completitud };
 }
 
-export async function runLinkedInImport(slug: string): Promise<{ ok: boolean; patch: Record<string, string>; summary: { counts: ImportCounts; completitud: number } }> {
+export async function runLinkedInImport(slug: string): Promise<{ ok: boolean; patch: Record<string, string>; summary: { counts: ImportCounts; existentes?: ImportCounts; completitud: number } }> {
   if (!slug) return { ok: false, patch: {}, summary: EMPTY_SUMMARY };
   try {
     const res = await fetch('/api/profile/hydrate', {
@@ -113,20 +124,21 @@ export async function runLinkedInImport(slug: string): Promise<{ ok: boolean; pa
     const data = await res.json();
     if (!res.ok || !data.ok) return { ok: false, patch: {}, summary: EMPTY_SUMMARY };
     const summary = await fetchImportSummary();
-    return { ok: true, patch: data.patch || {}, summary };
+    return { ok: true, patch: data.patch || {}, summary: fromReport(data.resultado, summary) };
   } catch {
     return { ok: false, patch: {}, summary: EMPTY_SUMMARY };
   }
 }
 
-export async function runCVImport(file: File): Promise<{ ok: boolean; summary: { counts: ImportCounts; completitud: number } }> {
+export async function runCVImport(file: File): Promise<{ ok: boolean; summary: { counts: ImportCounts; existentes?: ImportCounts; completitud: number } }> {
   try {
     const fd = new FormData();
     fd.append('file', file);
     const res = await fetch('/api/parse-document', { method: 'POST', body: fd });
     if (!res.ok) return { ok: false, summary: EMPTY_SUMMARY };
+    const data = await res.json().catch(() => ({}));
     const summary = await fetchImportSummary();
-    return { ok: true, summary };
+    return { ok: true, summary: fromReport(data.resultado, summary) };
   } catch {
     return { ok: false, summary: EMPTY_SUMMARY };
   }
@@ -245,6 +257,61 @@ export function ProcessingView({
   return <Overlay maxWidth={460}>{inner}</Overlay>;
 }
 
+/* ── Resumen de lo importado (compartido con el onboarding) ────────────── */
+// With a report from the import (existentes present), counts = what the import ADDED and
+// existentes = what was already in the profile. Without one, counts are profile totals.
+const COUNT_LABELS: Array<{ key: keyof ImportCounts; one: string; many: string }> = [
+  { key: 'experiencias',    one: 'experiencia laboral', many: 'experiencias laborales' },
+  { key: 'educacion',       one: 'título académico',    many: 'títulos académicos' },
+  { key: 'habilidades',     one: 'habilidad',           many: 'habilidades' },
+  { key: 'idiomas',         one: 'idioma',              many: 'idiomas' },
+  { key: 'certificaciones', one: 'certificación',       many: 'certificaciones' },
+  { key: 'logros',          one: 'logro',               many: 'logros' },
+];
+
+function countItems(counts: ImportCounts) {
+  return COUNT_LABELS.map(l => ({ n: counts[l.key] ?? 0, label: (counts[l.key] ?? 0) === 1 ? l.one : l.many })).filter(i => i.n > 0);
+}
+
+export function ImportCountsSummary({ counts, existentes }: { counts: ImportCounts; existentes?: ImportCounts }) {
+  const added = countItems(counts);
+  const already = existentes ? countItems(existentes) : [];
+  return (
+    <>
+      {added.length > 0 ? (
+        <>
+          {existentes && (
+            <p style={{ margin: '0 0 8px', fontSize: 12.5, fontWeight: 600, color: 'var(--mute)' }}>Agregamos a tu perfil</p>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: already.length > 0 ? 10 : 20 }}>
+            {added.map((it, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', background: 'var(--surface-2)', border: '1px solid var(--line-soft)', borderRadius: 10 }}>
+                <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--success-50)', color: '#148B3D', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <CheckIcon size={12} />
+                </span>
+                <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+                  <strong style={{ color: 'var(--deep)', fontWeight: 700 }}>{it.n}</strong> {it.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p style={{ margin: already.length > 0 ? '0 0 10px' : '0 0 20px', fontSize: 13.5, color: 'var(--mute)', textAlign: 'center' }}>
+          {already.length > 0
+            ? 'No encontramos datos nuevos: todo lo de este documento ya estaba en tu perfil.'
+            : 'No extrajimos secciones detalladas, pero podrás añadirlas fácilmente.'}
+        </p>
+      )}
+      {already.length > 0 && (
+        <p style={{ margin: '0 0 20px', fontSize: 12.5, color: 'var(--mute)', lineHeight: 1.5 }}>
+          Ya estaban en tu perfil: {already.map(i => `${i.n} ${i.label}`).join(', ')}
+        </p>
+      )}
+    </>
+  );
+}
+
 /* ── Pantalla de confirmación (overlay con blur) ──────────────────────── */
 export function ConfirmationView({
   result,
@@ -256,14 +323,6 @@ export function ConfirmationView({
   onContinue: () => void;
 }) {
   const { counts, completitud } = result;
-  const items = [
-    { n: counts.experiencias,    one: 'experiencia laboral', many: 'experiencias laborales' },
-    { n: counts.educacion,       one: 'título académico',    many: 'títulos académicos' },
-    { n: counts.habilidades,     one: 'habilidad',           many: 'habilidades' },
-    { n: counts.idiomas,         one: 'idioma',              many: 'idiomas' },
-    { n: counts.certificaciones, one: 'certificación',       many: 'certificaciones' },
-    { n: counts.logros,          one: 'logro',               many: 'logros' },
-  ].filter(i => i.n > 0);
 
   const variant = completitud >= 70
     ? { title: '¡Listo! Tu perfil quedó muy completo', message: <>Revisa que todo esté correcto y continúa<br />para crear tu CV.</>, cta: 'Verificar mis datos' }
@@ -295,24 +354,7 @@ export function ConfirmationView({
 
         <div style={{ height: 1, background: 'var(--line-soft)', margin: '0 0 18px' }} />
 
-        {items.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-            {items.map((it, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', background: 'var(--surface-2)', border: '1px solid var(--line-soft)', borderRadius: 10 }}>
-                <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--success-50)', color: '#148B3D', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <CheckIcon size={12} />
-                </span>
-                <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>
-                  <strong style={{ color: 'var(--deep)', fontWeight: 700 }}>{it.n}</strong> {it.n === 1 ? it.one : it.many}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--mute)', textAlign: 'center' }}>
-            No extrajimos secciones detalladas, pero podrás añadirlas fácilmente.
-          </p>
-        )}
+        <ImportCountsSummary counts={counts} existentes={result.existentes} />
 
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

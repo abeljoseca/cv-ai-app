@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createAnthropicClient } from '@/lib/anthropic';
 import { rateLimit } from '@/lib/rate-limit';
 import { normalizeProfileDate } from '@/lib/profile-date';
-import { findExperienciaIdByEmpresa, isPresentMarker, LOGRO_EMPRESA_RULE, PROFILE_DATE_RULES } from '@/lib/profile-import';
+import { emptyImportReport, findExperienciaIdByEmpresa, isNearDuplicateLogro, isPresentMarker, LOGRO_EMPRESA_RULE, PROFILE_DATE_RULES } from '@/lib/profile-import';
 import mammoth from 'mammoth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -142,28 +142,47 @@ export async function POST(request: NextRequest) {
     // Save to database using admin client (bypasses RLS)
     const admin = createAdminClient();
 
-    // Re-uploading a document must not duplicate entries already in the profile.
+    // Re-uploading a document must not duplicate entries already in the profile. What the
+    // import added vs. what was already there is reported back for the confirmation screen.
+    const report = emptyImportReport();
     const norm = (v: unknown) => (typeof v === 'string' ? v.toLowerCase().trim() : '');
     const [{ data: exExp }, { data: exEdu }, { data: exHab }, { data: exIdi }, { data: exLog }] = await Promise.all([
-      admin.from('experiencia').select('empresa, cargo').eq('user_id', user.id),
+      admin.from('experiencia').select('id, empresa, cargo, descripcion').eq('user_id', user.id),
       admin.from('educacion').select('institucion, titulo').eq('user_id', user.id),
       admin.from('habilidades').select('nombre').eq('user_id', user.id),
       admin.from('idiomas').select('nombre').eq('user_id', user.id),
       admin.from('logros').select('descripcion').eq('user_id', user.id),
     ]);
-    const expKeys = new Set((exExp ?? []).map(e => `${norm(e.empresa)}|${norm(e.cargo)}`));
+    const expByKey = new Map((exExp ?? []).map(e => [`${norm(e.empresa)}|${norm(e.cargo)}`, e]));
+    const expKeys = new Set(expByKey.keys());
     const eduKeys = new Set((exEdu ?? []).map(e => `${norm(e.institucion)}|${norm(e.titulo)}`));
     const habKeys = new Set((exHab ?? []).map(h => norm(h.nombre)));
     const idiKeys = new Set((exIdi ?? []).map(i => norm(i.nombre)));
-    const logKeys = new Set((exLog ?? []).map(l => norm(l.descripcion)));
+    const logTexts = (exLog ?? []).map(l => l.descripcion as string).filter(Boolean);
+    const logKeys = new Set(logTexts.map(norm));
+    const failed = (table: string, error: { message: string } | null) => {
+      if (error) console.error(`[parse-document] insert into ${table} failed:`, error.message);
+      return !!error;
+    };
 
     if (parsedData.experiencia?.length > 0) {
       for (const exp of parsedData.experiencia) {
         if (!exp.empresa || !exp.cargo) continue;
         const key = `${norm(exp.empresa)}|${norm(exp.cargo)}`;
-        if (expKeys.has(key)) continue;
+        if (expKeys.has(key)) {
+          report.existentes.experiencias++;
+          // Already in the profile: the document only fills a description the user left
+          // empty — never overwrites one (same rule as the summary).
+          const current = expByKey.get(key);
+          if (current && !current.descripcion?.trim() && exp.descripcion?.trim()) {
+            const { error } = await admin.from('experiencia').update({ descripcion: exp.descripcion.trim() }).eq('id', current.id);
+            failed('experiencia (descripcion)', error);
+            current.descripcion = exp.descripcion.trim();
+          }
+          continue;
+        }
         expKeys.add(key);
-        await admin.from('experiencia').insert({
+        const { error } = await admin.from('experiencia').insert({
           user_id: user.id,
           empresa: exp.empresa,
           cargo: exp.cargo,
@@ -172,6 +191,7 @@ export async function POST(request: NextRequest) {
           activo: isPresentMarker(exp.fecha_fin),
           descripcion: exp.descripcion || null,
         });
+        if (!failed('experiencia', error)) report.agregados.experiencias++;
       }
     }
 
@@ -179,9 +199,9 @@ export async function POST(request: NextRequest) {
       for (const edu of parsedData.educacion) {
         if (!edu.institucion || !edu.titulo) continue;
         const key = `${norm(edu.institucion)}|${norm(edu.titulo)}`;
-        if (eduKeys.has(key)) continue;
+        if (eduKeys.has(key)) { report.existentes.educacion++; continue; }
         eduKeys.add(key);
-        await admin.from('educacion').insert({
+        const { error } = await admin.from('educacion').insert({
           user_id: user.id,
           institucion: edu.institucion,
           titulo: edu.titulo,
@@ -189,40 +209,53 @@ export async function POST(request: NextRequest) {
           fecha_inicio: normalizeProfileDate(edu.fecha_inicio),
           fecha_fin: normalizeProfileDate(edu.fecha_fin),
         });
+        if (!failed('educacion', error)) report.agregados.educacion++;
       }
     }
 
     if (parsedData.habilidades?.length > 0) {
       for (const hab of parsedData.habilidades) {
-        if (!hab.nombre || habKeys.has(norm(hab.nombre))) continue;
+        if (!hab.nombre) continue;
+        if (habKeys.has(norm(hab.nombre))) { report.existentes.habilidades++; continue; }
         habKeys.add(norm(hab.nombre));
         const tipo = hab.tipo === 'tecnica' || hab.tipo === 'blanda' ? hab.tipo : null
-        await admin.from('habilidades').insert({ user_id: user.id, nombre: hab.nombre, tipo })
+        const { error } = await admin.from('habilidades').insert({ user_id: user.id, nombre: hab.nombre, tipo })
+        if (!failed('habilidades', error)) report.agregados.habilidades++;
       }
     }
 
     if (parsedData.idiomas?.length > 0) {
       for (const idioma of parsedData.idiomas) {
-        if (!idioma.nombre || idiKeys.has(norm(idioma.nombre))) continue;
+        if (!idioma.nombre) continue;
+        if (idiKeys.has(norm(idioma.nombre))) { report.existentes.idiomas++; continue; }
         idiKeys.add(norm(idioma.nombre));
-        await admin.from('idiomas').insert({
+        const { error } = await admin.from('idiomas').insert({
           user_id: user.id,
           nombre: idioma.nombre,
           nivel: idioma.nivel || null,
         });
+        if (!failed('idiomas', error)) report.agregados.idiomas++;
       }
     }
 
     if (parsedData.logros?.length > 0) {
       const { data: expsForLink } = await admin.from('experiencia').select('id, empresa').eq('user_id', user.id);
       for (const logro of parsedData.logros) {
-        if (!logro.descripcion || logKeys.has(norm(logro.descripcion))) continue;
+        if (!logro.descripcion) continue;
+        // Same achievement already saved (identical, or the same figures and most of the
+        // same words) — also against the ones added earlier in this same import.
+        if (logKeys.has(norm(logro.descripcion)) || isNearDuplicateLogro(logro.descripcion, logTexts)) {
+          report.existentes.logros++;
+          continue;
+        }
         logKeys.add(norm(logro.descripcion));
-        await admin.from('logros').insert({
+        logTexts.push(logro.descripcion);
+        const { error } = await admin.from('logros').insert({
           user_id: user.id,
           descripcion: logro.descripcion,
           experiencia_id: findExperienciaIdByEmpresa(expsForLink ?? [], logro.empresa),
         });
+        if (!failed('logros', error)) report.agregados.logros++;
       }
     }
 
@@ -235,7 +268,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, extracted: parsedData });
+    return NextResponse.json({ success: true, extracted: parsedData, resultado: report });
   } catch (error) {
     console.error('Parse document error:', error);
     return NextResponse.json({ error: 'Error al procesar documento' }, { status: 500 });
