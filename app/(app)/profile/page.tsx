@@ -256,9 +256,9 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // Section "Guardar cambios": applies the items marked for deletion.
+  // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveExperiencia() {
-    if (pendingExpDeleteIds.length === 0) return;
+    if (pendingExpDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
     setEditSaving(true);
     try {
       await supabase.from('experiencia').delete().in('id', pendingExpDeleteIds);
@@ -306,9 +306,9 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // Section "Guardar cambios": applies the items marked for deletion.
+  // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveEducacion() {
-    if (pendingEduDeleteIds.length === 0) return;
+    if (pendingEduDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
     setEditSaving(true);
     try {
       await supabase.from('educacion').delete().in('id', pendingEduDeleteIds);
@@ -356,9 +356,9 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // Section "Guardar cambios": applies the items marked for deletion.
+  // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveIdioma() {
-    if (pendingIdiomaDeleteIds.length === 0) return;
+    if (pendingIdiomaDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
     setEditSaving(true);
     try {
       await supabase.from('idiomas').delete().in('id', pendingIdiomaDeleteIds);
@@ -404,9 +404,9 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // Section "Guardar cambios": applies the items marked for deletion.
+  // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveLogro() {
-    if (pendingLogroDeleteIds.length === 0) return;
+    if (pendingLogroDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
     setEditSaving(true);
     try {
       await supabase.from('logros').delete().in('id', pendingLogroDeleteIds);
@@ -446,9 +446,9 @@ export default function PerfilPage() {
     finally { setEditSaving(false); }
   }
 
-  // Section "Guardar cambios": applies the items marked for deletion.
+  // Card "Listo": applies the items marked for deletion (if any) and closes edit mode.
   async function saveCertificacion() {
-    if (pendingCertDeleteIds.length === 0) return;
+    if (pendingCertDeleteIds.length === 0) { setAddOpen(null); setEditSection(null); return; }
     setEditSaving(true);
     try {
       await supabase.from('certificaciones').delete().in('id', pendingCertDeleteIds);
@@ -728,7 +728,7 @@ export default function PerfilPage() {
           lockHeader={editingExpId !== null}
           isEditing={editSection === 'experiencia'} onEdit={() => toggleEdit('experiencia')}
           onSave={saveExperiencia} saving={editSaving}
-          saveDisabled={pendingExpDeleteIds.length === 0}>
+          saveLabel="Listo" saveDisabled={false}>
           {experiencias.map((exp, i) => {
             const marked = pendingExpDeleteIds.includes(exp.id);
             return (
@@ -818,7 +818,7 @@ export default function PerfilPage() {
           lockHeader={editingEduId !== null}
           isEditing={editSection === 'educacion'} onEdit={() => toggleEdit('educacion')}
           onSave={saveEducacion} saving={editSaving}
-          saveDisabled={pendingEduDeleteIds.length === 0}>
+          saveLabel="Listo" saveDisabled={false}>
           {educaciones.map((edu, i) => {
             const marked = pendingEduDeleteIds.includes(edu.id);
             return (
@@ -886,7 +886,7 @@ export default function PerfilPage() {
           lockHeader={editingCertId !== null}
           isEditing={editSection === 'certificaciones'} onEdit={() => toggleEdit('certificaciones')}
           onSave={saveCertificacion} saving={editSaving}
-          saveDisabled={pendingCertDeleteIds.length === 0}>
+          saveLabel="Listo" saveDisabled={false}>
           {certificaciones.map((cert, i) => {
             const marked = pendingCertDeleteIds.includes(cert.id);
             return (
@@ -909,8 +909,9 @@ export default function PerfilPage() {
                     <div>
                       <div style={{ fontWeight: 600, color: 'var(--deep)', fontSize: 14, textDecoration: marked ? 'line-through' : 'none' }}>{cert.titulo}</div>
                       <div style={{ fontSize: 13, color: 'var(--mute)' }}>{cert.institucion}</div>
-                      {cert.anio_egreso && <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>{cert.anio_egreso}</div>}
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    {cert.anio_egreso && <div style={{ fontSize: 12.5, color: 'var(--mute)' }}>{cert.anio_egreso}</div>}
                     {editSection === 'certificaciones' && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!marked && (
@@ -926,6 +927,7 @@ export default function PerfilPage() {
                         </button>
                       </div>
                     )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -950,7 +952,7 @@ export default function PerfilPage() {
           lockHeader={editingIdiomaId !== null}
           isEditing={editSection === 'idiomas'} onEdit={() => toggleEdit('idiomas')}
           onSave={saveIdioma} saving={editSaving}
-          saveDisabled={pendingIdiomaDeleteIds.length === 0}>
+          saveLabel="Listo" saveDisabled={false}>
           {idiomas.some(i => !i.nivel_cefr) && (
             <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#B45309', lineHeight: 1.45 }}>
               Actualiza el nivel de tus idiomas a la escala europea (A1–C2): así tus CVs muestran tu nivel real.
@@ -1047,7 +1049,7 @@ export default function PerfilPage() {
           lockHeader={editingLogroId !== null}
           isEditing={editSection === 'logros'} onEdit={() => toggleEdit('logros')}
           onSave={saveLogro} saving={editSaving}
-          saveDisabled={pendingLogroDeleteIds.length === 0}>
+          saveLabel="Listo" saveDisabled={false}>
           {logros.map((logro, i) => {
             const marked = pendingLogroDeleteIds.includes(logro.id);
             return (
@@ -1295,12 +1297,12 @@ function ProfileIntroMessage({ firstName }: { firstName: string }) {
 interface InfoCardProps {
   title: string; icon: React.ReactNode; children: React.ReactNode;
   isEditing?: boolean; onEdit?: () => void; editLabel?: string;
-  onSave?: () => void; saving?: boolean; saveDisabled?: boolean;
+  onSave?: () => void; saving?: boolean; saveDisabled?: boolean; saveLabel?: string;
   // True while one item of the section is being edited inline: that item has its own
   // Guardar/Cancelar, so the section-level ones are hidden to avoid two competing saves.
   lockHeader?: boolean;
 }
-function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Editar', onSave, saving, saveDisabled, lockHeader }: InfoCardProps) {
+function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Editar', onSave, saving, saveDisabled, lockHeader, saveLabel = 'Guardar Cambios' }: InfoCardProps) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: '20px 22px', boxShadow: 'var(--sh-1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
@@ -1320,7 +1322,7 @@ function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Edita
             }}>
               {saving
                 ? <><span style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid #fff', borderTopColor: 'transparent', display: 'inline-block', animation: 'spin .8s linear infinite' }} /> Guardando…</>
-                : <><SaveIcon size={12} /> Guardar Cambios</>}
+                : <>{saveLabel === 'Listo' ? <CheckIcon size={12} /> : <SaveIcon size={12} />} {saveLabel}</>}
             </button>
           )}
           <button onClick={onEdit} style={{
