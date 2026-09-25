@@ -1,83 +1,81 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { notFound, redirect } from 'next/navigation';
 import CVRenderer from '@/components/CVTemplates';
+import { CV_PRINT_CSS } from '@/components/CVTemplates/print';
+import { createClient } from '@/lib/supabase/server';
+import { canDownloadCV } from '@/lib/cv/entitlement';
 import { parseVisualConfig } from '@/lib/cv/visual-config';
+import type { CV } from '@/types';
+import type { CVContent } from '@/lib/cv/types/cv-content';
 
-export default function ImprimirPage() {
-  const params = useParams();
-  const cvId = params.id as string;
-  const supabase = createClient();
-  const [cv, setCv] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+// Print-ready render of a CV. It is also the page headless Chromium loads to produce the
+// server-side PDF (/api/cv/[id]/pdf), so what the user sees here is exactly what the PDF
+// contains. Access is checked on the server: owner only, and only if the CV is paid/Pro —
+// the same rule the download buttons show, but not bypassable by typing this URL.
 
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
+export const dynamic = 'force-dynamic';
 
-      const { data: cvData } = await supabase.from('cvs').select('*').eq('id', cvId).single();
-      if (cvData) setCv(cvData);
-      setLoading(false);
-    }
-    load();
-  }, [cvId]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  // Auto-trigger print once the CV is rendered
-  useEffect(() => {
-    if (!loading && cv) {
-      const t = setTimeout(() => window.print(), 400);
-      return () => clearTimeout(t);
-    }
-  }, [loading, cv]);
+export default async function ImprimirPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ modo?: string }>;
+}) {
+  const { id } = await params;
+  const { modo } = await searchParams;
+  if (!UUID.test(id)) notFound();
 
-  if (loading) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: cv } = await supabase
+    .from('cvs')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle<CV>();
+  if (!cv) notFound();
+
+  if (!(await canDownloadCV(supabase, user.id, id))) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#6b7280' }}>
-        Preparando CV para imprimir...
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, height: '100vh', fontFamily: 'sans-serif', color: '#374151', textAlign: 'center', padding: 24 }}>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Este CV todavía no está desbloqueado para descarga.</p>
+        <a href="/cvs" style={{ color: '#1d4ed8', fontSize: 14 }}>Ir a Mis CVs para desbloquearlo</a>
       </div>
     );
   }
 
-  if (!cv) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#6b7280' }}>
-        CV no encontrado.
-      </div>
-    );
-  }
+  const isPdfRender = modo === 'pdf';
+  const visual = parseVisualConfig(cv.visual_config);
 
   return (
     <>
       <style>{`
-        @media print {
-          @page { margin: 0; size: A4 portrait; }
-          html, body { margin: 0; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .cv-container { background: #ffffff !important; box-shadow: none !important; }
-          .no-print { display: none !important; }
-        }
+        ${CV_PRINT_CSS}
         @media screen {
           body { background: #e5e7eb; margin: 0; }
           .cv-container { max-width: 794px; margin: 0 auto; background: white; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
           .print-bar { background: #1d4ed8; color: white; text-align: center; padding: 12px; }
-          .print-bar button { background: white; color: #1d4ed8; border: none; padding: 8px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
-          .print-bar button:hover { background: #eff6ff; }
+          .print-bar a { display: inline-block; background: white; color: #1d4ed8; padding: 8px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; text-decoration: none; font-family: sans-serif; }
+          .print-bar a:hover { background: #eff6ff; }
         }
       `}</style>
 
-      <div className="no-print print-bar">
-        <button onClick={() => window.print()}>
-          Imprimir / Guardar como PDF
-        </button>
-      </div>
+      {!isPdfRender && (
+        <div className="no-print print-bar">
+          <a href={`/api/cv/${cv.id}/pdf`}>Descargar PDF</a>
+        </div>
+      )}
 
-      <div className="cv-container">
+      {/* data-cv-ready tells the PDF renderer the CV is in the DOM */}
+      <div className="cv-container" data-cv-ready="true">
         <CVRenderer
-          estilo={cv.estilo}
-          data={cv.contenido_json}
-          accentColor={parseVisualConfig(cv.visual_config).accent_color ?? undefined}
+          estilo={cv.estilo as Exclude<CV['estilo'], 'mirror'>}
+          data={cv.contenido_json as unknown as CVContent}
+          accentColor={visual.accent_color ?? undefined}
         />
       </div>
     </>

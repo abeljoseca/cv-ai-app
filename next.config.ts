@@ -31,6 +31,14 @@ const ContentSecurityPolicy = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  // Server-side PDF (/api/cv/[id]/pdf): keep the Chromium binary package out of the
+  // bundle so its bin/ files are traced and shipped with the function as-is.
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+  // The binaries are loaded by a computed path, which file tracing can't follow — ship them explicitly.
+  outputFileTracingIncludes: {
+    // Key is a glob: brackets would be a character class, so match the dynamic segment with *.
+    '/api/cv/*/pdf': ['./node_modules/@sparticuz/chromium/bin/**'],
+  },
   async headers() {
     return [
       {

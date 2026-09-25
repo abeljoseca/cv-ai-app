@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { CV, Profile } from '@/types';
 import PaymentModal from '@/components/PaymentModal';
+import { downloadCvPdf } from '@/lib/cv/download-pdf';
 
 export default function ExitoPage() {
   const router = useRouter();
@@ -15,6 +16,8 @@ export default function ExitoPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [confetti, setConfetti] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     const cvId = sessionStorage.getItem('cv_created_id');
@@ -62,16 +65,28 @@ export default function ExitoPage() {
   const isPro = profile?.plan === 'pro';
   const canDownload = isPro || hasPaid;
 
+  async function startDownload(cvId: string) {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadCvPdf(cvId);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'No se pudo generar el PDF. Inténtalo de nuevo.');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   function handleDownloadPDF() {
-    if (!cv) return;
+    if (!cv || downloading) return;
     if (!canDownload) { setShowPayment(true); return; }
-    window.open(`/cv/${cv.id}/imprimir`, '_blank');
+    startDownload(cv.id);
   }
 
   function handlePaymentSuccess() {
     setShowPayment(false);
     setHasPaid(true);
-    if (cv) window.open(`/cv/${cv.id}/imprimir`, '_blank');
+    if (cv) startDownload(cv.id);
   }
 
   return (
@@ -131,19 +146,22 @@ export default function ExitoPage() {
         }}>
           <button
             onClick={handleDownloadPDF}
-            disabled={!cv}
+            disabled={!cv || downloading}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               padding: '13px 20px', borderRadius: 12, border: 'none',
               background: 'var(--blue)', color: '#fff', fontWeight: 600, fontSize: 15,
-              cursor: cv ? 'pointer' : 'not-allowed', opacity: cv ? 1 : .6,
+              cursor: !cv ? 'not-allowed' : downloading ? 'wait' : 'pointer', opacity: cv && !downloading ? 1 : .6,
               boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 6px 14px -6px rgba(75,107,251,.45)',
               marginBottom: 12,
             }}
           >
             <DownloadIcon size={18} />
-            {isPro ? 'Descargar PDF + DOCX' : 'Descargar PDF'}
+            {downloading ? 'Generando PDF…' : 'Descargar PDF'}
           </button>
+          {downloadError && (
+            <p role="alert" style={{ margin: '0 0 12px', fontSize: 13, color: '#DC2626' }}>{downloadError}</p>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
             <SecondaryBtn icon={<MailIcon size={15} />} label="Enviar por email" onClick={() => {}} />

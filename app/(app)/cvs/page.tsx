@@ -7,6 +7,7 @@ import { CV, Aplicacion, Profile } from '@/types';
 import { Select } from '@/components/Select';
 import CVRenderer from '@/components/CVTemplates';
 import { parseVisualConfig } from '@/lib/cv/visual-config';
+import { downloadCvPdf } from '@/lib/cv/download-pdf';
 import type { CVInspirationRecord } from '@/src/features/cv-inspiracion/types/editor.types';
 import PaymentModal from '@/components/PaymentModal';
 
@@ -55,6 +56,8 @@ export default function MisCVsPage() {
   const [aplicaciones, setAplicaciones] = useState<Aplicacion[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [paidCvIds, setPaidCvIds] = useState<Set<string>>(new Set());
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<{ cvId: string; message: string } | null>(null);
   const [paymentCv, setPaymentCv] = useState<CV | null>(null);
   const [loading, setLoading] = useState(true);
   const [applyingCv, setApplyingCv] = useState<CV | null>(null);
@@ -149,18 +152,31 @@ export default function MisCVsPage() {
 
   const isPro = profile?.plan === 'pro';
 
+  async function startDownload(cvId: string) {
+    setDownloadingId(cvId);
+    setDownloadError(null);
+    try {
+      await downloadCvPdf(cvId);
+    } catch (err) {
+      setDownloadError({ cvId, message: err instanceof Error ? err.message : 'No se pudo generar el PDF. Inténtalo de nuevo.' });
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   function handleDownloadPDF(cv: CV) {
+    if (downloadingId) return;
     if (!isPro && !paidCvIds.has(cv.id)) {
       setPaymentCv(cv);
       return;
     }
-    window.open(`/cv/${cv.id}/imprimir`, '_blank');
+    startDownload(cv.id);
   }
 
   function handlePaymentSuccess() {
     if (!paymentCv) return;
     setPaidCvIds(prev => new Set([...prev, paymentCv.id]));
-    window.open(`/cv/${paymentCv.id}/imprimir`, '_blank');
+    startDownload(paymentCv.id);
     setPaymentCv(null);
   }
 
@@ -389,9 +405,11 @@ export default function MisCVsPage() {
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--hover)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
                     >
-                      {isPro || paidCvIds.has(cv.id)
-                        ? <><DownloadIcon size={13} /> Descargar</>
-                        : <><LockIcon size={13} /> Descargar</>}
+                      {downloadingId === cv.id
+                        ? 'Generando…'
+                        : isPro || paidCvIds.has(cv.id)
+                          ? <><DownloadIcon size={13} /> Descargar</>
+                          : <><LockIcon size={13} /> Descargar</>}
                     </button>
                     <button
                       onClick={() => {}}
@@ -431,6 +449,12 @@ export default function MisCVsPage() {
                       <TrashIcon size={13} />
                     </button>
                   </div>
+
+                  {downloadError?.cvId === cv.id && (
+                    <p role="alert" style={{ margin: '8px 0 0', fontSize: 12, color: '#DC2626', lineHeight: 1.4 }}>
+                      {downloadError.message}
+                    </p>
+                  )}
 
                   {hasApp ? (
                     <div style={{
