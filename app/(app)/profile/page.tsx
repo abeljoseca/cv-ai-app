@@ -271,6 +271,7 @@ export default function PerfilPage() {
         activo: editExpForm.activo, descripcion: editExpForm.descripcion || null,
       }).eq('id', id);
       setEditingExpId(null);
+      if (pendingExpDeleteIds.length === 0 && !newExp.empresa && !newExp.cargo) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -309,6 +310,7 @@ export default function PerfilPage() {
         fecha_fin: normalizeProfileDate(editEduForm.fecha_fin),
       }).eq('id', id);
       setEditingEduId(null);
+      if (pendingEduDeleteIds.length === 0 && !newEdu.institucion && !newEdu.titulo) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -345,6 +347,7 @@ export default function PerfilPage() {
         ...(nivelCefr ? { nivel: nivelCefr } : {}),
       }).eq('id', id);
       setEditingIdiomaId(null);
+      if (pendingIdiomaDeleteIds.length === 0 && !newIdioma.nombre) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -375,6 +378,7 @@ export default function PerfilPage() {
     try {
       await supabase.from('logros').update({ descripcion: editLogroText.trim(), experiencia_id: editLogroExpId || null }).eq('id', id);
       setEditingLogroId(null);
+      if (pendingLogroDeleteIds.length === 0 && !newLogro.trim()) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -412,6 +416,7 @@ export default function PerfilPage() {
         anio_egreso: editCertForm.anio_egreso.trim() || null,
       }).eq('id', id);
       setEditingCertId(null);
+      if (pendingCertDeleteIds.length === 0 && !newCert.titulo && !newCert.institucion) setEditSection(null);
       await loadProfileData();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -647,6 +652,7 @@ export default function PerfilPage() {
 
         {/* Experiencia */}
         <InfoCard title="Experiencia" icon={<BriefcaseIcon size={15} />}
+          lockHeader={editingExpId !== null}
           isEditing={editSection === 'experiencia'} onEdit={() => toggleEdit('experiencia')}
           onSave={saveExperiencia} saving={editSaving}
           saveDisabled={(!newExp.empresa || !newExp.cargo) && pendingExpDeleteIds.length === 0}>
@@ -735,6 +741,7 @@ export default function PerfilPage() {
 
         {/* Educación */}
         <InfoCard title="Educación" icon={<GradCapIcon size={15} />}
+          lockHeader={editingEduId !== null}
           isEditing={editSection === 'educacion'} onEdit={() => toggleEdit('educacion')}
           onSave={saveEducacion} saving={editSaving}
           saveDisabled={(!newEdu.institucion || !newEdu.titulo) && pendingEduDeleteIds.length === 0}>
@@ -799,6 +806,7 @@ export default function PerfilPage() {
 
         {/* Cursos y Certificaciones */}
         <InfoCard title="Cursos y Certificaciones" icon={<AwardIcon size={15} />}
+          lockHeader={editingCertId !== null}
           isEditing={editSection === 'certificaciones'} onEdit={() => toggleEdit('certificaciones')}
           onSave={saveCertificacion} saving={editSaving}
           saveDisabled={(!newCert.titulo.trim() || !newCert.institucion.trim()) && pendingCertDeleteIds.length === 0}>
@@ -861,6 +869,7 @@ export default function PerfilPage() {
 
         {/* Idiomas */}
         <InfoCard title="Idiomas" icon={<GlobeIcon size={15} />}
+          lockHeader={editingIdiomaId !== null}
           isEditing={editSection === 'idiomas'} onEdit={() => toggleEdit('idiomas')}
           onSave={saveIdioma} saving={editSaving}
           saveDisabled={!newIdioma.nombre && pendingIdiomaDeleteIds.length === 0}>
@@ -956,6 +965,7 @@ export default function PerfilPage() {
 
         {/* Logros */}
         <InfoCard title="Logros" icon={<AwardIcon size={15} />}
+          lockHeader={editingLogroId !== null}
           isEditing={editSection === 'logros'} onEdit={() => toggleEdit('logros')}
           onSave={saveLogro} saving={editSaving}
           saveDisabled={!newLogro.trim() && pendingLogroDeleteIds.length === 0}>
@@ -969,11 +979,11 @@ export default function PerfilPage() {
                       style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--blue)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 13, outline: 'none', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }}
                     />
                     {experiencias.length > 0 && (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--mute)' }}>
-                        Empleo:
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <span style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500 }}>¿En qué puesto lograste esto?</span>
                         <select value={editLogroExpId} onChange={e => setEditLogroExpId(e.target.value)}
-                          style={{ border: 'none', background: 'transparent', color: 'var(--mute)', fontSize: 12, fontFamily: 'inherit', padding: '2px 0', cursor: 'pointer', outline: 'none', maxWidth: '100%' }}>
-                          <option value="">sin asignar</option>
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', background: 'var(--surface)', color: editLogroExpId ? 'var(--ink)' : 'var(--mute)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', minHeight: 34 }}>
+                          <option value="">Seleccionar empleo</option>
                           {experiencias.map(e => <option key={e.id} value={e.id}>{e.cargo} · {e.empresa}</option>)}
                         </select>
                       </label>
@@ -1031,13 +1041,13 @@ export default function PerfilPage() {
               <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--mute)', lineHeight: 1.4 }}>
                 Usa la fórmula: <strong style={{ fontWeight: 600 }}>Verbo + Resultado + Métrica + Cómo</strong>
               </p>
-              <div style={{ marginTop: 6 }}>
+              <div style={{ marginTop: 12 }}>
                 {experiencias.length > 0 && (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--mute)' }}>
-                    Empleo:
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--deep)', fontWeight: 500 }}>¿En qué puesto lograste esto?</span>
                     <select value={newLogroExpId} onChange={e => setNewLogroExpId(e.target.value)}
-                      style={{ border: 'none', background: 'transparent', color: 'var(--mute)', fontSize: 12, fontFamily: 'inherit', padding: '2px 0', cursor: 'pointer', outline: 'none', maxWidth: '100%' }}>
-                      <option value="">sin asignar</option>
+                      style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--line)', background: 'var(--surface)', color: newLogroExpId ? 'var(--ink)' : 'var(--mute)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', minHeight: 34 }}>
+                      <option value="">Seleccionar empleo</option>
                       {experiencias.map(e => <option key={e.id} value={e.id}>{e.cargo} · {e.empresa}</option>)}
                     </select>
                   </label>
@@ -1199,8 +1209,11 @@ interface InfoCardProps {
   title: string; icon: React.ReactNode; children: React.ReactNode;
   isEditing?: boolean; onEdit?: () => void; editLabel?: string;
   onSave?: () => void; saving?: boolean; saveDisabled?: boolean;
+  // True while one item of the section is being edited inline: that item has its own
+  // Guardar/Cancelar, so the section-level ones are hidden to avoid two competing saves.
+  lockHeader?: boolean;
 }
-function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Editar', onSave, saving, saveDisabled }: InfoCardProps) {
+function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Editar', onSave, saving, saveDisabled, lockHeader }: InfoCardProps) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: '20px 22px', boxShadow: 'var(--sh-1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
@@ -1208,7 +1221,7 @@ function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Edita
           <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--surface-2)', color: 'var(--deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--line-soft)' }}>{icon}</span>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--deep)' }}>{title}</h3>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {!lockHeader && <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {isEditing && onSave && (
             <button onClick={onSave} disabled={saving || saveDisabled} style={{
               background: saving || saveDisabled ? 'var(--line)' : 'var(--blue)',
@@ -1234,7 +1247,7 @@ function InfoCard({ title, icon, children, isEditing, onEdit, editLabel = 'Edita
           >
             {isEditing ? <><XIcon size={12} /> Cancelar</> : <><EditIcon size={12} /> {editLabel}</>}
           </button>
-        </div>
+        </div>}
       </div>
       {children}
     </div>
