@@ -158,11 +158,17 @@ describe('EuropassPanel', () => {
     expect(screen.queryByText(/Tu CV ocupa/)).toBeNull()
   })
 
-  it('photo: switch and upload/replace live in the design card, always visible', () => {
-    render(<EuropassPanel content={content()} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
-    expect(screen.getByRole('switch', { name: 'Foto' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Subir foto' })).toBeTruthy()
+  it('"Foto visible": upload/replace only while the photo is visible', () => {
     const c = content()
+    c.informacion_personal.foto = { activo: false, url: null }
+    const { unmount } = render(<EuropassPanel content={c} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    expect(screen.getByRole('switch', { name: 'Foto visible' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.queryByRole('button', { name: /foto$/ })).toBeNull()
+    unmount()
+    c.informacion_personal.foto = { activo: true, url: null }
+    const r2 = render(<EuropassPanel content={c} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    expect(screen.getByRole('button', { name: 'Subir foto' })).toBeTruthy()
+    r2.unmount()
     c.informacion_personal.foto = { activo: true, url: 'https://x.test/f.jpg' }
     render(<EuropassPanel content={c} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
     expect(screen.getByRole('button', { name: 'Cambiar foto' })).toBeTruthy()

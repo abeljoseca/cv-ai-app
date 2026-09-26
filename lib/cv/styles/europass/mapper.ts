@@ -200,7 +200,9 @@ export function mapEuropassObjective(
       telefono: clean(profile.telefono) ? formatPhone(profile.telefono) : null,
       email: clean(profile.email_cv),
       ciudad_pais: place(profile.ciudad, profile.pais),
-      foto: { activo: !!clean(profile.foto_url), url: clean(profile.foto_url) },
+      // Visible by default, with or without a photo (CEO 2026-09-26): the editor shows a
+      // "Sube tu foto" box; the PDF simply omits a missing photo.
+      foto: { activo: true, url: clean(profile.foto_url) },
       fecha_nacimiento: { activo: !!opts.identity?.fecha_nacimiento, valor: null },
       nacionalidad: { activo: !!clean(opts.identity?.nacionalidad), valor: null },
       direccion: { activo: !!clean(opts.identity?.direccion), valor: null },

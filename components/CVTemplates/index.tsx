@@ -34,6 +34,8 @@ export interface CVRendererProps extends CVEditProps {
   // the same paginator. Thumbnails don't paginate.
   paginate?: 'preview' | 'print'
   onPages?: (pages: number) => void
+  // Europass v2 editor only: the "Sube tu foto" box opens the upload.
+  onSubirFoto?: () => void
 }
 
 export const styleAccentColors: Record<string, string[]> = {
@@ -51,14 +53,14 @@ export default function CVRenderer(props: CVRendererProps) {
   return <div className={cvFontVariables}><StyleTemplate {...props} /></div>
 }
 
-function StyleTemplate({ estilo, data: stored, isEditMode, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor, paginate, onPages }: CVRendererProps) {
+function StyleTemplate({ estilo, data: stored, isEditMode, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor, paginate, onPages, onSubirFoto }: CVRendererProps) {
   const editProps: CVEditProps = { isEditMode, onFieldChange, accentColor }
 
   // Standardized styles render from their own schema; older CVs of the same style keep
   // their original template.
   if (isEuropassV2(stored)) {
     if (paginate) {
-      return <PaginatedEuropass mode={paginate} onPages={onPages} data={stored} densidad={densidad} fotoTam={fotoTam} idiomasEditor={idiomasEditor} {...editProps} />
+      return <PaginatedEuropass mode={paginate} onPages={onPages} data={stored} densidad={densidad} fotoTam={fotoTam} idiomasEditor={idiomasEditor} onSubirFoto={onSubirFoto} {...editProps} />
     }
     return <EuropassV2CV data={stored} densidad={densidad} fotoTam={fotoTam} idiomasEditor={idiomasEditor} {...editProps} />
   }

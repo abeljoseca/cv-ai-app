@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 
 // next/font only works inside the Next compiler.
 vi.mock('next/font/google', () => {
@@ -162,6 +162,18 @@ describe('EuropassV2CV', () => {
     const a = pdf.querySelector('.datos-personales a') as HTMLAnchorElement
     expect(a.getAttribute('href')).toBe('https://www.linkedin.com/in/laurafernandezib/')
     expect(a.textContent).toBe('linkedin.com/in/laurafernandezib')
+  })
+
+  it('"Foto visible" with no photo: a "Sube tu foto" box only in the editor, never printed', () => {
+    const c = europassReferenceContent()
+    c.informacion_personal.foto = { activo: true, url: null }
+    expect(render(<EuropassV2CV data={c} />).container.querySelector('.foto')).toBeNull()
+    const onSubirFoto = vi.fn()
+    const { container } = render(<EuropassV2CV data={c} onSubirFoto={onSubirFoto} />)
+    const box = container.querySelector('.ep2-foto-vacia') as HTMLButtonElement
+    expect(box.textContent).toBe('Sube tu foto')
+    fireEvent.click(box)
+    expect(onSubirFoto).toHaveBeenCalled()
   })
 })
 

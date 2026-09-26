@@ -95,6 +95,7 @@ export default function PreviewPage() {
   }, []);
   const europass = useEuropassEditor(cvId, onEuropassState);
   const europassLoadedFor = useRef<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const europassV2 = isEuropassV2(cvData);
   const { load: loadEuropass } = europass;
   useEffect(() => {
@@ -283,6 +284,14 @@ export default function PreviewPage() {
     setCvData((prev: any) => prev ? setNestedValue(prev, path, value) : prev);
   }
 
+  // Hidden file input for the "Sube tu foto" box inside the CV (editor only).
+  async function onPhotoPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    if (await uploadEuropassPhoto(f)) await europass.send({ op: 'activar', slot: 'foto', activo: true });
+  }
+
   async function uploadEuropassPhoto(file: File): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
@@ -383,6 +392,21 @@ export default function PreviewPage() {
   const matchMeta = matchData ? getMatchMeta(matchData.match_porcentaje) : null;
   const palette = styleAccentColors[params?.estilo ?? ''] ?? styleAccentColors['harvard'];
 
+  const createButton = (
+    <button
+      onClick={handleCreateCV}
+      disabled={creatingCV}
+      style={{ width: '100%', padding: '10px 16px', borderRadius: 10, background: 'var(--blue)', color: '#fff', border: 'none', cursor: creatingCV ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: creatingCV ? 0.7 : 1, transition: 'opacity .15s', boxShadow: europassV2 ? '0 1px 2px rgba(15,23,42,.06), 0 6px 14px -6px rgba(75,107,251,.45)' : undefined }}
+    >
+      {creatingCV ? (
+        <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      )}
+      {creatingCV ? 'Guardando...' : europassV2 ? 'Crear documento' : 'Crear CV'}
+    </button>
+  );
+
   const actionsCard = (
       <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: 'var(--sh-2)' }}>
         {editing ? (
@@ -409,18 +433,7 @@ export default function PreviewPage() {
           </>
         ) : (
           <>
-            <button
-              onClick={handleCreateCV}
-              disabled={creatingCV}
-              style={{ width: '100%', padding: '10px 16px', borderRadius: 10, background: 'var(--blue)', color: '#fff', border: 'none', cursor: creatingCV ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: creatingCV ? 0.7 : 1, transition: 'opacity .15s' }}
-            >
-              {creatingCV ? (
-                <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-              )}
-              {creatingCV ? 'Guardando...' : europassV2 ? 'Crear documento' : 'Crear CV'}
-            </button>
+            {createButton}
 
             {!europassV2 && <button
               onClick={() => { setEditing(true); setGuardMode('unsaved'); }}
@@ -478,6 +491,7 @@ export default function PreviewPage() {
                   : '✏ Modo edición — haz clic sobre cualquier texto para modificarlo'}
               </div>
             )}
+            {europassV2 && <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={onPhotoPicked} />}
             {cvData && (
               <div style={europassV2
                 // Europass: A4 sheets on a gray desk, like paper (spec change 32).
@@ -492,6 +506,7 @@ export default function PreviewPage() {
                   densidad={visualPresets.densidad}
                   fotoTam={visualPresets.foto_tam}
                   paginate={europassV2 ? 'preview' : undefined}
+                  onSubirFoto={europassV2 ? () => photoInputRef.current?.click() : undefined}
                   idiomasEditor={europassV2 ? {
                     onNiveles: (id, niveles) => { europass.send({ op: 'cefr', id, niveles }); },
                     onNivelGeneral: (id, nivel) => { europass.send({ op: 'nivel_idioma', id, nivel }); },
@@ -506,7 +521,11 @@ export default function PreviewPage() {
         <div style={{ width: 272, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, alignSelf: 'flex-start', position: 'sticky', top: 0, maxHeight: '100%', overflowY: 'auto', paddingBottom: 12 }}>
 
           {/* Europass: "Crear documento" first and always visible (CEO 2026-09-26) */}
-          {europassV2 && <div style={{ position: 'sticky', top: 0, zIndex: 5 }}>{actionsCard}</div>}
+          {europassV2 && (
+            <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)', paddingBottom: 14, marginBottom: -2 }}>
+              {createButton}
+            </div>
+          )}
 
           {/* Meta card */}
           <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: 'var(--sh-2)' }}>
@@ -538,11 +557,14 @@ export default function PreviewPage() {
               {accentColor && (
                 <button
                   onClick={() => { changeAccentColor(null); setShowHexInput(false); setCustomHex(''); }}
-                  style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--mute)', background: 'none', border: 'none', cursor: 'pointer', padding: '1px 5px', borderRadius: 4, transition: 'color .15s' }}
+                  style={{ marginLeft: 'auto', color: 'var(--mute)', background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, transition: 'color .15s', display: 'flex' }}
                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--mute)')}
+                  title="Volver al color original" aria-label="Volver al color original"
                 >
-                  Limpiar
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                    <path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 3 3 9 9 9" />
+                  </svg>
                 </button>
               )}
             </div>

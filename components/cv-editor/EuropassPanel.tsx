@@ -189,7 +189,8 @@ function Hint({ children }: { children: React.ReactNode }) {
 function isOn(c: EuropassContent, slot: EuropassSlot): boolean {
   const ip = c.informacion_personal;
   switch (slot) {
-    case 'foto': return ip.foto.activo && !!ip.foto.url;
+    // "Foto visible" (CEO 2026-09-26): a preference; on even before a photo exists.
+    case 'foto': return ip.foto.activo;
     case 'fecha_nacimiento': case 'nacionalidad': case 'direccion': return ip[slot].activo;
     case 'linkedin': case 'orcid': case 'researchgate': return ip.perfiles.some(p => p.tipo === slot && p.activo);
     case 'experiencia.lugar': return c.experiencia_laboral.some(e => e.lugar.activo);
@@ -286,17 +287,22 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
         {/* Photo lives here (CEO 2026-09-26): it changes the header layout. Uploading or
             replacing it here also replaces the profile photo. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 8px' }}>
-          <span style={{ ...title, flex: 1 }}>Foto</span>
-          <Switch on={shown('foto')} onChange={v => toggle('foto', v)} label="Foto" />
+          <span style={{ ...title, flex: 1 }}>Foto visible</span>
+          <Switch on={isOn(c, 'foto')} onChange={v => toggle('foto', v)} label="Foto visible" />
         </div>
-        {shown('foto') && !isOn(c, 'foto') && <Hint>Sube una foto para mostrarla en tu CV.</Hint>}
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); }} />
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-          style={{ width: '100%', padding: '7px', borderRadius: 8, border: '1.5px dashed var(--line)', background: 'var(--surface-2)', color: 'var(--ink)', fontSize: 12.5, cursor: uploading ? 'wait' : 'pointer' }}>
-          {uploading ? 'Subiendo…' : ip.foto.url ? 'Cambiar foto' : 'Subir foto'}
-        </button>
-        {photoError && <p role="alert" style={{ margin: '4px 0 0', fontSize: 11.5, color: '#DC2626' }}>{photoError}</p>}
+        {/* Upload / replace only while the photo is visible. */}
+        {isOn(c, 'foto') && (
+          <>
+            {!ip.foto.url && <Hint>Sube una foto para mostrarla en tu CV.</Hint>}
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); }} />
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+              style={{ width: '100%', padding: '7px', borderRadius: 8, border: '1.5px dashed var(--line)', background: 'var(--surface-2)', color: 'var(--ink)', fontSize: 12.5, cursor: uploading ? 'wait' : 'pointer' }}>
+              {uploading ? 'Subiendo…' : ip.foto.url ? 'Cambiar foto' : 'Subir foto'}
+            </button>
+            {photoError && <p role="alert" style={{ margin: '4px 0 0', fontSize: 11.5, color: '#DC2626' }}>{photoError}</p>}
+          </>
+        )}
         {isOn(c, 'foto') && (
           <>
             <div style={{ ...title, margin: '14px 0 10px' }}>Tamaño de foto</div>

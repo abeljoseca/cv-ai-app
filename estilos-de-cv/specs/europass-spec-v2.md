@@ -48,6 +48,8 @@
 | 34 | Competencias lingüísticas siempre visibles si hay idiomas | La sección completa tiene **interruptor** en el panel: encendida por defecto si hay algún idioma; apagada, desaparece del CV (decisión CEO 2026-09-26) | Ej.: solo lengua materna que la nacionalidad ya implica |
 | 35 | LinkedIn/ORCID/ResearchGate en la rejilla de 2 columnas | Los perfiles en línea van en **filas completas al final** de los datos personales (nunca se parten junto a la foto). En el PDF son **enlaces clicables con el mismo aspecto del texto** (sin color ni subrayado); en la vista previa, texto (decisión CEO 2026-09-26; HTML v2 actualizado) | La URL partida en 2 líneas se veía mal |
 | 36 | Foto en "Información personal"; contador de páginas en el panel; botón "Atrás" | La **foto** (interruptor + subir o cambiar, que reemplaza la foto del perfil) va en la tarjeta de diseño; se quita "Tu CV ocupa N páginas"; en Europass se quita "Atrás" y "Crear documento" va arriba y siempre visible (decisión CEO 2026-09-26) | Foto escondida en un acordeón; botones que sobraban |
+| 37 | Foto encendida por defecto solo si hay foto_url (§2.4) | **"Foto visible" encendida por defecto** en todo CV Europass nuevo, haya o no foto; sin foto, el editor muestra el recuadro "Sube tu foto" dentro del CV (nunca en el PDF). "Subir/Cambiar foto" solo aparece con la foto visible. Foto con **esquinas levemente redondeadas** (4px) (decisión CEO 2026-09-26; HTML v2 actualizado) | El usuario decide en el panel si la deja |
+| 38 | Selectores nativos en la tabla CEFR | Selectores con el **diseño de Momentum** (píldora + desplegable de la app, con la descripción de cada nivel); el CV sigue mostrando solo el código (decisión CEO 2026-09-26) | Coherencia visual |
 
 ---
 

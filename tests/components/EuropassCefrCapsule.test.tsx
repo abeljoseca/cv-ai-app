@@ -45,7 +45,8 @@ describe('CEFR capsule (editor only)', () => {
   it('changing one cell sends the whole breakdown with that skill changed', () => {
     const onNiveles = vi.fn()
     render(<EuropassV2CV data={content()} idiomasEditor={{ onNiveles, onNivelGeneral: vi.fn() }} />)
-    fireEvent.change(screen.getByLabelText('Inglés: Expresión escrita'), { target: { value: 'B2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inglés: Expresión escrita' }))
+    fireEvent.click(screen.getByRole('option', { name: /^B2/ }))
     expect(onNiveles).toHaveBeenCalledWith('en', { comprension_auditiva: 'C1', comprension_lectora: 'C1', interaccion_oral: 'C1', expresion_oral: 'C1', expresion_escrita: 'B2' })
   })
 
@@ -53,7 +54,8 @@ describe('CEFR capsule (editor only)', () => {
     const onNivelGeneral = vi.fn()
     render(<EuropassV2CV data={content()} idiomasEditor={{ onNiveles: vi.fn(), onNivelGeneral }} />)
     expect(screen.getByText('Indica tu nivel de italiano para mostrarlo en la tabla:')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Nivel de Italiano'), { target: { value: 'B1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Nivel de Italiano' }))
+    fireEvent.click(screen.getByRole('option', { name: /^B1 · Medio bajo/ }))
     expect(onNivelGeneral).toHaveBeenCalledWith('it', 'B1')
   })
 })

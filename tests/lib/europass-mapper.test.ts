@@ -58,7 +58,8 @@ describe('mapEuropassObjective', () => {
     expect(ip.fecha_nacimiento).toEqual({ activo: false, valor: null })
     expect(ip.nacionalidad).toEqual({ activo: false, valor: null })
     expect(ip.direccion).toEqual({ activo: false, valor: null })
-    expect(ip.foto.activo).toBe(false)
+    // Photo visible by default, even without a photo yet (CEO 2026-09-26).
+    expect(ip.foto).toEqual({ activo: true, url: null })
     expect(ip.perfiles).toEqual([{ tipo: 'linkedin', url: 'https://www.linkedin.com/in/laura/', activo: true }])
   })
 

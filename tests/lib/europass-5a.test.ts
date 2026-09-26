@@ -103,7 +103,10 @@ describe('europass editor operations', () => {
     const r = ok(edit({ op: 'activar', slot: 'fecha_nacimiento', activo: true }, c))
     expect(r.vacio).toBe(true)
     expect(r.content).toBe(c)
-    expect(ok(edit({ op: 'activar', slot: 'foto', activo: true })).vacio).toBe(true)
+    // "Foto visible" is a preference (CEO 2026-09-26): it turns on even with no photo yet.
+    const foto = ok(edit({ op: 'activar', slot: 'foto', activo: true }))
+    expect(foto.vacio).toBeFalsy()
+    expect(foto.content.informacion_personal.foto).toEqual({ activo: true, url: null })
   })
 
   it('switching on a slot with data works; off hides without deleting', () => {

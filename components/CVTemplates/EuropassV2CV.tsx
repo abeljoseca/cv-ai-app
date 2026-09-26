@@ -6,7 +6,8 @@
 import EditableField from './EditableField'
 import type { CVEditProps } from './index'
 import { CV_FONT } from './fonts'
-import { CEFR_LEVELS, CEFR_SKILLS, type CefrBreakdown } from '@/lib/cefr'
+import { CEFR_HINTS, CEFR_LABELS, CEFR_LEVELS, CEFR_SKILLS, type CefrBreakdown } from '@/lib/cefr'
+import { Select } from '@/components/Select'
 import {
   EUROPASS_DEFAULT_ACCENT, EUROPASS_DEFAULT_DENSITY, EUROPASS_DEFAULT_PHOTO_SIZE, EUROPASS_DENSITIES,
   EUROPASS_HEADER_ORDER, EUROPASS_PHOTO_SIZES, EUROPASS_SECTIONS, type EuropassDensity, type EuropassPhotoSize,
@@ -29,6 +30,8 @@ export interface EuropassV2Props extends CVEditProps {
   idiomasEditor?: EuropassLanguageEditor
   // Exported document only: profile links are clickable (styled as plain text).
   enlaces?: boolean
+  // Editor only: "Foto visible" on with no photo yet shows a box that opens the upload.
+  onSubirFoto?: () => void
 }
 
 const CSS = `
@@ -54,7 +57,14 @@ const CSS = `
 .ep2 .datos-personales > .perfil{ grid-column: 1 / -1; }
 .ep2 .datos-personales a{ color: inherit; text-decoration: none; }
 .ep2 .datos-personales .label{ color: #595959; font-style: italic; font-size: 10pt; }
-.ep2 .foto{ width: var(--foto-w); height: var(--foto-h); flex-shrink: 0; overflow: hidden; background: #e8ecf5; }
+/* Slightly rounded corners (CEO 2026-09-26). */
+.ep2 .foto{ width: var(--foto-w); height: var(--foto-h); flex-shrink: 0; overflow: hidden; background: #e8ecf5; border-radius: 4px; }
+.ep2 .ep2-foto-vacia{
+  border: 1.5px dashed #A5B4FC; background: #EEF2FF; color: #3730A3; cursor: pointer; padding: 0 6px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 11px; font-weight: 600; line-height: 1.3;
+}
+.ep2 .ep2-foto-vacia:hover{ background: #E0E7FF; }
 .ep2 .foto img{ width: 100%; height: 100%; max-width: none; object-fit: cover; display: block; }
 
 .ep2 section{ margin-bottom: var(--entre-secciones); }
@@ -132,7 +142,7 @@ const CSS = `
 
 @media print{
   .ep2-page{ margin: 0; padding: 0; width: auto; max-width: none; min-height: auto; }
-  .ep2 .ep2-capsula{ display: none !important; }
+  .ep2 .ep2-capsula, .ep2 .ep2-foto-vacia{ display: none !important; }
 }
 `
 
@@ -184,8 +194,20 @@ function headerFields(ip: EuropassContent['informacion_personal']): Array<{ key:
   return out
 }
 
+// CEFR cell trigger: a filled pill while the level is not confirmed (invites a review),
+// discreet once confirmed. Same row height as the printed text.
+function cellTrigger(confirmed: boolean): React.CSSProperties {
+  return {
+    width: 'auto', gap: 3, padding: '0 5px 0 8px', lineHeight: 1.3, borderRadius: 999, boxShadow: 'none',
+    fontSize: '9.5pt', fontFamily: 'inherit', fontWeight: confirmed ? 400 : 700,
+    background: confirmed ? 'transparent' : '#E0E7FF',
+    border: confirmed ? '1px dashed #C7D2FE' : '1px solid #A5B4FC',
+    color: confirmed ? '#000' : '#3730A3',
+  }
+}
+
 export default function EuropassV2CV({
-  data, isEditMode = false, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor, enlaces = false,
+  data, isEditMode = false, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor, enlaces = false, onSubirFoto,
 }: EuropassV2Props) {
   const ip = data.informacion_personal
   const d = EUROPASS_DENSITIES[densidad ?? EUROPASS_DEFAULT_DENSITY] ?? EUROPASS_DENSITIES[EUROPASS_DEFAULT_DENSITY]
@@ -240,6 +262,9 @@ export default function EuropassV2CV({
               </div>
             )}
           </div>
+          {ip.foto.activo && !ip.foto.url && onSubirFoto && (
+            <button type="button" className="foto ep2-foto-vacia" onClick={onSubirFoto}>Sube tu foto</button>
+          )}
           {showFoto && (
             <div className="foto">
               {/* eslint-disable-next-line @next/next/no-img-element -- printed by headless Chromium; must be a plain img */}
@@ -351,10 +376,12 @@ export default function EuropassV2CV({
                       {CEFR_SKILLS.map(s => (
                         <td key={s}>
                           {idiomasEditor && l._id ? (
-                            <select className={`ep2-celda${l.niveles_confirmados ? '' : ' ep2-celda-pendiente'}`} aria-label={`${l.idioma}: ${CEFR_SKILL_LABELS[s]}`} value={l.niveles![s]}
-                              onChange={e => idiomasEditor.onNiveles(l._id!, { ...l.niveles!, [s]: e.target.value as CefrBreakdown[typeof s] })}>
-                              {CEFR_LEVELS.filter(v => v !== 'Nativo').map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
+                            // Momentum dropdown (CEO 2026-09-26). The CV itself only ever shows the code.
+                            <Select ariaLabel={`${l.idioma}: ${CEFR_SKILL_LABELS[s]}`} value={l.niveles![s]}
+                              onChange={v => idiomasEditor.onNiveles(l._id!, { ...l.niveles!, [s]: v as CefrBreakdown[typeof s] })}
+                              options={CEFR_LEVELS.filter(v => v !== 'Nativo').map(v => ({ value: v, label: v, description: `${CEFR_LABELS[v].split(' · ')[1]} — ${CEFR_HINTS[v]}` }))}
+                              style={{ display: 'inline-block', width: 'auto' }}
+                              triggerStyle={cellTrigger(l.niveles_confirmados)} />
                           ) : l.niveles![s]}
                         </td>
                       ))}
@@ -369,10 +396,11 @@ export default function EuropassV2CV({
             {idiomasEditor && sinNivel.filter(l => l._id).map(l => (
               <div className="ep2-capsula" key={`n-${l._id}`} style={{ marginTop: 6 }}>
                 <span>Indica tu nivel de {l.idioma.toLowerCase()} para mostrarlo en la tabla:</span>
-                <select aria-label={`Nivel de ${l.idioma}`} defaultValue="" onChange={e => e.target.value && idiomasEditor.onNivelGeneral(l._id!, e.target.value)}>
-                  <option value="" disabled>Elegir nivel</option>
-                  {CEFR_LEVELS.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
+                <Select ariaLabel={`Nivel de ${l.idioma}`} value="" placeholder="Elegir nivel"
+                  onChange={v => v && idiomasEditor.onNivelGeneral(l._id!, v)}
+                  options={CEFR_LEVELS.map(v => ({ value: v, label: CEFR_LABELS[v], description: CEFR_HINTS[v] }))}
+                  style={{ display: 'inline-block', width: 'auto' }}
+                  triggerStyle={{ padding: '3px 8px 3px 10px', fontSize: 12, borderRadius: 8, width: 'auto', gap: 6 }} />
               </div>
             ))}
             {certs.length > 0 && (

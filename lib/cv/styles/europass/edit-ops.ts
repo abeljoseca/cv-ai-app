@@ -118,7 +118,8 @@ function cleanList(raw: unknown, maxItems: number, maxLen: number): string[] | n
 function hasData(c: EuropassContent, slot: EuropassSlot, ctx: EditContext): boolean {
   const ip = c.informacion_personal
   switch (slot) {
-    case 'foto': return !!ctx.fotoUrl
+    // "Foto visible" is a preference, not data: it can be on without a photo yet.
+    case 'foto': return true
     case 'fecha_nacimiento': case 'nacionalidad': case 'direccion': return !!ctx.identity[slot]
     case 'linkedin': case 'orcid': case 'researchgate': return ip.perfiles.some(p => p.tipo === slot && p.url)
     case 'experiencia.lugar': return c.experiencia_laboral.some(e => e.lugar.valor)
