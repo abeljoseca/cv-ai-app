@@ -51,6 +51,7 @@
 | 37 | Foto encendida por defecto solo si hay foto_url (§2.4) | **"Foto visible" encendida por defecto** en todo CV Europass nuevo, haya o no foto; sin foto, el editor muestra el recuadro "Sube tu foto" dentro del CV (nunca en el PDF). "Subir/Cambiar foto" solo aparece con la foto visible. Foto con **esquinas levemente redondeadas** (4px) (decisión CEO 2026-09-26; HTML v2 actualizado) | El usuario decide en el panel si la deja |
 | 38 | Selectores nativos en la tabla CEFR | Selectores con el **diseño de Momentum** (píldora + desplegable de la app) que muestran **solo los códigos** A1–C2; la explicación de cada nivel está en el perfil; el CV sigue mostrando solo el código (decisión CEO 2026-09-26) | Coherencia visual |
 | 39 | — | **Dependencias en el panel:** un control que depende de otro mayor se colapsa mientras el mayor está apagado (Certificación oficial ← Mostrar en el CV; Tamaño y Subir/Cambiar foto ← Foto visible; subgrupos ← Información adicional) (decisión CEO 2026-09-26) | No se ofrece lo que no tendría efecto |
+| 40 | "Redactar con IA" en el editor para Sobre mí y bullets (§8.1) | **Pospuesto a una actualización futura** (decisión CEO 2026-09-26). Riesgo: un usuario que intenta forzar un dato que no está en sus fuentes entraría en un ciclo sin fin con los controles anti-invención. Se decidirá con datos de uso de usuarios reales | Evitar un cuello de botella antes de conocer el comportamiento real |
 
 ---
 
