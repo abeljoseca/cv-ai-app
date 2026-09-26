@@ -162,7 +162,7 @@ export default function CuentaPage() {
     : { price: `$${prices.precio_anual}`,   cadence: '/año', save: `Ahorras $${savingsAnual}` };
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', animation: 'fadeUp .25s var(--ease) both' }}>
+    <div style={{ maxWidth: 'calc(1100px + var(--sidebar-extra, 0px))', margin: '0 auto', animation: 'fadeUp .25s var(--ease) both' }}>
 
       {/* Centered header */}
       <div style={{ textAlign: 'center', marginBottom: 36 }}>

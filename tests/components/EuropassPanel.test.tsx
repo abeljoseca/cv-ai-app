@@ -69,7 +69,7 @@ describe('EuropassPanel', () => {
 
   it('photo size only appears with an active photo; density always', () => {
     setup()
-    expect(screen.getByText('Densidad')).toBeTruthy()
+    expect(screen.getByText('Densidad textual')).toBeTruthy()
     expect(screen.queryByText('Tamaño de foto')).toBeNull()
     const c = content()
     c.informacion_personal.foto = { activo: true, url: 'https://x.test/f.jpg' }
@@ -141,5 +141,20 @@ describe('EuropassPanel', () => {
     await act(async () => { fireEvent.blur(pais, { relatedTarget: document.body }) })
     expect(send).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith(expect.objectContaining({ campo: 'lugar', valor: { ciudad: 'Caracas', pais: 'Venezuela' } }))
+  })
+
+  it('an open section shows its title in Momentum blue, on one line', () => {
+    render(<EuropassPanel content={content()} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    const btn = screen.getByRole('button', { name: 'Competencias lingüísticas' })
+    const title = btn.querySelector('span') as HTMLElement
+    expect(title.style.color).toBe('var(--deep)')
+    fireEvent.click(btn)
+    expect(title.style.color).toBe('var(--blue)')
+    expect(title.style.whiteSpace).toBe('nowrap')
+  })
+
+  it('shows how many pages the CV takes', () => {
+    render(<EuropassPanel content={content()} visual={{}} paginas={2} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    expect(screen.getByText(/Tu CV ocupa/).textContent).toBe('Tu CV ocupa 2 páginas')
   })
 })

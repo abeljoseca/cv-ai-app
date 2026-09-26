@@ -81,14 +81,16 @@ export default async function ImprimirPage({
         </div>
       )}
 
-      {/* data-cv-ready tells the PDF renderer the CV is in the DOM */}
-      <div className="cv-container" data-cv-ready="true">
+      {/* data-cv-ready tells the PDF renderer the CV is ready to print. Europass v2 sets it
+          itself, only after its pages are computed (spec change 32). */}
+      <div className="cv-container" data-cv-ready={isEuropassV2(content) ? undefined : 'true'}>
         <CVRenderer
           estilo={cv.estilo as Exclude<CV['estilo'], 'mirror'>}
           data={content}
           accentColor={visual.accent_color ?? undefined}
           densidad={visual.densidad}
           fotoTam={visual.foto_tam}
+          paginate={isEuropassV2(content) ? 'print' : undefined}
         />
       </div>
     </>

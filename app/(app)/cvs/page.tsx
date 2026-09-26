@@ -204,7 +204,7 @@ export default function MisCVsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1200 }}>
+    <div style={{ maxWidth: 'calc(1200px + var(--sidebar-extra, 0px))' }}>
       {/* Metrics header */}
       <div style={{ marginBottom: 14 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: 'var(--deep)', letterSpacing: '-0.01em' }}>Tus métricas</h2>

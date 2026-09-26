@@ -74,8 +74,11 @@ const CSS = `
 
 .ep2 .lengua-materna{ font-size: 10.5pt; margin: 0 0 8px 0; }
 .ep2 .otras-lenguas{ font-size: 10.5pt; margin: 8px 0 0 0; }
-.ep2 table.cefr{ width: 100%; border-collapse: collapse; font-size: 9.5pt; break-inside: avoid; page-break-inside: avoid; }
-.ep2 table.cefr th, .ep2 table.cefr td{ border: 1px solid #e8ecf5; padding: 5px 6px; text-align: center; }
+/* Rounded corners (CEO 2026-09-25): separate borders so the radius clips the header fill. */
+.ep2 table.cefr{ width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e8ecf5; border-radius: 6px; overflow: hidden; font-size: 9.5pt; break-inside: avoid; page-break-inside: avoid; }
+.ep2 table.cefr th, .ep2 table.cefr td{ border: 0; border-right: 1px solid #e8ecf5; border-bottom: 1px solid #e8ecf5; padding: 5px 6px; text-align: center; }
+.ep2 table.cefr tr > :last-child{ border-right: 0; }
+.ep2 table.cefr tbody tr:last-child td{ border-bottom: 0; }
 .ep2 table.cefr th{ background: #e8ecf5; color: var(--acento); font-weight: 700; font-size: 9pt; }
 .ep2 table.cefr td:first-child, .ep2 table.cefr th:first-child{ text-align: left; font-weight: 700; }
 .ep2 .cefr-nota{ font-size: 9.5pt; color: #595959; margin-top: 4px; font-style: italic; }
@@ -107,7 +110,7 @@ const CSS = `
   padding: 3px 10px; cursor: pointer; margin-left: auto;
 }
 .ep2 .ep2-capsula select{ font: inherit; border: 1px solid #C7D2FE; border-radius: 6px; padding: 2px 4px; background: #fff; color: #1e1b4b; }
-.ep2 table.cefr.ep2-resaltada{ outline: 1.5px solid #C7D2FE; outline-offset: 3px; border-radius: 2px; }
+.ep2 table.cefr.ep2-resaltada{ outline: 1.5px solid #C7D2FE; outline-offset: 3px; }
 .ep2 table.cefr select.ep2-celda{
   appearance: none; -webkit-appearance: none; border: none; background: transparent; font: inherit; color: inherit;
   text-align: center; text-align-last: center; cursor: pointer; padding: 0 2px;

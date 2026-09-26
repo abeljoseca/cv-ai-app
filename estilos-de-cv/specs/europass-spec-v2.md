@@ -42,6 +42,9 @@
 | 28 | La explicación de compatibilidad con la vacante enviaba a la IA el CV completo | Solo se envía contenido profesional; nunca nombre, email, teléfono, fecha de nacimiento ni dirección. Aplica a los 7 estilos (decisión CEO 2026-09-25) | Minimizar datos personales enviados a terceros |
 | 29 | Cápsula CEFR "sobre la tabla" (§7.3) | Confirmado: la cápsula y el ajuste de cada celda van **dentro del CV, sobre la tabla, solo en el editor** (nunca en el PDF). Única excepción a "la hoja = PDF" (cambio 23) (decisión CEO 2026-09-25) | Se entiende de inmediato qué se ajusta |
 | 30 | Aviso no bloqueante por huecos de más de 3 meses entre empleos (§9.2) | **Eliminado** (decisión CEO 2026-09-25) | No es necesario aclararlo |
+| 31 | Tabla CEFR con esquinas rectas | **Esquinas redondeadas** (radio 6px), en el CV y en el PDF (decisión CEO 2026-09-25; HTML v2 actualizado) | Estética |
+| 32 | Paginación solo en el PDF (Chromium decide los saltos) | **Un solo paginador** decide los saltos de página: la vista previa dibuja hojas A4 separadas con el contador de páginas y el PDF usa exactamente esos saltos (forzados). Un bloque (puesto, estudio, tabla, subgrupo) nunca se parte; si no cabe, pasa entero a la página siguiente, y el título de sección viaja con su primer bloque (decisión CEO 2026-09-25) | Lo que el usuario ve es exactamente lo que descarga; la densidad sirve para ajustar páginas |
+| 33 | Botón "Editar" + "Guardar" en la vista previa (cambio 22) | Europass: **sin "Editar"**; "Sobre mí" y los bullets se editan directamente en la vista previa y se guardan al salir del texto; se quita el aviso de "Modo edición". El botón "Crear CV" pasa a **"Crear documento"** (decisión CEO 2026-09-25) | Activar secciones ya es editar; el botón sobraba |
 
 ---
 

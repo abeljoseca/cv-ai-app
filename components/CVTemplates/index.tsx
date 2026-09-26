@@ -6,6 +6,7 @@ import TechCV from './TechCV'
 import MinimalistCV from './MinimalistCV'
 import EuropassCV from './EuropassCV'
 import EuropassV2CV, { type EuropassLanguageEditor } from './EuropassV2CV'
+import PaginatedEuropass from './PaginatedEuropass'
 import ExecutiveCV from './ExecutiveCV'
 import { cvFontVariables } from './fonts'
 import { isEuropassV2 } from '@/lib/cv/content'
@@ -29,6 +30,10 @@ export interface CVRendererProps extends CVEditProps {
   fotoTam?: EuropassPhotoSize
   // Europass v2 editor-only CEFR controls (the CV editor passes them; nothing else does).
   idiomasEditor?: EuropassLanguageEditor
+  // Europass v2 real pages (spec change 32): the editor preview and the print page use
+  // the same paginator. Thumbnails don't paginate.
+  paginate?: 'preview' | 'print'
+  onPages?: (pages: number) => void
 }
 
 export const styleAccentColors: Record<string, string[]> = {
@@ -46,12 +51,15 @@ export default function CVRenderer(props: CVRendererProps) {
   return <div className={cvFontVariables}><StyleTemplate {...props} /></div>
 }
 
-function StyleTemplate({ estilo, data: stored, isEditMode, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor }: CVRendererProps) {
+function StyleTemplate({ estilo, data: stored, isEditMode, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor, paginate, onPages }: CVRendererProps) {
   const editProps: CVEditProps = { isEditMode, onFieldChange, accentColor }
 
   // Standardized styles render from their own schema; older CVs of the same style keep
   // their original template.
   if (isEuropassV2(stored)) {
+    if (paginate) {
+      return <PaginatedEuropass mode={paginate} onPages={onPages} data={stored} densidad={densidad} fotoTam={fotoTam} idiomasEditor={idiomasEditor} {...editProps} />
+    }
     return <EuropassV2CV data={stored} densidad={densidad} fotoTam={fotoTam} idiomasEditor={idiomasEditor} {...editProps} />
   }
   const data = stored as CVContent

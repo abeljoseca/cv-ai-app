@@ -79,22 +79,16 @@ export default function PreviewPage() {
   const visualSaveSeq = useRef(0);
   // Other visual_config keys (Europass density / photo size) are kept on every color save.
   const [visualPresets, setVisualPresets] = useState<Omit<VisualConfig, 'accent_color'>>({});
+  const [paginas, setPaginas] = useState<number | null>(null);
   const visualPresetsRef = useRef<Omit<VisualConfig, 'accent_color'>>({});
 
   // Europass v2: the editor works against /api/cv/[id]/europass — it loads the CV there
   // (identity values are decrypted on the server) and sends every change there. The
   // client never writes the CV row for this style.
-  // Text edits ("Editar") are kept here until "Guardar", as in the other styles;
-  // "Cancelar edición" drops them. They stay visible over any server update meanwhile.
-  const europassTextEdits = useRef<Map<string, string>>(new Map());
+  // No "Editar" mode for this style (spec change 33): "Sobre mí" and the bullets are
+  // editable right in the preview and each text is saved when the user leaves it.
   const onEuropassState = useCallback((st: { content: unknown; visual: VisualConfig }) => {
-    let next = st.content;
-    if (isEuropassV2(next)) {
-      let c = next;
-      for (const [ruta, valor] of europassTextEdits.current) c = applyEuropassTextEdit(c, ruta, valor);
-      next = c;
-    }
-    setCvData(next);
+    setCvData(st.content);
     const { accent_color, ...presets } = st.visual;
     setAccentColor(accent_color ?? null);
     visualPresetsRef.current = presets;
@@ -209,12 +203,7 @@ export default function PreviewPage() {
     // Europass: saved exactly as the user typed it. The AI proofreading pass rewrites the
     // whole CV without the anti-invention controls, so it never runs on this style.
     if (isEuropassV2(cvData)) {
-      const edits = [...europassTextEdits.current];
-      europassTextEdits.current.clear();
-      const results = await Promise.all(edits.map(([ruta, valor]) => europass.send({ op: 'texto', ruta, valor })));
       await europass.drain();
-      // Anything not saved disappears from the screen: it shows the server's version.
-      if (results.some(r => !r.ok)) await europass.load();
       setGuardMode('saved');
       setSaving(false);
       setEditing(false);
@@ -286,8 +275,10 @@ export default function PreviewPage() {
 
   function updateCvField(path: string, value: string) {
     if (isEuropassV2(cvData)) {
-      europassTextEdits.current.set(path, value);
+      // Shown at once, saved on the server (same rules as decision A); if saving fails
+      // the CV is reloaded, so the screen never keeps text that wasn't saved.
       setCvData((prev: any) => prev && isEuropassV2(prev) ? applyEuropassTextEdit(prev, path, value) : prev);
+      europass.send({ op: 'texto', ruta: path, valor: value }).then(r => { if (!r.ok) europass.load(); });
       return;
     }
     setCvData((prev: any) => prev ? setNestedValue(prev, path, value) : prev);
@@ -388,7 +379,7 @@ export default function PreviewPage() {
   const palette = styleAccentColors[params?.estilo ?? ''] ?? styleAccentColors['harvard'];
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', animation: 'fadeUp .25s var(--ease) both', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px)' }}>
+    <div style={{ maxWidth: 'calc(1200px + var(--sidebar-extra, 0px))', margin: '0 auto', animation: 'fadeUp .25s var(--ease) both', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px)' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24, flexShrink: 0 }}>
@@ -422,15 +413,20 @@ export default function PreviewPage() {
               </div>
             )}
             {cvData && (
-              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              <div style={europassV2
+                // Europass: A4 sheets on a gray desk, like paper (spec change 32).
+                ? { flex: 1, minHeight: 0, overflowY: 'auto', background: '#E9EDF3', padding: 16 }
+                : { flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <CVRenderer
                   estilo={(params?.estilo as any) || 'harvard'}
                   data={cvData}
-                  isEditMode={editing}
+                  isEditMode={europassV2 || editing}
                   onFieldChange={updateCvField}
                   accentColor={accentColor ?? undefined}
                   densidad={visualPresets.densidad}
                   fotoTam={visualPresets.foto_tam}
+                  paginate={europassV2 ? 'preview' : undefined}
+                  onPages={setPaginas}
                   idiomasEditor={europassV2 ? {
                     onNiveles: (id, niveles) => { europass.send({ op: 'cefr', id, niveles }); },
                     onNivelGeneral: (id, nivel) => { europass.send({ op: 'nivel_idioma', id, nivel }); },
@@ -554,7 +550,7 @@ export default function PreviewPage() {
 
           {europassV2 && cvData && (
             <>
-              <EuropassPanel content={cvData} visual={visualPresets} send={europass.send}
+              <EuropassPanel content={cvData} visual={visualPresets} send={europass.send} paginas={paginas}
                 identidadDisponible={europass.identidadDisponible} onUploadPhoto={uploadEuropassPhoto} />
               {europass.lastError && (
                 <div role="alert" style={{ fontSize: 12, color: '#DC2626', lineHeight: 1.4, padding: '0 4px' }}>{europass.lastError}</div>
@@ -604,7 +600,6 @@ export default function PreviewPage() {
                 </button>
                 <button
                   onClick={() => {
-                    if (isEuropassV2(cvData) && europassTextEdits.current.size > 0) { europassTextEdits.current.clear(); europass.load(); }
                     setEditing(false); setGuardMode('saved');
                   }}
                   disabled={saving}
@@ -627,17 +622,17 @@ export default function PreviewPage() {
                   ) : (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                   )}
-                  {creatingCV ? 'Guardando...' : 'Crear CV'}
+                  {creatingCV ? 'Guardando...' : europassV2 ? 'Crear documento' : 'Crear CV'}
                 </button>
 
-                <button
+                {!europassV2 && <button
                   onClick={() => { setEditing(true); setGuardMode('unsaved'); }}
                   style={{ width: '100%', padding: '9px 16px', borderRadius: 10, background: 'transparent', color: 'var(--ink)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 14, fontWeight: 500, transition: 'background .15s var(--ease)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   Editar
-                </button>
+                </button>}
 
                 <button
                   onClick={() => setShowBackModal(true)}

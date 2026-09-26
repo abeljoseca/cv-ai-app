@@ -22,6 +22,8 @@ interface Props {
   send: Send;
   identidadDisponible: boolean;
   onUploadPhoto: (file: File) => Promise<boolean>;
+  // Pages the CV takes, from the same paginator as the PDF (spec change 32).
+  paginas?: number | null;
 }
 
 const DENSITY_LABELS: Record<EuropassDensity, string> = { compacto: 'Compacto', estandar: 'Estándar', amplio: 'Amplio' };
@@ -79,9 +81,14 @@ function Tip({ text, label }: { text: string; label: string }) {
       <button type="button" aria-label={`¿Qué es ${label}?`} aria-expanded={open}
         onClick={e => { e.stopPropagation(); setOpen(o => !o); }} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
         style={{
-          width: 15, height: 15, borderRadius: '50%', border: '1px solid var(--mute)', background: 'transparent',
-          color: 'var(--mute)', fontSize: 9.5, fontWeight: 700, lineHeight: '13px', padding: 0, cursor: 'help', fontFamily: 'Georgia, serif',
-        }}>i</button>
+          width: 15, height: 15, borderRadius: '50%', border: '1px solid var(--mute)', background: 'transparent', padding: 0,
+          color: 'var(--mute)', cursor: 'help', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+        {/* Drawn, not a font glyph: a letter "i" never sits exactly in the middle. */}
+        <svg width="7" height="9" viewBox="0 0 7 9" aria-hidden="true" fill="currentColor">
+          <circle cx="3.5" cy="1.2" r="1.1" /><rect x="2.55" y="3.2" width="1.9" height="5.6" rx="0.6" />
+        </svg>
+      </button>
       {open && (
         <span role="tooltip" style={{
           position: 'absolute', left: 0, right: 0, top: '100%', marginTop: 4, zIndex: 20,
@@ -204,7 +211,7 @@ function isOn(c: EuropassContent, slot: EuropassSlot): boolean {
 
 type Group = 'recomendadas' | 'personal' | 'experiencia' | 'educacion' | 'idiomas' | 'otros';
 
-export default function EuropassPanel({ content, visual, send, identidadDisponible, onUploadPhoto }: Props) {
+export default function EuropassPanel({ content, visual, send, identidadDisponible, onUploadPhoto, paginas }: Props) {
   // Slots the user switched on that have no data yet: the input is shown here and the
   // slot appears in the CV once a value is saved (an empty section is never "on").
   const [open, setOpen] = useState<Set<EuropassSlot>>(new Set());
@@ -272,9 +279,14 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
     <>
       {/* Diseño */}
       <div style={card}>
-        <div style={{ ...title, marginBottom: 10 }}>Densidad<Tip text={EUROPASS_TIPS.densidad} label="la densidad" /></div>
+        <div style={{ ...title, marginBottom: 10 }}>Densidad textual<Tip text={EUROPASS_TIPS.densidad} label="la densidad textual" /></div>
         <Segmented value={visual.densidad ?? 'estandar'} onChange={v => send({ op: 'visual', densidad: v })}
           options={(Object.keys(EUROPASS_DENSITIES) as EuropassDensity[]).map(k => [k, DENSITY_LABELS[k]])} />
+        {paginas != null && (
+          <p aria-live="polite" style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--mute)' }}>
+            Tu CV ocupa <strong style={{ color: 'var(--deep)' }}>{paginas} {paginas === 1 ? 'página' : 'páginas'}</strong>
+          </p>
+        )}
         {isOn(c, 'foto') && (
           <>
             <div style={{ ...title, margin: '14px 0 10px' }}>Tamaño de foto</div>
@@ -424,16 +436,30 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
   );
 }
 
+const GROUP_ICONS: Record<Group, React.ReactNode> = {
+  recomendadas: <polygon points="12 2 15.1 8.6 22 9.3 16.8 14 18.2 21 12 17.5 5.8 21 7.2 14 2 9.3 8.9 8.6 12 2" />,
+  personal: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></>,
+  experiencia: <><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+  educacion: <><path d="M22 10 12 5 2 10l10 5 10-5z" /><path d="M6 12v5c3 2 9 2 12 0v-5" /></>,
+  idiomas: <><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></>,
+  otros: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
+};
+
+// Open section: title and icon in Momentum blue, so open sections are easy to tell apart.
 function Accordion({ id, title, expanded, onToggle, children }: {
   id: Group; title: string; expanded: Set<Group>; onToggle: (g: Group) => void; children: React.ReactNode;
 }) {
   const isOpen = expanded.has(id);
+  const color = isOpen ? 'var(--blue)' : 'var(--deep)';
   return (
     <div style={{ borderTop: '1px solid var(--line-soft)' }}>
       <button type="button" aria-expanded={isOpen} onClick={() => onToggle(id)}
         style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--deep)' }}>{title}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--mute)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={isOpen ? 'var(--blue)' : 'var(--mute)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
+          {GROUP_ICONS[id]}
+        </svg>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isOpen ? 'var(--blue)' : 'var(--mute)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
           style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><polyline points="6 9 12 15 18 9" /></svg>
       </button>
       {isOpen && <div style={{ paddingBottom: 6 }}>{children}</div>}

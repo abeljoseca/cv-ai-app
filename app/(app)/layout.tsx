@@ -142,25 +142,27 @@ export default function AppLayout({
                   position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)',
                   zIndex: 100,
                   width: 20, height: 56,
-                  background: 'var(--surface)',
-                  border: '1px solid var(--line)',
-                  borderLeft: 'none',
+                  // Brand color so the tab never goes unnoticed (CEO 2026-09-25).
+                  background: 'var(--blue)',
+                  border: 'none',
                   borderRadius: '0 8px 8px 0',
                   cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '2px 0 8px rgba(15,23,42,.08)',
                   transition: 'background .15s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
+                onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(0.92)')}
+                onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--mute)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m9 18 6-6-6-6"/>
                 </svg>
               </button>
             )}
 
             <main style={{
+              // Wide pages grow by the sidebar's width when it is hidden (forms stay narrow).
+              ['--sidebar-extra' as string]: sidebarOpen ? '0px' : '256px',
               flex: 1,
               minWidth: 0,
               overflowY: isEditor ? 'hidden' : 'auto',

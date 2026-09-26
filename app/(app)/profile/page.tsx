@@ -599,7 +599,7 @@ export default function PerfilPage() {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 20, maxWidth: 1340, margin: '0 auto' }}>
+    <div style={{ display: 'flex', gap: 20, maxWidth: 'calc(1340px + var(--sidebar-extra, 0px))', margin: '0 auto' }}>
 
       {/* ── LEFT ── */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>

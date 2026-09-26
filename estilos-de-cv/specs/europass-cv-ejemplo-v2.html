@@ -117,8 +117,11 @@
 
   /* ---------- IDIOMAS ---------- */
   .lengua-materna{ font-size:10.5pt; margin:0 0 8px 0; }
-  table.cefr{ width:100%; border-collapse: collapse; font-size:9.5pt; break-inside: avoid; }
-  table.cefr th, table.cefr td{ border:1px solid var(--gris-claro); padding:5px 6px; text-align:center; }
+  /* Esquinas redondeadas (CEO 2026-09-25) */
+  table.cefr{ width:100%; border-collapse: separate; border-spacing:0; border:1px solid var(--gris-claro); border-radius:6px; overflow:hidden; font-size:9.5pt; break-inside: avoid; }
+  table.cefr th, table.cefr td{ border:0; border-right:1px solid var(--gris-claro); border-bottom:1px solid var(--gris-claro); padding:5px 6px; text-align:center; }
+  table.cefr tr > :last-child{ border-right:0; }
+  table.cefr tbody tr:last-child td{ border-bottom:0; }
   table.cefr th{ background: var(--gris-claro); color: var(--acento); font-weight:700; font-size:9pt; }
   table.cefr td:first-child, table.cefr th:first-child{ text-align:left; font-weight:700; }
   .cefr-nota{ font-size:9.5pt; color: var(--gris); margin-top:4px; font-style: italic; }

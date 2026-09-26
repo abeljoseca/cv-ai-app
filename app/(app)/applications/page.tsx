@@ -116,7 +116,7 @@ export default function AplicacionesPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 'calc(1100px + var(--sidebar-extra, 0px))' }}>
       {/* Filters bar */}
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--line)',
