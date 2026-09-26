@@ -393,7 +393,8 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
             {/* Whole section on/off (CEO 2026-09-26): e.g. only a native language that
                 the nationality already implies. */}
             <SlotRow {...rp('idiomas')} label="Mostrar en el CV" tip={EUROPASS_TIPS.idiomas} />
-            {langs.length > 0 && <SlotRow {...rp('idiomas.certificacion')} label={field('competencias_linguisticas', 'certificacion')} tip={EUROPASS_TIPS.certificacion}>
+            {/* Depends on the section: collapsed while the section is off (CEO 2026-09-26). */}
+            {langs.length > 0 && isOn(c, 'idiomas') && <SlotRow {...rp('idiomas.certificacion')} label={field('competencias_linguisticas', 'certificacion')} tip={EUROPASS_TIPS.certificacion}>
               {langs.map(l => (
                 <div key={l._id}>
                   <ItemLabel>{l.idioma}</ItemLabel>

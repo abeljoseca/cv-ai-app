@@ -46,7 +46,8 @@ describe('CEFR capsule (editor only)', () => {
     const onNiveles = vi.fn()
     render(<EuropassV2CV data={content()} idiomasEditor={{ onNiveles, onNivelGeneral: vi.fn() }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Inglés: Expresión escrita' }))
-    fireEvent.click(screen.getByRole('option', { name: /^B2/ }))
+    expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])
+    fireEvent.click(screen.getByRole('option', { name: 'B2' }))
     expect(onNiveles).toHaveBeenCalledWith('en', { comprension_auditiva: 'C1', comprension_lectora: 'C1', interaccion_oral: 'C1', expresion_oral: 'C1', expresion_escrita: 'B2' })
   })
 
@@ -55,7 +56,9 @@ describe('CEFR capsule (editor only)', () => {
     render(<EuropassV2CV data={content()} idiomasEditor={{ onNiveles: vi.fn(), onNivelGeneral }} />)
     expect(screen.getByText('Indica tu nivel de italiano para mostrarlo en la tabla:')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Nivel de Italiano' }))
-    fireEvent.click(screen.getByRole('option', { name: /^B1 · Medio bajo/ }))
+    const options = screen.getAllByRole('option').map(o => o.textContent)
+    expect(options).toEqual(['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Nativo']) // codes only
+    fireEvent.click(screen.getByRole('option', { name: 'B1' }))
     expect(onNivelGeneral).toHaveBeenCalledWith('it', 'B1')
   })
 })

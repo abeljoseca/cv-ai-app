@@ -181,4 +181,13 @@ describe('EuropassPanel', () => {
     await act(async () => { fireEvent.click(sw) })
     expect(send).toHaveBeenCalledWith({ op: 'activar', slot: 'idiomas', activo: false })
   })
+
+  it('"Certificación oficial" collapses while the language section is off', () => {
+    const c = content()
+    c.competencias_linguisticas.activo = false
+    const { container } = render(<EuropassPanel content={c} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    openAll(container)
+    expect(screen.getByRole('switch', { name: 'Mostrar en el CV' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.queryByRole('switch', { name: 'Certificación oficial' })).toBeNull()
+  })
 })

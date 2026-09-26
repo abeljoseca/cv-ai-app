@@ -6,7 +6,7 @@
 import EditableField from './EditableField'
 import type { CVEditProps } from './index'
 import { CV_FONT } from './fonts'
-import { CEFR_HINTS, CEFR_LABELS, CEFR_LEVELS, CEFR_SKILLS, type CefrBreakdown } from '@/lib/cefr'
+import { CEFR_LEVELS, CEFR_SKILLS, type CefrBreakdown } from '@/lib/cefr'
 import { Select } from '@/components/Select'
 import {
   EUROPASS_DEFAULT_ACCENT, EUROPASS_DEFAULT_DENSITY, EUROPASS_DEFAULT_PHOTO_SIZE, EUROPASS_DENSITIES,
@@ -379,7 +379,8 @@ export default function EuropassV2CV({
                             // Momentum dropdown (CEO 2026-09-26). The CV itself only ever shows the code.
                             <Select ariaLabel={`${l.idioma}: ${CEFR_SKILL_LABELS[s]}`} value={l.niveles![s]}
                               onChange={v => idiomasEditor.onNiveles(l._id!, { ...l.niveles!, [s]: v as CefrBreakdown[typeof s] })}
-                              options={CEFR_LEVELS.filter(v => v !== 'Nativo').map(v => ({ value: v, label: v, description: `${CEFR_LABELS[v].split(' · ')[1]} — ${CEFR_HINTS[v]}` }))}
+                              // Codes only in the editor (CEO 2026-09-26); explanations live in the profile.
+                              options={CEFR_LEVELS.filter(v => v !== 'Nativo').map(v => ({ value: v, label: v }))}
                               style={{ display: 'inline-block', width: 'auto' }}
                               triggerStyle={cellTrigger(l.niveles_confirmados)} />
                           ) : l.niveles![s]}
@@ -398,7 +399,7 @@ export default function EuropassV2CV({
                 <span>Indica tu nivel de {l.idioma.toLowerCase()} para mostrarlo en la tabla:</span>
                 <Select ariaLabel={`Nivel de ${l.idioma}`} value="" placeholder="Elegir nivel"
                   onChange={v => v && idiomasEditor.onNivelGeneral(l._id!, v)}
-                  options={CEFR_LEVELS.map(v => ({ value: v, label: CEFR_LABELS[v], description: CEFR_HINTS[v] }))}
+                  options={CEFR_LEVELS.map(v => ({ value: v, label: v }))}
                   style={{ display: 'inline-block', width: 'auto' }}
                   triggerStyle={{ padding: '3px 8px 3px 10px', fontSize: 12, borderRadius: 8, width: 'auto', gap: 6 }} />
               </div>
