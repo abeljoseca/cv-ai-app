@@ -12,9 +12,15 @@ function content(): EuropassContent {
   return c
 }
 
+// Accordions start closed (CEO 2026-09-25): open them all, as a user would.
+function openAll(container: HTMLElement) {
+  for (const b of [...container.querySelectorAll('button[aria-expanded="false"]')].filter(b => !b.getAttribute('aria-label'))) fireEvent.click(b)
+}
+
 function setup(over: Partial<React.ComponentProps<typeof EuropassPanel>> = {}) {
   const send = vi.fn(async () => ({ ok: true, vacio: true }))
   const utils = render(<EuropassPanel content={content()} visual={{}} send={send} identidadDisponible onUploadPhoto={async () => true} {...over} />)
+  openAll(utils.container)
   return { send, ...utils }
 }
 
@@ -33,7 +39,7 @@ describe('EuropassPanel', () => {
     await act(async () => { fireEvent.click(sw) })
     expect(send).toHaveBeenCalledWith({ op: 'activar', slot: 'fecha_nacimiento', activo: true })
     expect(screen.getByLabelText('Fecha de nacimiento', { selector: 'input' })).toBeTruthy()
-    expect(screen.getByText('Aparecerá en tu CV cuando lo completes.')).toBeTruthy()
+    expect(screen.getByText('Aparecerá en tu CV al completarlo')).toBeTruthy()
   })
 
   it('a text field saves on blur, only when it changed', async () => {
@@ -68,7 +74,7 @@ describe('EuropassPanel', () => {
     const c = content()
     c.informacion_personal.foto = { activo: true, url: 'https://x.test/f.jpg' }
     render(<EuropassPanel content={c} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
-    expect(screen.getByText('Tamaño de foto')).toBeTruthy()
+    expect(screen.getAllByText('Tamaño de foto')).toHaveLength(1)
   })
 
   it('per-item fields: one switch for the section, one field per item', () => {
@@ -86,7 +92,8 @@ describe('EuropassPanel', () => {
 
   it('keeps a half-typed draft when the panel re-renders with new server content', async () => {
     const send = vi.fn(async () => ({ ok: true }))
-    const { rerender } = render(<EuropassPanel content={content()} visual={{}} send={send} identidadDisponible onUploadPhoto={async () => true} />)
+    const { rerender, container } = render(<EuropassPanel content={content()} visual={{}} send={send} identidadDisponible onUploadPhoto={async () => true} />)
+    openAll(container)
     const input = screen.getByLabelText('Nacionalidad', { selector: 'input' }) as HTMLInputElement
     input.focus()
     fireEvent.change(input, { target: { value: 'Venez' } })
@@ -94,5 +101,45 @@ describe('EuropassPanel', () => {
     const again = screen.getByLabelText('Nacionalidad', { selector: 'input' }) as HTMLInputElement
     expect(again).toBe(input)
     expect(again.value).toBe('Venez')
+  })
+
+  it('sections start closed inside accordions and open on click', () => {
+    render(<EuropassPanel content={content()} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    expect(screen.queryByRole('switch', { name: 'Nacionalidad' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Recomendadas en Europass' }))
+    expect(screen.getByRole('switch', { name: 'Nacionalidad' })).toBeTruthy()
+    expect(screen.queryByRole('switch', { name: 'Fecha de nacimiento' })).toBeNull()
+  })
+
+  it('explains unfamiliar fields with a tooltip next to the name', () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: '¿Qué es Nivel CINE/ISCED?' }))
+    expect(screen.getByRole('tooltip').textContent).toContain('6 es una carrera universitaria')
+    expect(screen.queryByRole('button', { name: '¿Qué es Nacionalidad?' })).toBeNull()
+  })
+
+  it('the ✓ button saves the field without leaving it', async () => {
+    const { send } = setup()
+    const input = screen.getByLabelText('Nacionalidad', { selector: 'input' })
+    fireEvent.change(input, { target: { value: 'Chilena' } })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Guardar Nacionalidad' })) })
+    expect(send).toHaveBeenCalledWith({ op: 'identidad', campo: 'nacionalidad', valor: 'Chilena' })
+  })
+
+  it('city + country save once, when the focus leaves both fields', async () => {
+    const send = vi.fn(async () => ({ ok: true }))
+    const c = content()
+    c.experiencia_laboral = c.experiencia_laboral.map(e => ({ ...e, lugar: { activo: true, valor: null } }))
+    const { container } = render(<EuropassPanel content={c} visual={{}} send={send} identidadDisponible onUploadPhoto={async () => true} />)
+    openAll(container)
+    const [ciudad] = screen.getAllByPlaceholderText('Ciudad')
+    const [pais] = screen.getAllByPlaceholderText('País')
+    fireEvent.change(ciudad, { target: { value: 'Caracas' } })
+    await act(async () => { fireEvent.blur(ciudad, { relatedTarget: pais }) })
+    expect(send).not.toHaveBeenCalled()
+    fireEvent.change(pais, { target: { value: 'Venezuela' } })
+    await act(async () => { fireEvent.blur(pais, { relatedTarget: document.body }) })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ campo: 'lugar', valor: { ciudad: 'Caracas', pais: 'Venezuela' } }))
   })
 })

@@ -113,6 +113,14 @@ const CSS = `
   text-align: center; text-align-last: center; cursor: pointer; padding: 0 2px;
   border-bottom: 1px dashed #A5B4FC;
 }
+/* Not confirmed yet: each level is a filled pill with a chevron, so it invites a review. */
+.ep2 table.cefr select.ep2-celda.ep2-celda-pendiente{
+  border: 1px solid #A5B4FC; border-radius: 999px; background-color: #E0E7FF; color: #3730A3; font-weight: 700;
+  padding: 1px 16px 1px 8px; text-align-last: left;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%233730A3' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center;
+}
+.ep2 table.cefr select.ep2-celda.ep2-celda-pendiente:hover{ background-color: #C7D2FE; }
 
 @media print{
   .ep2-page{ margin: 0; padding: 0; width: auto; max-width: none; min-height: auto; }
@@ -332,7 +340,7 @@ export default function EuropassV2CV({
                       {CEFR_SKILLS.map(s => (
                         <td key={s}>
                           {idiomasEditor && l._id ? (
-                            <select className="ep2-celda" aria-label={`${l.idioma}: ${CEFR_SKILL_LABELS[s]}`} value={l.niveles![s]}
+                            <select className={`ep2-celda${l.niveles_confirmados ? '' : ' ep2-celda-pendiente'}`} aria-label={`${l.idioma}: ${CEFR_SKILL_LABELS[s]}`} value={l.niveles![s]}
                               onChange={e => idiomasEditor.onNiveles(l._id!, { ...l.niveles!, [s]: e.target.value as CefrBreakdown[typeof s] })}>
                               {CEFR_LEVELS.filter(v => v !== 'Nativo').map(v => <option key={v} value={v}>{v}</option>)}
                             </select>
