@@ -32,3 +32,32 @@ export function europassFingerprint(): string {
   h.update(existsSync(EUROPASS_DEMO_PHOTO) ? readFileSync(EUROPASS_DEMO_PHOTO) : 'silueta')
   return h.digest('hex')
 }
+
+// Styles still on the shared CVContent templates (photographed through the app itself:
+// scripts/samples/legacy.mts + app/muestra-cv/[estilo]).
+export const LEGACY_STYLE_FILES: Record<string, string> = {
+  harvard: 'HarvardCV', stanford: 'StanfordCV', 'silicon-valley': 'SiliconValleyCV',
+  tech: 'TechCV', minimalist: 'MinimalistCV', executive: 'ExecutiveCV',
+}
+
+const LEGACY_SHARED = [
+  'components/CVTemplates/index.tsx',
+  'components/CVTemplates/fonts.ts',
+  'components/CVTemplates/EditableField.tsx',
+  'components/CVTemplates/SkillsBlock.tsx',
+  'lib/format-phone.ts',
+  'lib/format-education.ts',
+  'app/globals.css',
+  'lib/cv/samples/legacy-sample.ts',
+  'app/muestra-cv/[estilo]/page.tsx',
+  'scripts/samples/legacy.mts',
+]
+
+export function legacyFingerprint(estilo: string): string {
+  const h = createHash('sha256')
+  for (const rel of [`components/CVTemplates/${LEGACY_STYLE_FILES[estilo]}.tsx`, ...LEGACY_SHARED]) {
+    h.update(rel)
+    h.update(readFileSync(path.join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n'))
+  }
+  return h.digest('hex')
+}

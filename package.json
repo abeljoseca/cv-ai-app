@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "samples": "vitest run --config vitest.samples.config.ts"
+    "samples": "vitest run --config vitest.samples.config.ts && node scripts/samples/legacy.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

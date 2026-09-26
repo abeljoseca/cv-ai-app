@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local visual references (CEO): never committed
+/Referencias/
+/referencias/
