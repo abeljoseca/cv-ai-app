@@ -26,7 +26,7 @@ export const EUROPASS_SLOTS = [
   'foto', ...IDENTITY_FIELDS, 'linkedin', 'orcid', 'researchgate',
   'experiencia.lugar', 'experiencia.sector_nace',
   'educacion.nivel_isced', 'educacion.lugar', 'educacion.materias',
-  'idiomas.certificacion',
+  'idiomas', 'idiomas.certificacion',
   'digcomp', 'permiso_conducir', 'informacion_adicional',
   ...ADICIONAL_ALL.map(k => `adicional.${k}` as const),
   'anexos',
@@ -126,6 +126,7 @@ function hasData(c: EuropassContent, slot: EuropassSlot, ctx: EditContext): bool
     case 'educacion.nivel_isced': return c.educacion_formacion.some(e => e.nivel_isced.valor !== null)
     case 'educacion.lugar': return c.educacion_formacion.some(e => e.lugar.valor)
     case 'educacion.materias': return c.educacion_formacion.some(e => e.materias.valor)
+    case 'idiomas': return c.competencias_linguisticas.lenguas_maternas.length + c.competencias_linguisticas.otras_lenguas.length > 0
     case 'idiomas.certificacion': return c.competencias_linguisticas.otras_lenguas.some(l => l.certificacion.valor)
     case 'digcomp': return DIGCOMP_AREAS.every(a => c.competencias_digitales.digcomp[a] !== null)
     case 'permiso_conducir': return c.permiso_conducir.categorias.length > 0
@@ -149,6 +150,7 @@ function setSlot(c: EuropassContent, slot: EuropassSlot, activo: boolean, ctx: E
     case 'educacion.nivel_isced': return { ...c, educacion_formacion: each(c.educacion_formacion, e => ({ ...e, nivel_isced: { ...e.nivel_isced, activo } })) }
     case 'educacion.lugar': return { ...c, educacion_formacion: each(c.educacion_formacion, e => ({ ...e, lugar: { ...e.lugar, activo } })) }
     case 'educacion.materias': return { ...c, educacion_formacion: each(c.educacion_formacion, e => ({ ...e, materias: { ...e.materias, activo } })) }
+    case 'idiomas': return { ...c, competencias_linguisticas: { ...c.competencias_linguisticas, activo } }
     case 'idiomas.certificacion':
       return { ...c, competencias_linguisticas: { ...c.competencias_linguisticas, otras_lenguas: each(c.competencias_linguisticas.otras_lenguas, l => ({ ...l, certificacion: { ...l.certificacion, activo } })) } }
     case 'digcomp': return { ...c, competencias_digitales: { ...c.competencias_digitales, digcomp: { ...c.competencias_digitales.digcomp, activo } } }

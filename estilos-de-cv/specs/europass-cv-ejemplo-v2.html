@@ -86,6 +86,8 @@
     font-size:10.5pt; display:grid; grid-template-columns: auto auto; justify-content: space-between; gap: 2px 18px;
   }
   .datos-personales .label{ color: var(--gris); font-style: italic; font-size:10pt; }
+  /* Perfiles en línea (LinkedIn, ORCID, ResearchGate): fila completa al final (CEO 2026-09-26) */
+  .datos-personales .perfil{ grid-column: 1 / -1; }
   .foto{
     /* Tamaño de foto: 3 opciones fijas, siempre proporción 3:4 vertical. Mediana = por defecto */
     width: var(--foto-w, 30mm); height: var(--foto-h, 40mm); flex-shrink:0; overflow:hidden;
@@ -215,7 +217,7 @@
         <div class="ciudad-pais"><span class="label">Ciudad:</span> Madrid, España</div>
         <div><span class="label">Teléfono:</span> +34 611 223 344</div>
         <div><span class="label">Email:</span> laura.fernandez@email.com</div>
-        <div data-slot="activable"><span class="label">LinkedIn:</span> linkedin.com/in/laurafernandezib</div>
+        <div data-slot="activable" class="perfil"><span class="label">LinkedIn:</span> linkedin.com/in/laurafernandezib</div>
       </div>
     </div>
     <div class="foto" data-slot="activable" data-muestra aria-label="Foto de perfil (30 × 40 mm)">

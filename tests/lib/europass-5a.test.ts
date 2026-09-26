@@ -241,3 +241,15 @@ describe('CEFR operations (5c)', () => {
     expect(edit({ op: 'nivel_idioma', id: 'i2', nivel: 'Intermedio' }, withLangs()).ok).toBe(false)
   })
 })
+
+describe('language section switch', () => {
+  it('can be switched off and back on (only with languages)', () => {
+    const off = ok(edit({ op: 'activar', slot: 'idiomas', activo: false }))
+    expect(off.content.competencias_linguisticas.activo).toBe(false)
+    const on = ok(edit({ op: 'activar', slot: 'idiomas', activo: true }, off.content))
+    expect(on.content.competencias_linguisticas.activo).toBe(true)
+    const none = stored()
+    none.competencias_linguisticas = { activo: false, lenguas_maternas: [], otras_lenguas: [] }
+    expect(ok(edit({ op: 'activar', slot: 'idiomas', activo: true }, none)).vacio).toBe(true)
+  })
+})

@@ -145,6 +145,24 @@ describe('EuropassV2CV', () => {
     expect(editable).toHaveLength(1 + 4 + 4 + 3)
     expect(editable.every(el => el.tagName === 'LI' || el.closest('.sobre-mi'))).toBe(true)
   })
+
+  it('language section switched off: gone entirely', () => {
+    const c = europassReferenceContent()
+    c.competencias_linguisticas.activo = false
+    const { container } = render(<EuropassV2CV data={c} />)
+    expect(titles(container)).not.toContain('Competencias lingüísticas')
+  })
+
+  it('online profiles take a full row; clickable plain-looking links only in the exported document', () => {
+    const { container } = render(<EuropassV2CV data={europassReferenceContent()} />)
+    const row = [...container.querySelectorAll('.datos-personales > div')].find(d => d.textContent?.startsWith('LinkedIn'))!
+    expect(row.className).toBe('perfil')
+    expect(row.querySelector('a')).toBeNull()
+    const { container: pdf } = render(<EuropassV2CV data={europassReferenceContent()} enlaces />)
+    const a = pdf.querySelector('.datos-personales a') as HTMLAnchorElement
+    expect(a.getAttribute('href')).toBe('https://www.linkedin.com/in/laurafernandezib/')
+    expect(a.textContent).toBe('linkedin.com/in/laurafernandezib')
+  })
 })
 
 describe('CVRenderer dispatch', () => {

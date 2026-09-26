@@ -79,7 +79,6 @@ export default function PreviewPage() {
   const visualSaveSeq = useRef(0);
   // Other visual_config keys (Europass density / photo size) are kept on every color save.
   const [visualPresets, setVisualPresets] = useState<Omit<VisualConfig, 'accent_color'>>({});
-  const [paginas, setPaginas] = useState<number | null>(null);
   const visualPresetsRef = useRef<Omit<VisualConfig, 'accent_color'>>({});
 
   // Europass v2: the editor works against /api/cv/[id]/europass — it loads the CV there
@@ -292,10 +291,16 @@ export default function PreviewPage() {
     const path = `${user.id}.${ext}`;
     const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
     if (error) return false;
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+    // A replaced photo keeps its storage path: the version makes browsers and the PDF
+    // renderer fetch the new one instead of a cached copy.
+    const publicUrl = `${supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
+    const oldExt = profile?.foto_url?.match(/\.(\w+)(?:\?|$)/)?.[1]?.toLowerCase();
     const { data, error: updError } = await supabase.from('profiles').update({ foto_url: publicUrl }).eq('id', user.id).select('id');
     if (updError || data?.length !== 1) return false;
     updateProfile({ foto_url: publicUrl });
+    // Only once the profile points to the new photo: an old file with another extension
+    // (e.g. .png → .jpg) is removed, as the profile page does.
+    if (oldExt && oldExt !== ext) await supabase.storage.from('avatars').remove([`${user.id}.${oldExt}`]);
     return true;
   }
 
@@ -378,6 +383,67 @@ export default function PreviewPage() {
   const matchMeta = matchData ? getMatchMeta(matchData.match_porcentaje) : null;
   const palette = styleAccentColors[params?.estilo ?? ''] ?? styleAccentColors['harvard'];
 
+  const actionsCard = (
+      <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: 'var(--sh-2)' }}>
+        {editing ? (
+          <>
+            <button
+              onClick={handleSaveAndReview}
+              disabled={saving}
+              style={{ width: '100%', padding: '10px 16px', borderRadius: 10, background: 'var(--blue)', color: '#fff', border: 'none', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving ? 0.7 : 1, transition: 'opacity .15s' }}
+            >
+              {saving && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />}
+              {europassV2 ? (saving ? 'Guardando...' : 'Guardar') : (saving ? 'Revisando...' : 'Guardar y revisar')}
+            </button>
+            <button
+              onClick={() => {
+                setEditing(false); setGuardMode('saved');
+              }}
+              disabled={saving}
+              style={{ width: '100%', padding: '9px 16px', borderRadius: 10, background: 'transparent', color: 'var(--ink)', border: '1px solid var(--line)', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 500, transition: 'background .15s var(--ease)', opacity: saving ? 0.5 : 1 }}
+              onMouseEnter={e => { if (!saving) e.currentTarget.style.background = 'var(--hover)'; }}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              Cancelar edición
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={handleCreateCV}
+              disabled={creatingCV}
+              style={{ width: '100%', padding: '10px 16px', borderRadius: 10, background: 'var(--blue)', color: '#fff', border: 'none', cursor: creatingCV ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: creatingCV ? 0.7 : 1, transition: 'opacity .15s' }}
+            >
+              {creatingCV ? (
+                <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+              {creatingCV ? 'Guardando...' : europassV2 ? 'Crear documento' : 'Crear CV'}
+            </button>
+
+            {!europassV2 && <button
+              onClick={() => { setEditing(true); setGuardMode('unsaved'); }}
+              style={{ width: '100%', padding: '9px 16px', borderRadius: 10, background: 'transparent', color: 'var(--ink)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 14, fontWeight: 500, transition: 'background .15s var(--ease)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              Editar
+            </button>}
+
+            {!europassV2 && <button
+              onClick={() => setShowBackModal(true)}
+              style={{ width: '100%', padding: '7px 16px', borderRadius: 10, background: 'transparent', color: 'var(--mute)', border: 'none', cursor: 'pointer', fontSize: 13, transition: 'color .15s var(--ease)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--mute)')}
+            >
+              Atrás
+            </button>}
+          </>
+        )}
+      </div>
+  );
+
   return (
     <div style={{ maxWidth: 'calc(1200px + var(--sidebar-extra, 0px))', margin: '0 auto', animation: 'fadeUp .25s var(--ease) both', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px)' }}>
 
@@ -426,7 +492,6 @@ export default function PreviewPage() {
                   densidad={visualPresets.densidad}
                   fotoTam={visualPresets.foto_tam}
                   paginate={europassV2 ? 'preview' : undefined}
-                  onPages={setPaginas}
                   idiomasEditor={europassV2 ? {
                     onNiveles: (id, niveles) => { europass.send({ op: 'cefr', id, niveles }); },
                     onNivelGeneral: (id, nivel) => { europass.send({ op: 'nivel_idioma', id, nivel }); },
@@ -439,6 +504,9 @@ export default function PreviewPage() {
 
         {/* ── Right: sidebar ────────────────────────────────────── */}
         <div style={{ width: 272, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, alignSelf: 'flex-start', position: 'sticky', top: 0, maxHeight: '100%', overflowY: 'auto', paddingBottom: 12 }}>
+
+          {/* Europass: "Crear documento" first and always visible (CEO 2026-09-26) */}
+          {europassV2 && <div style={{ position: 'sticky', top: 0, zIndex: 5 }}>{actionsCard}</div>}
 
           {/* Meta card */}
           <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: 'var(--sh-2)' }}>
@@ -550,7 +618,7 @@ export default function PreviewPage() {
 
           {europassV2 && cvData && (
             <>
-              <EuropassPanel content={cvData} visual={visualPresets} send={europass.send} paginas={paginas}
+              <EuropassPanel content={cvData} visual={visualPresets} send={europass.send}
                 identidadDisponible={europass.identidadDisponible} onUploadPhoto={uploadEuropassPhoto} />
               {europass.lastError && (
                 <div role="alert" style={{ fontSize: 12, color: '#DC2626', lineHeight: 1.4, padding: '0 4px' }}>{europass.lastError}</div>
@@ -586,65 +654,8 @@ export default function PreviewPage() {
             </div>
           )}
 
-          {/* Actions */}
-          <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: 'var(--sh-2)' }}>
-            {editing ? (
-              <>
-                <button
-                  onClick={handleSaveAndReview}
-                  disabled={saving}
-                  style={{ width: '100%', padding: '10px 16px', borderRadius: 10, background: 'var(--blue)', color: '#fff', border: 'none', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving ? 0.7 : 1, transition: 'opacity .15s' }}
-                >
-                  {saving && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />}
-                  {europassV2 ? (saving ? 'Guardando...' : 'Guardar') : (saving ? 'Revisando...' : 'Guardar y revisar')}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditing(false); setGuardMode('saved');
-                  }}
-                  disabled={saving}
-                  style={{ width: '100%', padding: '9px 16px', borderRadius: 10, background: 'transparent', color: 'var(--ink)', border: '1px solid var(--line)', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 500, transition: 'background .15s var(--ease)', opacity: saving ? 0.5 : 1 }}
-                  onMouseEnter={e => { if (!saving) e.currentTarget.style.background = 'var(--hover)'; }}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  Cancelar edición
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleCreateCV}
-                  disabled={creatingCV}
-                  style={{ width: '100%', padding: '10px 16px', borderRadius: 10, background: 'var(--blue)', color: '#fff', border: 'none', cursor: creatingCV ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: creatingCV ? 0.7 : 1, transition: 'opacity .15s' }}
-                >
-                  {creatingCV ? (
-                    <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  )}
-                  {creatingCV ? 'Guardando...' : europassV2 ? 'Crear documento' : 'Crear CV'}
-                </button>
-
-                {!europassV2 && <button
-                  onClick={() => { setEditing(true); setGuardMode('unsaved'); }}
-                  style={{ width: '100%', padding: '9px 16px', borderRadius: 10, background: 'transparent', color: 'var(--ink)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 14, fontWeight: 500, transition: 'background .15s var(--ease)' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  Editar
-                </button>}
-
-                <button
-                  onClick={() => setShowBackModal(true)}
-                  style={{ width: '100%', padding: '7px 16px', borderRadius: 10, background: 'transparent', color: 'var(--mute)', border: 'none', cursor: 'pointer', fontSize: 13, transition: 'color .15s var(--ease)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--mute)')}
-                >
-                  Atrás
-                </button>
-              </>
-            )}
-          </div>
+          {/* Actions (other styles: at the bottom, as before) */}
+          {!europassV2 && actionsCard}
 
         </div>
       </div>

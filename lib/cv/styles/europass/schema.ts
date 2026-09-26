@@ -93,6 +93,8 @@ export interface EuropassContent {
   experiencia_laboral: EuropassExperiencia[]
   educacion_formacion: EuropassEducacion[]
   competencias_linguisticas: {
+    // Whole section on/off (spec change 34). Absent in CVs made before it = on.
+    activo?: boolean
     lenguas_maternas: string[]
     otras_lenguas: EuropassIdioma[]
   }

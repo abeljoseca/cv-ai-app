@@ -85,7 +85,7 @@ export default function PaginatedEuropass({ mode, onPages, ...cv }: Props) {
   if (mode === 'print') {
     return (
       <div ref={visibleRef} data-cv-ready={ready ? 'true' : undefined}>
-        <EuropassV2CV {...cvProps} />
+        <EuropassV2CV {...cvProps} enlaces />
       </div>
     );
   }
@@ -109,8 +109,12 @@ export default function PaginatedEuropass({ mode, onPages, ...cv }: Props) {
         </div>
       </div>
       {/* The printed markup, measured to decide the pages. Never visible. */}
-      <div ref={cloneRef} aria-hidden="true" style={{ position: 'absolute', left: -100000, top: 0, width: SHEET_W, visibility: 'hidden', pointerEvents: 'none' }}>
-        <EuropassV2CV data={cv.data} accentColor={cv.accentColor} densidad={cv.densidad} fotoTam={cv.fotoTam} />
+      {/* Inside a 0×0 clipped box: it is laid out (so it can be measured) but adds no
+          height to anything — otherwise it made the whole page scrollable and blank. */}
+      <div style={{ position: 'relative', width: 0, height: 0, overflow: 'hidden' }}>
+        <div ref={cloneRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: SHEET_W, visibility: 'hidden', pointerEvents: 'none' }}>
+          <EuropassV2CV data={cv.data} accentColor={cv.accentColor} densidad={cv.densidad} fotoTam={cv.fotoTam} />
+        </div>
       </div>
     </div>
   );

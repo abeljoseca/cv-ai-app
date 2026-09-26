@@ -22,8 +22,6 @@ interface Props {
   send: Send;
   identidadDisponible: boolean;
   onUploadPhoto: (file: File) => Promise<boolean>;
-  // Pages the CV takes, from the same paginator as the PDF (spec change 32).
-  paginas?: number | null;
 }
 
 const DENSITY_LABELS: Record<EuropassDensity, string> = { compacto: 'Compacto', estandar: 'Estándar', amplio: 'Amplio' };
@@ -46,6 +44,7 @@ export const EUROPASS_TIPS = {
   logros_destacados: 'Tus logros que no están asignados a un empleo. Se editan en Mi perfil.',
   ponencias: 'Charlas o presentaciones que diste en eventos.',
   afiliaciones: 'Asociaciones o colegios profesionales a los que perteneces.',
+  idiomas: 'Apágalo si no aporta, por ejemplo si solo hablas tu lengua materna.',
   anexos: 'Los documentos que envías junto a tu CV, como títulos o certificados. Solo se nombran; no se suben archivos.',
 } as const;
 
@@ -198,6 +197,7 @@ function isOn(c: EuropassContent, slot: EuropassSlot): boolean {
     case 'educacion.nivel_isced': return c.educacion_formacion.some(e => e.nivel_isced.activo);
     case 'educacion.lugar': return c.educacion_formacion.some(e => e.lugar.activo);
     case 'educacion.materias': return c.educacion_formacion.some(e => e.materias.activo);
+    case 'idiomas': return c.competencias_linguisticas.activo !== false;
     case 'idiomas.certificacion': return c.competencias_linguisticas.otras_lenguas.some(l => l.certificacion.activo);
     case 'digcomp': return c.competencias_digitales.digcomp.activo;
     case 'permiso_conducir': return c.permiso_conducir.activo;
@@ -211,7 +211,7 @@ function isOn(c: EuropassContent, slot: EuropassSlot): boolean {
 
 type Group = 'recomendadas' | 'personal' | 'experiencia' | 'educacion' | 'idiomas' | 'otros';
 
-export default function EuropassPanel({ content, visual, send, identidadDisponible, onUploadPhoto, paginas }: Props) {
+export default function EuropassPanel({ content, visual, send, identidadDisponible, onUploadPhoto }: Props) {
   // Slots the user switched on that have no data yet: the input is shown here and the
   // slot appears in the CV once a value is saved (an empty section is never "on").
   const [open, setOpen] = useState<Set<EuropassSlot>>(new Set());
@@ -282,11 +282,21 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
         <div style={{ ...title, marginBottom: 10 }}>Densidad textual<Tip text={EUROPASS_TIPS.densidad} label="la densidad textual" /></div>
         <Segmented value={visual.densidad ?? 'estandar'} onChange={v => send({ op: 'visual', densidad: v })}
           options={(Object.keys(EUROPASS_DENSITIES) as EuropassDensity[]).map(k => [k, DENSITY_LABELS[k]])} />
-        {paginas != null && (
-          <p aria-live="polite" style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--mute)' }}>
-            Tu CV ocupa <strong style={{ color: 'var(--deep)' }}>{paginas} {paginas === 1 ? 'página' : 'páginas'}</strong>
-          </p>
-        )}
+
+        {/* Photo lives here (CEO 2026-09-26): it changes the header layout. Uploading or
+            replacing it here also replaces the profile photo. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 8px' }}>
+          <span style={{ ...title, flex: 1 }}>Foto</span>
+          <Switch on={shown('foto')} onChange={v => toggle('foto', v)} label="Foto" />
+        </div>
+        {shown('foto') && !isOn(c, 'foto') && <Hint>Sube una foto para mostrarla en tu CV.</Hint>}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); }} />
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+          style={{ width: '100%', padding: '7px', borderRadius: 8, border: '1.5px dashed var(--line)', background: 'var(--surface-2)', color: 'var(--ink)', fontSize: 12.5, cursor: uploading ? 'wait' : 'pointer' }}>
+          {uploading ? 'Subiendo…' : ip.foto.url ? 'Cambiar foto' : 'Subir foto'}
+        </button>
+        {photoError && <p role="alert" style={{ margin: '4px 0 0', fontSize: 11.5, color: '#DC2626' }}>{photoError}</p>}
         {isOn(c, 'foto') && (
           <>
             <div style={{ ...title, margin: '14px 0 10px' }}>Tamaño de foto</div>
@@ -329,19 +339,6 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
         </Accordion>
 
         <Accordion id="personal" title={sectionLabel('informacion_personal')} expanded={expanded} onToggle={expand}>
-          <SlotRow {...rp('foto')} label={field('informacion_personal', 'foto')}>
-            {ip.foto.url ? null : (
-              <>
-                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); }} />
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-                  style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1.5px dashed var(--line)', background: 'var(--surface-2)', color: 'var(--ink)', fontSize: 12.5, cursor: uploading ? 'wait' : 'pointer' }}>
-                  {uploading ? 'Subiendo…' : 'Sube tu foto'}
-                </button>
-                {photoError && <p role="alert" style={{ margin: '4px 0 0', fontSize: 11.5, color: '#DC2626' }}>{photoError}</p>}
-              </>
-            )}
-          </SlotRow>
           {identity('fecha_nacimiento', field('informacion_personal', 'fecha_nacimiento'), EUROPASS_TIPS.fecha_nacimiento)}
           {identity('direccion', field('informacion_personal', 'direccion'), EUROPASS_TIPS.direccion)}
           {perfil('linkedin', 'LinkedIn', 'linkedin.com/in/tu-perfil')}
@@ -385,9 +382,12 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
           </Accordion>
         )}
 
-        {langs.length > 0 && (
+        {c.competencias_linguisticas.lenguas_maternas.length + c.competencias_linguisticas.otras_lenguas.length > 0 && (
           <Accordion id="idiomas" title={sectionLabel('competencias_linguisticas')} expanded={expanded} onToggle={expand}>
-            <SlotRow {...rp('idiomas.certificacion')} label={field('competencias_linguisticas', 'certificacion')} tip={EUROPASS_TIPS.certificacion}>
+            {/* Whole section on/off (CEO 2026-09-26): e.g. only a native language that
+                the nationality already implies. */}
+            <SlotRow {...rp('idiomas')} label="Mostrar en el CV" tip={EUROPASS_TIPS.idiomas} />
+            {langs.length > 0 && <SlotRow {...rp('idiomas.certificacion')} label={field('competencias_linguisticas', 'certificacion')} tip={EUROPASS_TIPS.certificacion}>
               {langs.map(l => (
                 <div key={l._id}>
                   <ItemLabel>{l.idioma}</ItemLabel>
@@ -395,7 +395,7 @@ export default function EuropassPanel({ content, visual, send, identidadDisponib
                     save={v => send({ op: 'item', seccion: 'idioma', id: l._id!, campo: 'certificacion', valor: v })} />
                 </div>
               ))}
-            </SlotRow>
+            </SlotRow>}
           </Accordion>
         )}
 

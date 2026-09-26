@@ -153,8 +153,26 @@ describe('EuropassPanel', () => {
     expect(title.style.whiteSpace).toBe('nowrap')
   })
 
-  it('shows how many pages the CV takes', () => {
-    render(<EuropassPanel content={content()} visual={{}} paginas={2} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
-    expect(screen.getByText(/Tu CV ocupa/).textContent).toBe('Tu CV ocupa 2 páginas')
+  it('does not show a page counter in the panel (CEO 2026-09-26)', () => {
+    render(<EuropassPanel content={content()} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    expect(screen.queryByText(/Tu CV ocupa/)).toBeNull()
+  })
+
+  it('photo: switch and upload/replace live in the design card, always visible', () => {
+    render(<EuropassPanel content={content()} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    expect(screen.getByRole('switch', { name: 'Foto' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Subir foto' })).toBeTruthy()
+    const c = content()
+    c.informacion_personal.foto = { activo: true, url: 'https://x.test/f.jpg' }
+    render(<EuropassPanel content={c} visual={{}} send={vi.fn()} identidadDisponible onUploadPhoto={async () => true} />)
+    expect(screen.getByRole('button', { name: 'Cambiar foto' })).toBeTruthy()
+  })
+
+  it('the whole language section can be switched off', async () => {
+    const { send } = setup()
+    const sw = screen.getByRole('switch', { name: 'Mostrar en el CV' })
+    expect(sw.getAttribute('aria-checked')).toBe('true')
+    await act(async () => { fireEvent.click(sw) })
+    expect(send).toHaveBeenCalledWith({ op: 'activar', slot: 'idiomas', activo: false })
   })
 })

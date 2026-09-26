@@ -27,6 +27,8 @@ export interface EuropassV2Props extends CVEditProps {
   densidad?: EuropassDensity
   fotoTam?: EuropassPhotoSize
   idiomasEditor?: EuropassLanguageEditor
+  // Exported document only: profile links are clickable (styled as plain text).
+  enlaces?: boolean
 }
 
 const CSS = `
@@ -48,6 +50,9 @@ const CSS = `
   font-size: 10.5pt; display: grid; grid-template-columns: auto auto; justify-content: space-between; gap: 2px 18px;
 }
 .ep2 .datos-personales > div{ overflow-wrap: break-word; }
+/* Online profiles take a full row at the end: a long URL never wraps next to the photo. */
+.ep2 .datos-personales > .perfil{ grid-column: 1 / -1; }
+.ep2 .datos-personales a{ color: inherit; text-decoration: none; }
 .ep2 .datos-personales .label{ color: #595959; font-style: italic; font-size: 10pt; }
 .ep2 .foto{ width: var(--foto-w); height: var(--foto-h); flex-shrink: 0; overflow: hidden; background: #e8ecf5; }
 .ep2 .foto img{ width: 100%; height: 100%; max-width: none; object-fit: cover; display: block; }
@@ -148,9 +153,9 @@ function dateRange(inicio: string | null, fin: string | null): string | null {
   return inicio ?? fin ?? null
 }
 
-function headerFields(ip: EuropassContent['informacion_personal']): Array<{ key: string; label: string; value: string }> {
+function headerFields(ip: EuropassContent['informacion_personal']): Array<{ key: string; label: string; value: string; href?: string }> {
   const perfil = (tipo: PerfilTipo) => ip.perfiles.find(p => p.tipo === tipo && p.activo && p.url)
-  const out: Array<{ key: string; label: string; value: string }> = []
+  const out: Array<{ key: string; label: string; value: string; href?: string }> = []
   for (const key of EUROPASS_HEADER_ORDER) {
     switch (key) {
       case 'fecha_nacimiento':
@@ -172,7 +177,7 @@ function headerFields(ip: EuropassContent['informacion_personal']): Array<{ key:
         break
       default: {
         const p = perfil(key)
-        if (p) out.push({ key, label: PERFIL_LABELS[key], value: displayUrl(p.url) })
+        if (p) out.push({ key, label: PERFIL_LABELS[key], value: displayUrl(p.url), href: p.url })
       }
     }
   }
@@ -180,7 +185,7 @@ function headerFields(ip: EuropassContent['informacion_personal']): Array<{ key:
 }
 
 export default function EuropassV2CV({
-  data, isEditMode = false, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor,
+  data, isEditMode = false, onFieldChange, accentColor, densidad, fotoTam, idiomasEditor, enlaces = false,
 }: EuropassV2Props) {
   const ip = data.informacion_personal
   const d = EUROPASS_DENSITIES[densidad ?? EUROPASS_DEFAULT_DENSITY] ?? EUROPASS_DENSITIES[EUROPASS_DEFAULT_DENSITY]
@@ -227,7 +232,10 @@ export default function EuropassV2CV({
             {datos.length > 0 && (
               <div className="datos-personales">
                 {datos.map(f => (
-                  <div key={f.key}><span className="label">{f.label}:</span> {f.value}</div>
+                  <div key={f.key} className={f.href ? 'perfil' : undefined}>
+                    <span className="label">{f.label}:</span>{' '}
+                    {f.href && enlaces ? <a href={f.href}>{f.value}</a> : f.value}
+                  </div>
                 ))}
               </div>
             )}
@@ -313,7 +321,7 @@ export default function EuropassV2CV({
         )}
 
         {/* 5. Competencias lingüísticas */}
-        {(maternas.length > 0 || otras_lenguas.length > 0) && (
+        {data.competencias_linguisticas.activo !== false && (maternas.length > 0 || otras_lenguas.length > 0) && (
           <section>
             <h2 className="section-title">Competencias lingüísticas</h2>
             {maternas.length > 0 && (

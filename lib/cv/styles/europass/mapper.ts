@@ -244,6 +244,7 @@ export function mapEuropassObjective(
           materias: toggle<string>(null),
         }),
     competencias_linguisticas: {
+      activo: idiomasConNombre.length > 0,
       lenguas_maternas: idiomasConNombre.filter(i => i.nivel_cefr === 'Nativo').map(i => i.nombre),
       otras_lenguas: idiomasConNombre.filter(i => i.nivel_cefr !== 'Nativo').map(mapIdioma),
     },
